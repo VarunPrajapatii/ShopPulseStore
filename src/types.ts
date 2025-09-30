@@ -7,13 +7,17 @@ export interface Billboard {
 export interface Category {
   id: string;
   name: string;
-  billboard: Billboard;
+  billboard?: Billboard;
+  storeId?: string;
+  billboardId?: string;
+  CreatedAt?: string;
+  updatedAt?: string;
 }
 
 
 export interface Product {
   id: string
-  category: string
+  category: Category
   name: string
   price: string
   isFeatured: boolean
