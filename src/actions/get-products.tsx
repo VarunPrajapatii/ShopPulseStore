@@ -19,10 +19,8 @@ const getProducts = async (query: Query): Promise<Product[]> => {
         isFeatured: query.isFeatured
        },
     })
-    console.log('Fetching from URL:', url);
     
     const res = await fetch(url);
-    console.log("Response status:", res.status, res.statusText);
     
     if (!res.ok) {
       throw new Error(`HTTP error! status: ${res.status}`);
@@ -34,7 +32,6 @@ const getProducts = async (query: Query): Promise<Product[]> => {
     }
     
     const data = await res.json();
-    console.log('Parsed JSON data:', data);
     
     return data;
   } catch (error) {

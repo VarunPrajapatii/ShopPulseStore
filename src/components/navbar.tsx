@@ -2,7 +2,7 @@ import Container from '@/components/ui/container';
 import Link from 'next/link';
 import MainNav from '@/components/main-nav';
 import getCategories from '@/actions/get-categories';
-import NavbarAction from './navbar-actions';
+import NavbarAction from '@/components/navbar-actions';
 
 // what this does is that it never caches this page
 // meaning it will always fetch the latest data from the server
