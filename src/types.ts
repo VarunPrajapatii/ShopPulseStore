@@ -17,12 +17,16 @@ export interface Category {
 
 export interface Product {
   id: string
-  category: Category
   name: string
+  description: string
+  bulletPoints: string[]
   price: string
   isFeatured: boolean
+  isArchived: boolean
+  category: Category
   size: Size
   images: Image[]
+  relatedItems: Product[]
 }
 
 export interface Image {

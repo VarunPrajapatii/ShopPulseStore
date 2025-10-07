@@ -8,6 +8,7 @@ interface CartStore {
     items: Product[];
     addItem: (data: Product) => void;
     removeItem: (id: string) => void;
+    decreaseQuantity: (id: string) => void;
     removeAll: () => void;
 }
 
@@ -20,14 +21,28 @@ const useCart = create(
             const existingItem = currentItems.find((item) => item.id === data.id);
 
             if (existingItem) {
-                return toast("Item already in cart");
+                // Allow multiple quantities - just add the item again
+                set({ items: [...get().items, data] });
+                toast.success("Item quantity increased");
+            } else {
+                set({ items: [...get().items, data] });
+                toast.success("Item added to cart");
             }
-
-            set({ items: [...get().items, data] });
         },
         removeItem: (id: string) => {
             set({ items: get().items.filter((item) => item.id !== id) });
             toast.success("Item removed from cart");
+        },
+        decreaseQuantity: (id: string) => {
+            const currentItems = get().items;
+            const itemIndex = currentItems.findIndex((item) => item.id === id);
+            
+            if (itemIndex !== -1) {
+                const newItems = [...currentItems];
+                newItems.splice(itemIndex, 1); // Remove one instance
+                set({ items: newItems });
+                toast.success("Item quantity decreased");
+            }
         },
         removeAll: () => {
             set({ items: [] });

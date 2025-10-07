@@ -1,21 +1,33 @@
+'use client';
+
 import Currency from '@/components/ui/currency';
 import IconButton from '@/components/ui/icon-button';
 import useCart from '@/hooks/use-cart';
 import { Product } from '@/types';
-import { X } from 'lucide-react';
+import { X, Plus, Minus } from 'lucide-react';
 import Image from 'next/image';
 
 interface CartItemProps {
   data: Product;
+  quantity: number;
 }
 
-const CartItem: React.FC<CartItemProps> = ({ data }) => {
+const CartItem: React.FC<CartItemProps> = ({ data, quantity }) => {
   const cart = useCart();
 
   const onRemove = () => {
     cart.removeItem(data.id);
   }
 
+  const onIncrease = () => {
+    cart.addItem(data);
+  }
+
+  const onDecrease = () => {
+    if (quantity > 1) {
+      cart.decreaseQuantity(data.id);
+    }
+  }
 
   return (
     <li className="flex py-6 border-b">
@@ -42,6 +54,29 @@ const CartItem: React.FC<CartItemProps> = ({ data }) => {
             <p className='text-gray-500 ml-4 border-l border-gray-200 pl-4'>{data.size.name}</p>
           </div>
           <Currency amount={data.price} />
+        </div>
+        
+        {/* Quantity Controls */}
+        <div className="flex items-center space-x-3 mt-4">
+          <span className="text-sm text-gray-600 font-medium">Quantity:</span>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={onDecrease}
+              disabled={quantity <= 1}
+              className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <Minus size={14} />
+            </button>
+            <span className="w-10 text-center text-sm font-semibold">
+              {quantity}
+            </span>
+            <button
+              onClick={onIncrease}
+              className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100 transition-colors"
+            >
+              <Plus size={14} />
+            </button>
+          </div>
         </div>
       </div>
     </li>

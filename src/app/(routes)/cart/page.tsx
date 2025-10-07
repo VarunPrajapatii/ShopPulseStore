@@ -5,6 +5,7 @@ import useCart from '@/hooks/use-cart';
 import CartItem from './components/cart-item';
 import Summary from './components/summary';
 import { useEffect, useState } from 'react';
+import { Product } from '@/types';
 
 const CartPage = () => {
   const cart = useCart();
@@ -14,6 +15,19 @@ const CartPage = () => {
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  // Group items by ID and count quantities
+  const groupedItems = cart.items.reduce((acc, item) => {
+    const existingItem = acc.find(
+      (groupedItem) => groupedItem.data.id === item.id
+    );
+    if (existingItem) {
+      existingItem.quantity += 1;
+    } else {
+      acc.push({ data: item, quantity: 1 });
+    }
+    return acc;
+  }, [] as { data: Product; quantity: number }[]);
 
   if (!isMounted) {
     return null;
@@ -30,10 +44,11 @@ const CartPage = () => {
                 <p className="text-neutral-500">No items added to the cart.</p>
               )}
               <ul>
-                {cart.items.map((item) => (
+                {groupedItems.map((item) => (
                   <CartItem
-                    key={item.id}
-                    data={item}
+                    key={item.data.id}
+                    data={item.data}
+                    quantity={item.quantity}
                   />
                 ))}
               </ul>
