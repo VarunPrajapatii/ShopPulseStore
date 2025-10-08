@@ -7,9 +7,9 @@ import Container from '@/components/ui/container';
 import React from 'react'
 
 interface ProductPageProps {
-    params: {
+    params: Promise<{
         productId: string;
-    }
+    }>;
 }
 
 const ProductPage: React.FC<ProductPageProps> = async ({ params }) => {
