@@ -12,7 +12,7 @@ interface InfoProps {
 }
 
 const Info: React.FC<InfoProps> = ({ data }) => {
-  console.log("product data", data);
+  // console.log("product data", data);
   const cart = useCart();
 
   const onAddToCart: React.MouseEventHandler<HTMLButtonElement> = (e) => {

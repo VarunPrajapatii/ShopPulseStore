@@ -1,10 +1,10 @@
-import { Category } from '@/types';
+import { StoreBillboard } from '@/types';
 
 // Fallback to localhost if environment variable is not set
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/eccf35b7-f7c0-4cda-aae2-906da86c8314';
-const URL = `${API_URL}/categories`;
+const URL = `${API_URL}/store-billboards`;
 
-const getCategories = async (): Promise<Category[]> => {
+const getStoreBillboards = async (): Promise<StoreBillboard[]> => {
   try {
     const res = await fetch(URL);
     
@@ -19,9 +19,9 @@ const getCategories = async (): Promise<Category[]> => {
     
     return res.json();
   } catch (error) {
-    console.error('Error fetching categories:', error);
+    console.error('Error fetching store billboards:', error);
     return [];
   }
 };
 
-export default getCategories;
+export default getStoreBillboards;

@@ -4,14 +4,40 @@ export interface Billboard {
   imageUrl: string;
 }
 
+export interface StoreBillboard {
+  id: string;
+  storeId: string;
+  billboardId: string;
+  createdAt: string;
+  billboard: {
+    id: string;
+    storeId: string;
+    label: string;
+    imageUrl: string;
+    CreatedAt: string;
+    updatedAt: string;
+  };
+}
+
+export interface CategoryBillboard {
+  id: string;
+  categoryId: string;
+  billboardId: string;
+  createdAt: string;
+  billboard: Billboard & {
+    storeId: string;
+    CreatedAt: string;
+    updatedAt: string;
+  };
+}
+
 export interface Category {
   id: string;
   name: string;
-  billboard?: Billboard;
-  storeId?: string;
-  billboardId?: string;
-  CreatedAt?: string;
-  updatedAt?: string;
+  billboard: CategoryBillboard[]; // Changed from billboards to billboard
+  storeId: string; // Made optional to match API
+  CreatedAt: string;
+  updatedAt: string;
 }
 
 
