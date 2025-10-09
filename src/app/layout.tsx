@@ -16,8 +16,17 @@ const font = Urbanist({
 });
 
 export const metadata: Metadata = {
-  title: "Ecommerce Store",
+  title: "Store - NextJS Ecommerce",
   description: "Its a ecommerce store built with nextjs 15",
+  icons: {
+    icon: [
+      { url: "/storelogo.png", type: "image/png" },
+    ],
+    shortcut: ["/storelogo.png"],
+    apple: [
+      { url: "/storelogo.png", type: "image/png" }
+    ]
+  },
 };
 
 export default async function RootLayout({
