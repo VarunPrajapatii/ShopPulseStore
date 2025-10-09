@@ -55,6 +55,18 @@ export interface Product {
   relatedItems: Product[]
 }
 
+export interface UpcomingProduct {
+  id: string
+  name: string
+  price: string
+  imageUrl: string
+  storeId: string
+  categoryId: string
+  CreatedAt: string
+  updatedAt: string
+  category: Category
+}
+
 export interface Image {
   id: string
   url: string
