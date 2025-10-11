@@ -6,7 +6,7 @@ import { Instagram, Twitter, Youtube, Facebook } from 'lucide-react'
 const Footer = () => {
   return (
     <footer className="bg-black">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-[95vw] mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Main Footer Content */}
         <div className="py-10">

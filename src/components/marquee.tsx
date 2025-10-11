@@ -82,7 +82,7 @@ const Marquee = () => {
                     cy="12.5"
                     r="8"
                     stroke="#121923"
-                    stroke-width="1.2"
+                    strokeWidth="1.2"
                   />
                 </svg>
               </div>

@@ -1,7 +1,7 @@
 import { StoreBillboard } from '@/types';
 
 // Fallback to localhost if environment variable is not set
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/eccf35b7-f7c0-4cda-aae2-906da86c8314';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/1e294491-aea8-4816-8f34-f689a8d5d207';
 const URL = `${API_URL}/store-billboards`;
 
 const getStoreBillboards = async (): Promise<StoreBillboard[]> => {
