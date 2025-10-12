@@ -41,6 +41,11 @@ const Info: React.FC<InfoProps> = ({ data }) => {
       {/* Product Title and Price */}
       <div>
         <h1 className='text-3xl font-bold text-gray-900 mb-3'>{data.name}</h1>
+        {data.titlepoints && data.titlepoints.length > 0 && (
+          <p className='text-sm text-gray-600 mb-4'>
+            {data.titlepoints.join(' | ')}
+          </p>
+        )}
         <div className='flex items-end justify-between'>
           <div className='text-2xl text-gray-900 font-semibold'>
               <Currency amount={data?.price} />

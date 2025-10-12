@@ -62,7 +62,12 @@ const ProductCard: React.FC<ProductCardProps> = ({ data }) => {
         <p className='font-semibold text-lg'>
           {data.name}
         </p>
-        <p className='text-sm text-gray-500'>
+        {data.titlepoints && data.titlepoints.length > 0 && (
+          <p className='text-xs text-gray-600 mt-1 line-clamp-1'>
+            {data.titlepoints.join(' | ')}
+          </p>
+        )}
+        <p className='text-sm text-gray-500 mt-1'>
           {data.category?.name}
         </p>
       </div>

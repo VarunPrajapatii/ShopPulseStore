@@ -35,7 +35,7 @@ const Marquee = () => {
               className="flex items-center justify-center px-6 lg:px-8 py-8 lg:py-12 relative"
             >
               {/* Checkmark icon */}
-              <div className="mr-2 flex-shrink-0">
+              <div className="mr-15 flex-shrink-0">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   width="10px"
@@ -69,7 +69,7 @@ const Marquee = () => {
               className="flex items-center justify-center px-6 lg:px-8 py-8 lg:py-12 relative"
             >
               {/* Checkmark icon */}
-              <div className="mr-2 flex-shrink-0">
+              <div className="mr-15 flex-shrink-0">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   width="10px"

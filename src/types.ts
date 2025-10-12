@@ -45,6 +45,7 @@ export interface Product {
   id: string
   name: string
   description: string
+  titlepoints: string[]
   bulletPoints: string[]
   price: string
   isFeatured: boolean
