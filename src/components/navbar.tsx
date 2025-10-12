@@ -18,7 +18,7 @@ export const revalidate = 0;
 
 const Navbar = () => {
   const categories = useCategoriesStore((state) => state.categories);
-  console.log("Categories in Navbar are ", categories);
+  // console.log("Categories in Navbar are ", categories);
 
 
 

@@ -1,6 +1,6 @@
 import { Product } from '@/types';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/8ce60fbe-1d23-42f8-8506-6a65dec6aa77';
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 const URL = `${API_URL}/products`;
 
 const getProduct = async (id: string): Promise<Product | null> => {

@@ -12,7 +12,7 @@ export default function CategoriesHydration({ categories }: CategoriesHydrationP
   const setCategories = useCategoriesStore((state) => state.setCategories);
 
   useEffect(() => {
-    console.log("Hydrating categories:", categories);
+    // console.log("Hydrating categories:", categories);
     if (categories && categories.length > 0) {
       setCategories(categories);
     }

@@ -17,17 +17,15 @@ const CartItem: React.FC<CartItemProps> = ({ data, quantity }) => {
 
   const onRemove = () => {
     cart.removeItem(data.id);
-  }
+  };
 
   const onIncrease = () => {
-    cart.addItem(data);
-  }
+    cart.increaseQuantity(data.id);
+  };
 
   const onDecrease = () => {
-    if (quantity > 1) {
-      cart.decreaseQuantity(data.id);
-    }
-  }
+    cart.decreaseQuantity(data.id);
+  };
 
   return (
     <li className="flex py-6 border-b">
@@ -45,17 +43,17 @@ const CartItem: React.FC<CartItemProps> = ({ data, quantity }) => {
         </div>
         <div className="relative pr-9 sm:grid sm:grid-cols-2 sm:gap-x-6 sm:pr-0">
           <div className="flex justify-between">
-            <p className='text-lg font-bold text-black'>
-              {data.name}
-            </p>
+            <p className="text-lg font-bold text-black">{data.name}</p>
           </div>
 
-          <div className='mt-1 flex text-sm'>
-            <p className='text-gray-500 ml-4 border-l border-gray-200 pl-4'>{data.size.name}</p>
+          <div className="mt-1 flex text-sm">
+            <p className="text-gray-500 ml-4 border-l border-gray-200 pl-4">
+              {data.size.name}
+            </p>
           </div>
           <Currency amount={data.price} />
         </div>
-        
+
         {/* Quantity Controls */}
         <div className="flex items-center space-x-3 mt-4">
           <span className="text-sm text-gray-600 font-medium">Quantity:</span>
@@ -68,7 +66,7 @@ const CartItem: React.FC<CartItemProps> = ({ data, quantity }) => {
               <Minus size={14} />
             </button>
             <span className="w-10 text-center text-sm font-semibold">
-              {quantity}
+              {data.quantity}
             </span>
             <button
               onClick={onIncrease}
