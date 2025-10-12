@@ -218,7 +218,7 @@ const CheckoutPage = () => {
         }
       );
 
-    //   console.log('Checkout response:', response);
+      console.log('Checkout response:', response);
 
       const { razorpayOrderId, amount, email, phone } = response.data;
 
@@ -250,7 +250,7 @@ const CheckoutPage = () => {
               cart.removeAll();
               toast.success('Payment successful!');
               // Redirect to success page
-              router.push('/order-success');
+              router.push(`/order-success?orderId=${response.data.orderId}`);
             } else {
               toast.error('Payment verification failed!');
             }
