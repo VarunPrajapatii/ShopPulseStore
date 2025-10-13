@@ -1,7 +1,7 @@
 import React from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Instagram, Twitter, Youtube, Facebook } from 'lucide-react'
+import { Instagram, Twitter, Youtube, Facebook, X } from 'lucide-react'
 
 const Footer = () => {
   return (
@@ -39,6 +39,11 @@ const Footer = () => {
                   </Link>
                 </li>
                 <li>
+                  <Link href="/contact-us" className="text-gray-200 hover:font-semibold transition-all">
+                    Contact Us
+                  </Link>
+                </li>
+                <li>
                   <Link href="/blog" className="text-gray-200 hover:font-semibold transition-all">
                     Blog
                   </Link>
@@ -48,7 +53,7 @@ const Footer = () => {
 
             {/* Help & Support Section */}
             <div>
-              <h3 className="text-xl font-bold text-gray-200 mb-6">Help &amp; Support</h3>
+              <h3 className="text-xl font-bold text-gray-200 mb-6">Terms &amp; Conditions</h3>
               <ul className="space-y-3">
                 <li>
                   <Link href="/returns-exchanges" className="text-gray-200 hover:font-semibold transition-all">
@@ -65,11 +70,7 @@ const Footer = () => {
                     Terms of Use
                   </Link>
                 </li>
-                <li>
-                  <Link href="/contact-us" className="text-gray-200 hover:font-semibold transition-all">
-                    Contact Us
-                  </Link>
-                </li>
+                
               </ul>
             </div>
 
@@ -108,16 +109,9 @@ const Footer = () => {
                 className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-md hover:shadow-lg hover:scale-110 transition-all group"
                 aria-label="Follow Pure Essence on Twitter"
               >
-                <Twitter size={22} className="text-gray-800 group-hover:text-blue-400" />
+                <div className="text-gray-800 group-hover:text-black text-2xl font-extrabold">X</div>
               </Link>
 
-              <Link 
-                href="#" 
-                className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-md hover:shadow-lg hover:scale-110 transition-all group"
-                aria-label="Shop Pure Essence on Meesho"
-              >
-                <span className="text-lg font-bold text-gray-800 group-hover:text-purple-600">M</span>
-              </Link>
             </div>
           </div>
         </div>
