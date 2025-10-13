@@ -50,6 +50,8 @@ export interface Product {
   price: string
   isFeatured: boolean
   isArchived: boolean
+  stockQuantity: number
+  lowStockThreshold: number
   category: Category
   size: Size
   images: Image[]

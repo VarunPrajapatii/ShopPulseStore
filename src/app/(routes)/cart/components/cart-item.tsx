@@ -4,7 +4,7 @@ import Currency from '@/components/ui/currency';
 import IconButton from '@/components/ui/icon-button';
 import useCart from '@/hooks/use-cart';
 import { Product } from '@/types';
-import { X, Plus, Minus } from 'lucide-react';
+import { X, Plus, Minus, AlertCircle } from 'lucide-react';
 import Image from 'next/image';
 
 interface CartItemProps {
@@ -20,15 +20,20 @@ const CartItem: React.FC<CartItemProps> = ({ data, quantity }) => {
   };
 
   const onIncrease = () => {
-    cart.increaseQuantity(data.id);
+    if (quantity < data.stockQuantity) {
+      cart.increaseQuantity(data.id);
+    }
   };
 
   const onDecrease = () => {
     cart.decreaseQuantity(data.id);
   };
 
+  const hasStockIssue = quantity > data.stockQuantity;
+  const canIncrease = quantity < data.stockQuantity;
+
   return (
-    <li className="flex py-6 border-b">
+    <li className={`flex py-6 border-b ${hasStockIssue ? 'bg-red-50 border-red-200' : ''}`}>
       <div className="relative h-24 w-24 rounded-md overflow-hidden sm:h-48 sm:w-48">
         <Image
           fill
@@ -54,6 +59,16 @@ const CartItem: React.FC<CartItemProps> = ({ data, quantity }) => {
           <Currency amount={data.price} />
         </div>
 
+        {/* Stock Warning */}
+        {hasStockIssue && (
+          <div className="flex items-center gap-2 mt-2 text-red-600 text-sm">
+            <AlertCircle size={16} />
+            <span className="font-semibold">
+              Only {data.stockQuantity} available! Please reduce quantity.
+            </span>
+          </div>
+        )}
+
         {/* Quantity Controls */}
         <div className="flex items-center space-x-3 mt-4">
           <span className="text-sm text-gray-600 font-medium">Quantity:</span>
@@ -70,11 +85,16 @@ const CartItem: React.FC<CartItemProps> = ({ data, quantity }) => {
             </span>
             <button
               onClick={onIncrease}
-              className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100 transition-colors"
+              disabled={!canIncrease}
+              className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              title={!canIncrease ? `Maximum stock available: ${data.stockQuantity}` : ''}
             >
               <Plus size={14} />
             </button>
           </div>
+          <span className="text-xs text-gray-500">
+            ({data.stockQuantity} in stock)
+          </span>
         </div>
       </div>
     </li>

@@ -1,11 +1,12 @@
 "use client"
 
 import { Product } from '@/types'
-import React from 'react'
+import React, { useEffect } from 'react'
 import Currency from '@/components/ui/currency'
 import Button from '@/components/ui/button'
-import { ShoppingCart, Check } from 'lucide-react'
+import { ShoppingCart, Check, AlertCircle } from 'lucide-react'
 import useCart from '@/hooks/use-cart'
+import sendStockAlert from '@/actions/send-stock-alert'
 
 interface InfoProps {
     data: Product
@@ -14,6 +15,13 @@ interface InfoProps {
 const Info: React.FC<InfoProps> = ({ data }) => {
   // console.log("product data", data);
   const cart = useCart();
+
+  // Send stock alert when product is low on stock
+  useEffect(() => {
+    if (data.stockQuantity <= data.lowStockThreshold) {
+      sendStockAlert(data.id);
+    }
+  }, [data.id, data.stockQuantity, data.lowStockThreshold]);
 
   const onAddToCart: React.MouseEventHandler<HTMLButtonElement> = (e) => {
     e.stopPropagation();
@@ -45,6 +53,15 @@ const Info: React.FC<InfoProps> = ({ data }) => {
           <p className='text-sm text-gray-600 mb-4'>
             {data.titlepoints.join(' | ')}
           </p>
+        )}
+        {/* Low Stock Warning */}
+        {data.stockQuantity <= data.lowStockThreshold && (
+          <div className='bg-red-50 border border-red-200 rounded-lg p-3 mb-4 flex items-center gap-2'>
+            <AlertCircle className='h-5 w-5 text-red-600 flex-shrink-0' />
+            <p className='text-sm text-red-700 font-semibold'>
+              Only {data.stockQuantity} remaining, Hurry Up!
+            </p>
+          </div>
         )}
         <div className='flex items-end justify-between'>
           <div className='text-2xl text-gray-900 font-semibold'>
@@ -96,16 +113,22 @@ const Info: React.FC<InfoProps> = ({ data }) => {
 
       {/* Add to Cart Button */}
       <div className='pt-4'>
-        <Button 
-          onClick={onAddToCart} 
-          className='w-full flex items-center justify-center gap-x-2 bg-black hover:bg-gray-800 text-white py-3 px-6 rounded-lg font-medium transition-colors'
-        >
-          Add to Cart
-          <ShoppingCart size={18} />
-        </Button>
+        {data.stockQuantity === 0 ? (
+          <div className='w-full flex items-center justify-center gap-x-2 bg-gray-300 text-gray-600 py-3 px-6 rounded-lg font-medium cursor-not-allowed'>
+            Out of Stock
+          </div>
+        ) : (
+          <Button 
+            onClick={onAddToCart} 
+            className='w-full flex items-center justify-center gap-x-2 bg-black hover:bg-gray-800 text-white py-3 px-6 rounded-lg font-medium transition-colors'
+          >
+            Add to Cart
+            <ShoppingCart size={18} />
+          </Button>
+        )}
       </div>
     </div>
   )
 }
 
-export default Info
+export default Info;

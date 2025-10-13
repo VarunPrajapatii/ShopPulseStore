@@ -2,17 +2,34 @@
 
 import Button from '@/components/ui/button';
 import Currency from '@/components/ui/currency';
-import useCart from '@/hooks/use-cart';
 import React, { useEffect, useState } from 'react';
+import toast from 'react-hot-toast';
 
-const Summary = ({ onCheckout, itemsLength, totalPrice } : { onCheckout: () => void, itemsLength: number, totalPrice: number }) => {
+const Summary = ({ 
+  onCheckout, 
+  itemsLength, 
+  totalPrice,
+  hasStockIssues = false
+} : { 
+  onCheckout: () => void, 
+  itemsLength: number, 
+  totalPrice: number,
+  hasStockIssues?: boolean
+}) => {
 
-  const cart = useCart();
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  const handleCheckout = () => {
+    if (hasStockIssues) {
+      toast.error('Please resolve stock issues before proceeding to checkout.');
+      return;
+    }
+    onCheckout();
+  };
 
   if (!isMounted) {
     return null;
@@ -31,9 +48,18 @@ const Summary = ({ onCheckout, itemsLength, totalPrice } : { onCheckout: () => v
           <Currency amount={totalPrice} />
         </div>
       </div>
-      <Button disabled={itemsLength === 0} onClick={onCheckout} className='w-full mt-6'>
-        Checkout
+      <Button 
+        disabled={itemsLength === 0 || hasStockIssues} 
+        onClick={handleCheckout} 
+        className='w-full mt-6'
+      >
+        {hasStockIssues ? 'Resolve Stock Issues' : 'Checkout'}
       </Button>
+      {hasStockIssues && (
+        <p className="text-xs text-red-600 text-center mt-2">
+          Update item quantities to proceed
+        </p>
+      )}
     </div>
   );
 };

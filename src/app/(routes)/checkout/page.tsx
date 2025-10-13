@@ -288,11 +288,25 @@ const CheckoutPage = () => {
       console.error('Error verifying OTP:', error);
       if (axios.isAxiosError(error) && error.response) {
         console.error('Error response data:', error.response.data);
-        const errorMessage = error.response.data.error || 'Failed to process checkout';
+        const errorData = error.response.data;
         
-        if (errorMessage === 'Some products are not available') {
+        // Handle insufficient stock error
+        if (typeof errorData === 'string' && errorData.includes('Insufficient stock')) {
+          // Extract product name and stock info from error message
+          const stockMatch = errorData.match(/Insufficient stock for (.+)\. Available: (\d+), Requested: (\d+)/);
+          if (stockMatch) {
+            const [, productName, available, requested] = stockMatch;
+            toast.error(
+              `Sorry, we don't have enough stock for "${productName}". Only ${available} available, but you requested ${requested}. Please update your cart.`,
+              { duration: 6000 }
+            );
+          } else {
+            toast.error(errorData, { duration: 5000 });
+          }
+        } else if (errorData.error === 'Some products are not available') {
           toast.error('Some products in your cart are no longer available. Please refresh and try again.');
         } else {
+          const errorMessage = errorData.error || errorData || 'Failed to process checkout';
           toast.error(errorMessage);
         }
       } else {
