@@ -11,6 +11,7 @@ const OurPurpose = () => {
             src="/temp.jpeg"
             alt="Pure Essence organic powders"
             fill
+            sizes="(max-width: 1024px) 100vw, 50vw"
             className="object-cover brightness-75 rounded-xl"
             style={{ objectPosition: '19.2908% 63.3115%' }}
           />
@@ -41,7 +42,8 @@ const OurPurpose = () => {
                   alt="Lorem Ipsum Tag 1"
                   width={190}
                   height={124}
-                  className="sm:w-[120px] sm:h-[110px] md:w-[160px] md:h-[150px] lg:w-[192px] lg:h-[120px] h-auto object-cover rounded-lg"
+                  className="sm:w-[120px] sm:h-[110px] md:w-[160px] md:h-[150px] lg:w-[192px] lg:h-[120px] object-cover rounded-lg"
+                  style={{ width: 'auto', height: 'auto' }}
                 />
               </div>
               <div className="flex-grow">
@@ -62,7 +64,8 @@ const OurPurpose = () => {
                   alt="Lorem Ipsum Tag 2"
                   width={192}
                   height={108}
-                  className="sm:w-[120px] sm:h-[110px] md:w-[160px] md:h-[150px] lg:w-[192px] lg:h-[120px] h-auto object-cover rounded-lg"
+                  className="sm:w-[120px] sm:h-[110px] md:w-[160px] md:h-[150px] lg:w-[192px] lg:h-[120px] object-cover rounded-lg"
+                  style={{ width: 'auto', height: 'auto' }}
                 />
               </div>
               <div className="flex-grow">

@@ -205,6 +205,7 @@ const OrderSuccessPage = () => {
                         src={item.productImageUrl}
                         alt={item.productName}
                         fill
+                        sizes="96px"
                         className="object-cover"
                       />
                     </div>

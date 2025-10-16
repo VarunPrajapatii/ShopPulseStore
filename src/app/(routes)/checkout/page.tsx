@@ -7,7 +7,6 @@ import * as z from 'zod';
 import Container from '@/components/ui/container';
 import useCart from '@/hooks/use-cart';
 import toast from 'react-hot-toast';
-import { Form } from '@/components/ui/form';
 import { formSchema } from '@/lib/zodSchema';
 import { AddressForm, OrderSummary } from './components';
 import axios from 'axios';
@@ -118,6 +117,7 @@ const CheckoutPage = () => {
     return total + Number(item.price) * (item.quantity || 1);
   }, 0);
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const onSubmit = async (data: CheckoutFormValues) => {
     setLoading(true);
     try {
@@ -353,11 +353,9 @@ const CheckoutPage = () => {
               Delivery Address
             </h2>
 
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)}>
-                <AddressForm form={form} loading={loading} />
-              </form>
-            </Form>
+            <form onSubmit={form.handleSubmit(onSubmit)}>
+              <AddressForm form={form} loading={loading} />
+            </form>
           </div>
 
           {/* Order Summary Sidebar */}

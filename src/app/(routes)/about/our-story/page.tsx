@@ -25,6 +25,7 @@ const OurStoryPage = () => {
               src="/temp.jpeg"
               alt="Our Store"
               fill
+              sizes="100vw"
               className="object-cover"
             />
           </div>
@@ -170,6 +171,7 @@ const OurStoryPage = () => {
                   src="/temp.jpeg"
                   alt="What makes us different"
                   fill
+                  sizes="(max-width: 768px) 100vw, 50vw"
                   className="object-cover"
                 />
               </div>
@@ -229,6 +231,7 @@ const OurStoryPage = () => {
                 src="/temp.jpeg"
                 alt="Our Community"
                 fill
+                sizes="100vw"
                 className="object-cover"
               />
             </div>
