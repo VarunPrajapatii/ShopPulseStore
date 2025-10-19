@@ -18,7 +18,6 @@ const MainNav: React.FC<MainNavProps> = ({ data }) => {
     active: pathname === `/category/${route.id}`,
   }));
 
-  // console.log("Routes in MainNav are ", routes);
 
   return (
     <nav className="mx-6 flex items-center space-x-4 lg:space-x-6">

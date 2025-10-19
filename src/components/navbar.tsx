@@ -3,11 +3,8 @@
 import Container from '@/components/ui/container';
 import Link from 'next/link';
 import MainNav from '@/components/main-nav';
-import getCategories from '@/actions/get-categories';
 import NavbarAction from '@/components/navbar-actions';
-import getCategoryBillboards from '@/actions/get-category-billboards';
 import { useCategoriesStore } from '@/hooks/use-categories';
-import { useEffect } from 'react';
 
 // what this does is that it never caches this page
 // meaning it will always fetch the latest data from the server
@@ -18,22 +15,6 @@ export const revalidate = 0;
 
 const Navbar = () => {
   const categories = useCategoriesStore((state) => state.categories);
-  // console.log("Categories in Navbar are ", categories);
-
-
-
-  // const categories = await getCategories();
-  // const categoryBillboards = await Promise.all(
-  //   categories.map(async (category) => {
-  //     const billboards = await getCategoryBillboards(category.id);
-  //     return {
-  //       billboards,
-  //     };
-  //   }
-  // ));
-  // console.log("log 1 ", categories);
-  // console.log("log 2 ", categoryBillboards);
-  // console.log( "Category 0 Billboards are", categories[0].billboard);
 
   return (
     <div className="fixed bg-white w-full z-20 top-0">

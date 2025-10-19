@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Container from '@/components/ui/container';
 import { CheckCircle, Package, Mail, Phone, MapPin, Calendar, CreditCard, AlertCircle } from 'lucide-react';
@@ -10,7 +10,7 @@ import getOrderDetails, { OrderDetails } from '@/actions/get-order-details';
 import Currency from '@/components/ui/currency';
 import Image from 'next/image';
 
-const OrderSuccessPage = () => {
+const OrderSuccessContent = () => {
   const searchParams = useSearchParams();
   const orderId = searchParams.get('orderId');
   const [orderDetails, setOrderDetails] = useState<OrderDetails | null>(null);
@@ -392,6 +392,25 @@ const OrderSuccessPage = () => {
         </div>
       </div>
     </Container>
+  );
+};
+
+const OrderSuccessPage = () => {
+  return (
+    <Suspense fallback={
+      <Container>
+        <div className="px-4 py-16 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-4xl">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900 mx-auto"></div>
+              <p className="mt-4 text-lg text-gray-600">Loading order details...</p>
+            </div>
+          </div>
+        </div>
+      </Container>
+    }>
+      <OrderSuccessContent />
+    </Suspense>
   );
 };
 

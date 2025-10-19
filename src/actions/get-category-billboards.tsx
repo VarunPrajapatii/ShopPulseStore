@@ -16,11 +16,9 @@ const getCategoryBillboards = async (categoryId: string): Promise<Billboard[]> =
     }
     
     const data = await res.json();
-    // console.log('Fetch response1:', data);
     return data.billboards || [];
   } catch (error) {
     console.error('Error fetching category billboards:', error);
-    // Return empty array if fetch fails
     return [];
   }
 };

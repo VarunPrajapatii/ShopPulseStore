@@ -10,7 +10,7 @@ const TermsOfUsePage = () => {
             Terms of Use
           </h1>
           <p className="text-lg text-gray-600">
-            Last updated: {new Date().toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' })}
+            Last updated: ** ******* 2025
           </p>
         </div>
 
@@ -341,7 +341,7 @@ const TermsOfUsePage = () => {
             </p>
             <div className="ml-6 bg-gray-50 border border-gray-200 rounded-lg p-6">
               <p className="text-gray-700 mb-2">
-                <strong>Email:</strong> <a href="mailto:legal@store.com" className="text-blue-600 hover:underline">legal@store.com</a>
+                <strong>Email:</strong> <a href="mailto:legal@brandname.com" className="text-blue-600 hover:underline">legal@brandname.com</a>
               </p>
               <p className="text-gray-700 mb-2">
                 <strong>Phone:</strong> <a href="tel:+911234567890" className="text-blue-600 hover:underline">+91 123 456 7890</a>

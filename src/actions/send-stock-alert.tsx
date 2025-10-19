@@ -33,7 +33,6 @@ const sendStockAlert = async (productId: string): Promise<StockAlertResponse | n
     }
     
     const data = await res.json();
-    console.log('Stock alert sent:', data);
     
     return data;
   } catch (error) {

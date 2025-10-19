@@ -11,7 +11,7 @@ const ReturnPolicyPage = () => {
             Return & Refund Policy
           </h1>
           <p className="text-lg text-gray-600">
-            Last updated: {new Date().toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' })}
+            Last updated: ** ******* 2025
           </p>
         </div>
 
@@ -22,7 +22,7 @@ const ReturnPolicyPage = () => {
               <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-3">
                 <Clock className="h-8 w-8 text-blue-600" />
               </div>
-              <p className="text-sm font-semibold text-gray-700">7 Days Return</p>
+              <p className="text-sm font-semibold text-gray-700">* Days Return</p>
             </div>
             <div className="text-center">
               <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-3">
@@ -83,7 +83,7 @@ const ReturnPolicyPage = () => {
             <section className="mb-10">
               <h2 className="text-2xl font-bold text-gray-900 mb-4">Return Window</h2>
               <p className="text-gray-700 leading-relaxed">
-                Returns must be requested within <strong>7 days</strong> of receiving your order. 
+                Returns must be requested within <strong>** days</strong> of receiving your order. 
                 Return requests made after this period will not be eligible for refunds or replacements.
               </p>
             </section>
@@ -94,7 +94,7 @@ const ReturnPolicyPage = () => {
                 To initiate a return, please follow these steps:
               </p>
               <ol className="space-y-3 text-gray-700 list-decimal list-inside">
-                <li>Contact our customer support team via email at <a href="mailto:support@store.com" className="text-blue-600 hover:underline">support@store.com</a></li>
+                <li>Contact our customer support team via email at <a href="mailto:support@brandname.com" className="text-blue-600 hover:underline">support@brandname.com</a></li>
                 <li>Provide your order number and details about the issue</li>
                 <li>Include clear photos of the product (if damaged or wrong item)</li>
                 <li>Our team will review your request within 24-48 hours</li>
@@ -196,7 +196,7 @@ const ReturnPolicyPage = () => {
               </p>
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
                 <p className="text-gray-700 mb-2">
-                  <strong>Email:</strong> <a href="mailto:support@store.com" className="text-blue-600 hover:underline">support@store.com</a>
+                  <strong>Email:</strong> <a href="mailto:support@brandname.com" className="text-blue-600 hover:underline">support@brandname.com</a>
                 </p>
                 <p className="text-gray-700 mb-2">
                   <strong>Phone:</strong> <a href="tel:+911234567890" className="text-blue-600 hover:underline">+91 123 456 7890</a>

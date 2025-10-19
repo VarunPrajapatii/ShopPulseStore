@@ -36,9 +36,6 @@ const useCart = create(
         } else {
           // If item doesn't exist, add it with quantity 1
           set({ items: [...currentItems, { ...data, quantity: 1 }] });
-          console.log('add item:', {
-            items: [...currentItems, { ...data, quantity: 1 }],
-          });
 
           toast.success('Item added to cart');
         }
@@ -51,7 +48,6 @@ const useCart = create(
           const newItems = [...currentItems];
           newItems.splice(itemIndex, 1);
           set({ items: newItems });
-          console.log('Item removed from cart:', newItems);
           toast.success('Item removed from cart');
         }
       },
@@ -66,7 +62,6 @@ const useCart = create(
             ? { ...item, quantity: (item.quantity || 1) + 1 }
             : item
         );
-        console.log('Updated items after increasing quantity:', updatedItems);
         set({ items: updatedItems });
       },
       decreaseQuantity: (id: string) => {
@@ -80,7 +75,6 @@ const useCart = create(
               ? { ...item, quantity: (item.quantity || 1) - 1 }
               : item
           );
-          console.log('Updated items after decreasing quantity:', updatedItems);
 
           set({ items: updatedItems });
         } else {
@@ -99,7 +93,6 @@ const useCart = create(
           const updatedItems = currentItems.map((item) =>
             item.id === id ? { ...item, quantity } : item
           );
-          console.log('Updated items after setting quantity:', updatedItems);
           set({ items: updatedItems });
         }
       },

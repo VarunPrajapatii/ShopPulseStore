@@ -1,6 +1,5 @@
 import { Product } from '@/types';
 
-// Fallback to localhost if environment variable is not set
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 const getCategoryProducts = async (categoryId: string): Promise<Product[]> => {

@@ -14,9 +14,9 @@ export const formSchema = z.object({
     .min(6, 'Pincode must be 6 digits')
     .max(6, 'Pincode must be 6 digits')
     .regex(/^[0-9]+$/, 'Pincode must contain only digits'),
-  flatHouse: z.string().min(3, 'Please enter your flat/house details'),
-  areaStreet: z.string().min(3, 'Please enter your area/street'),
+  flatHouse: z.string().min(1, 'Please enter your flat/house details'),
+  areaStreet: z.string().min(10, 'Please enter your area/street'),
   landmark: z.string().optional(),
-  townCity: z.string().min(2, 'Please enter your town/city'),
-  state: z.string().min(2, 'Please select a state'),
+  townCity: z.string().min(3, 'Please enter your town/city'),
+  state: z.string().min(3, 'Please select a state'),
 });

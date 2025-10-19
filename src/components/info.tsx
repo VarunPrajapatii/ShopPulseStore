@@ -13,7 +13,6 @@ interface InfoProps {
 }
 
 const Info: React.FC<InfoProps> = ({ data }) => {
-  // console.log("product data", data);
   const cart = useCart();
 
   // Send stock alert when product is low on stock

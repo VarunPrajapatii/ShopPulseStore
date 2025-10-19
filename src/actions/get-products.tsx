@@ -1,7 +1,6 @@
 import { Product } from '@/types';
 import qs from 'query-string';
 
-// Fallback to localhost if environment variable is not set
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 const URL = `${API_URL}/products`;
 

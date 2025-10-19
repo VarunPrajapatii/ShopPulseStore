@@ -18,7 +18,6 @@ const getBillboard = async (id: string): Promise<Billboard> => {
     return res.json();
   } catch (error) {
     console.error('Error fetching billboard:', error);
-    // Return a default billboard object if fetch fails
     return {
       id: '',
       label: 'Error loading billboard',

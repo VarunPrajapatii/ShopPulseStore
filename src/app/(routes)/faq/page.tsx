@@ -19,17 +19,17 @@ const faqs: FAQItem[] = [
   {
     category: 'Shipping',
     question: 'Where do you ship to?',
-    answer: 'We ship across India to over 20,000 pincodes. Orders can be placed with prepaid or cash on delivery payment options.',
+    answer: 'We ship across India to over ***** pincodes. Orders can be placed with prepaid or cash on delivery payment options.',
   },
   {
     category: 'Delivery',
     question: 'How long will my order take?',
-    answer: 'We usually ship within 24 working hours after receiving an order. Once shipped, delivery takes 2-5 days. Users in metro cities can expect faster delivery (within 3 days).',
+    answer: 'We usually ship within ** working hours after receiving an order. Once shipped, delivery takes * - * days. Users in metro cities can expect faster delivery (within ** days).',
   },
   {
     category: 'Returns',
     question: 'What is your return policy?',
-    answer: 'You can raise a return request by emailing us. We offer returns/replacements for wrong shipments, damaged products, or expired products within 7 days of delivery. For more details, please check our Return & Refund Policy page.',
+    answer: 'You can raise a return request by emailing us. We offer returns/replacements for wrong shipments, damaged products, or expired products within ** days of delivery. For more details, please check our Return & Refund Policy page.',
   },
   {
     category: 'Orders',

@@ -37,8 +37,6 @@ export default async function RootLayout({
 
   const categories = await getCategories();
   const storeBillboards = await getStoreBillboards();
-  // console.log("Categories in layout are ", categories);
-  // console.log("Store billboards in layout are ", storeBillboards);
   
   return (
     <html lang="en">

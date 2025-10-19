@@ -12,7 +12,6 @@ export default function StoreBillboardsHydration({ storeBillboards }: StoreBillb
   const setStoreBillboards = useStoreBillboardsStore((state) => state.setStoreBillboards);
 
   useEffect(() => {
-    // console.log("Hydrating store billboards:", storeBillboards);
     if (storeBillboards && storeBillboards.length > 0) {
       setStoreBillboards(storeBillboards);
     }

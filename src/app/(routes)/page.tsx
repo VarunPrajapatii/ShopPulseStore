@@ -22,7 +22,6 @@ const HomePage = async () => {
         </div>
         <OurPurpose />
         <Marquee />
-        {/* Upcoming Products */}
         <UpcomingProducts items={upcomingProducts} />
       </div>
     </Container>

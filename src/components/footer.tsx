@@ -1,7 +1,7 @@
 import React from 'react'
-import Image from 'next/image'
+// import Image from 'next/image'
 import Link from 'next/link'
-import { Instagram, Twitter, Youtube, Facebook, X } from 'lucide-react'
+import { Instagram, Youtube, Facebook } from 'lucide-react'
 
 const Footer = () => {
   return (

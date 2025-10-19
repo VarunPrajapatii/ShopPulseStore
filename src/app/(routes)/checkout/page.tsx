@@ -56,7 +56,6 @@ const CheckoutPage = () => {
   const items = cart.items;
   const router = useRouter();
 
-  // console.log('Cart items in CheckoutPage:', items);
 
   // Items for display in order summary (with name)
   const displayItems = items.map((item) => ({
@@ -74,11 +73,9 @@ const CheckoutPage = () => {
     name: item.name,
     quantity: item.quantity || 1,
     priceAtPurchase: item.price,
-    size: item.size.id,  // todo: add size in orderItems in backend database
+    size: item.size.id,
   }));
 
-  console.log('Checkout Items for display:', displayItems)
-  console.log('Checkout Items for backend:', checkoutItems);
 
   const [loading, setLoading] = useState(false);
   const [showOtpField, setShowOtpField] = useState(false);
@@ -121,7 +118,6 @@ const CheckoutPage = () => {
   const onSubmit = async (data: CheckoutFormValues) => {
     setLoading(true);
     try {
-    //   console.log('Form submitted:', data);
       // const response = await axios.post(
       //   `${process.env.NEXT_PUBLIC_API_URL}/phone-verification`,
       //   {
@@ -139,7 +135,7 @@ const CheckoutPage = () => {
       // );
 
       // TODO: Uncomment above API call when OTP backend is ready
-      // For now, show OTP field for testing
+      // For now, showing OTP field for testing
       
       // if (response.data) {
       setShowOtpField(true);
@@ -192,8 +188,6 @@ const CheckoutPage = () => {
         address.landmark ? address.landmark + ', ' : ''
       }${address.townCity}, ${address.state} - ${address.pincode}`;
 
-    //   console.log('Full Address:', addressString);
-
       const payload = {
         name: `${form.getValues('firstName')} ${form.getValues('lastName')}`,
         phone: form.getValues('phone'),
@@ -201,12 +195,6 @@ const CheckoutPage = () => {
         address: addressString,
         items: checkoutItems,
       };
-
-      console.log('Payload:', payload);
-      // console.log('Checkout Items Detail:', checkoutItems);
-      // console.log('Product IDs being sent:', checkoutItems.map(item => item.productId));
-      // console.log('Full cart items:', items);
-      console.log('Stringified payload:', JSON.stringify(payload, null, 2));
 
       const response = await axios.post(
         `${process.env.NEXT_PUBLIC_API_URL}/checkout`,
@@ -218,7 +206,6 @@ const CheckoutPage = () => {
         }
       );
 
-      console.log('Checkout response:', response);
 
       const { razorpayOrderId, amount, email, phone } = response.data;
 
@@ -235,7 +222,6 @@ const CheckoutPage = () => {
         },
         handler: async function (razorpayResponse: RazorpayResponse) {
           try {
-            // Verify payment on backend
             const verifyResponse = await axios.post(
               `${process.env.NEXT_PUBLIC_API_URL}/checkout/verify`,
               {
@@ -246,10 +232,8 @@ const CheckoutPage = () => {
             );
 
             if (verifyResponse.data.success) {
-              // Clear cart after successful payment
               cart.removeAll();
               toast.success('Payment successful!');
-              // Redirect to success page
               router.push(`/order-success?orderId=${response.data.orderId}`);
             } else {
               toast.error('Payment verification failed!');
@@ -261,7 +245,6 @@ const CheckoutPage = () => {
         },
         modal: {
           ondismiss: function () {
-            // User closed payment modal
             toast.error('Payment cancelled');
             console.log('Payment cancelled');
           },
@@ -283,7 +266,6 @@ const CheckoutPage = () => {
       toast.success('OTP verified! Opening payment gateway...');
       setShowOtpField(false);
       setOtp('');
-      // }
     } catch (error) {
       console.error('Error verifying OTP:', error);
       if (axios.isAxiosError(error) && error.response) {
@@ -329,17 +311,17 @@ const CheckoutPage = () => {
   }
 
   // Check if all items have valid IDs
-  // const invalidItems = items.filter(item => !item.id);
-  // if (invalidItems.length > 0) {
-  //   return (
-  //     <Container>
-  //       <div className="px-4 py-16 sm:px-6 lg:px-8">
-  //         <h1 className="text-3xl font-bold text-gray-900 mb-4">Checkout</h1>
-  //         <p className="text-red-600">Some items in your cart are invalid. Please refresh and try again.</p>
-  //       </div>
-  //     </Container>
-  //   );
-  // }
+  const invalidItems = items.filter(item => !item.id);
+  if (invalidItems.length > 0) {
+    return (
+      <Container>
+        <div className="px-4 py-16 sm:px-6 lg:px-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-4">Checkout</h1>
+          <p className="text-red-600">Some items in your cart are invalid. Please refresh and try again.</p>
+        </div>
+      </Container>
+    );
+  }
 
   return (
     <Container>
