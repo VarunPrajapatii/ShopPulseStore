@@ -22,16 +22,16 @@ const Footer = () => {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
             
             {/* Left Side - Company Description */}
-            <div className="lg:col-span-1">
+            <section className="lg:col-span-1">
               <p className="text-gray-200 leading-relaxed font-medium text-base lg:text-lg">
                 Lorem ipsum dolor sit amet consectetur, adipisicing elit. A repellendus eum officiis consequuntur placeat quidem nostrum, modi rem iusto autem deleniti, libero temporibus obcaecati quibusdam laboriosam cumque inventore similique enim!
                 Quasi commodi quaerat magni dignissimos explicabo sunt!
               </p>
-            </div>
+            </section>
 
             {/* About Us Section */}
-            <div>
-              <h3 className="text-xl font-bold text-gray-200 mb-6">About Us</h3>
+            <section>
+              <h2 className="text-xl font-bold text-gray-200 mb-6">About Us</h2>
               <ul className="space-y-3">
                 <li>
                   <Link href="/about/our-story" className="text-gray-200 hover:font-semibold transition-all">
@@ -49,11 +49,11 @@ const Footer = () => {
                   </Link>
                 </li>
               </ul>
-            </div>
+            </section>
 
             {/* Help & Support Section */}
-            <div>
-              <h3 className="text-xl font-bold text-gray-200 mb-6">Terms &amp; Conditions</h3>
+            <section>
+              <h2 className="text-xl font-bold text-gray-200 mb-6">Terms &amp; Conditions</h2>
               <ul className="space-y-3">
                 <li>
                   <Link href="/returns-exchanges" className="text-gray-200 hover:font-semibold transition-all">
@@ -72,13 +72,13 @@ const Footer = () => {
                 </li>
                 
               </ul>
-            </div>
+            </section>
 
           </div>
 
           {/* Social Media Icons - Horizontal */}
-          <div className="mt-8 pt-5 ">
-            <h3 className="text-lg font-bold text-gray-200 mb-4 text-center lg:text-left">Follow Us</h3>
+          <section className="mt-8 pt-5 ">
+            <h2 className="text-lg font-bold text-gray-200 mb-4 text-center lg:text-left">Follow Us</h2>
             <div className="flex justify-center lg:justify-start items-center gap-4">
               <Link 
                 href="#" 
@@ -113,7 +113,7 @@ const Footer = () => {
               </Link>
 
             </div>
-          </div>
+          </section>
         </div>
 
         {/* Copyright Section */}

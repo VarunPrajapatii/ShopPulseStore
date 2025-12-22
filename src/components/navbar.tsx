@@ -17,17 +17,17 @@ const Navbar = () => {
   const categories = useCategoriesStore((state) => state.categories);
 
   return (
-    <div className="fixed bg-white w-full z-20 top-0">
+    <header className="fixed bg-white w-full z-20 top-0">
       <Container>
-        <div className="relative px-4 sm:px-6 lg:px-8 flex h-16 items-center">
+        <nav className="relative px-4 sm:px-6 lg:px-8 flex h-16 items-center" aria-label="Main navigation">
           <Link href="/" className="ml-4 flex lg:ml-0 gap-x-2">
             <p className="font-bold text-xl">STORE</p>
           </Link>
           <MainNav data={categories} />
           <NavbarAction /> 
-        </div>
+        </nav>
       </Container>
-    </div>
+    </header>
   );
 };
 

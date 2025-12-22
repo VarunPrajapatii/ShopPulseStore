@@ -44,9 +44,9 @@ const Info: React.FC<InfoProps> = ({ data }) => {
   };
 
   return (
-    <div className="space-y-6">
+    <article className="space-y-6">
       {/* Product Title and Price */}
-      <div>
+      <header>
         <h1 className='text-3xl font-bold text-gray-900 mb-3'>{data.name}</h1>
         {data.titlepoints && data.titlepoints.length > 0 && (
           <p className='text-sm text-gray-600 mb-4'>
@@ -67,7 +67,7 @@ const Info: React.FC<InfoProps> = ({ data }) => {
               <Currency amount={data?.price} />
           </div>
         </div>
-      </div>
+      </header>
 
       <hr className='border-gray-200' />
 
@@ -81,17 +81,17 @@ const Info: React.FC<InfoProps> = ({ data }) => {
 
       {/* Description */}
       {data.description && (
-        <div className="space-y-3">
+        <section className="space-y-3">
           <h3 className='font-semibold text-black text-lg'>Description</h3>
           <p className='text-gray-700 leading-relaxed text-sm'>
             {formatDescription(data.description)}
           </p>
-        </div>
+        </section>
       )}
 
       {/* Bullet Points */}
       {data.bulletPoints && data.bulletPoints.length > 0 && (
-        <div className="space-y-3">
+        <section className="space-y-3">
           <h3 className='font-semibold text-black text-lg'>Key Features</h3>
           <ul className='space-y-2'>
             {data.bulletPoints.map((point, index) => (
@@ -105,13 +105,13 @@ const Info: React.FC<InfoProps> = ({ data }) => {
               </li>
             ))}
           </ul>
-        </div>
+        </section>
       )}
 
       <hr className='border-gray-200' />
 
       {/* Add to Cart Button */}
-      <div className='pt-4'>
+      <section className='pt-4'>
         {data.stockQuantity === 0 ? (
           <div className='w-full flex items-center justify-center gap-x-2 bg-gray-300 text-gray-600 py-3 px-6 rounded-lg font-medium cursor-not-allowed'>
             Out of Stock
@@ -125,8 +125,8 @@ const Info: React.FC<InfoProps> = ({ data }) => {
             <ShoppingCart size={18} />
           </Button>
         )}
-      </div>
-    </div>
+      </section>
+    </article>
   )
 }
 

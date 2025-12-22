@@ -15,14 +15,14 @@ const CategoryHeader = ({ categoryId }: CategoryHeaderProps) => {
   }
 
   return (
-    <div className="px-4 sm:px-6 lg:px-8 pb-6">
+    <header className="px-4 sm:px-6 lg:px-8 pb-6">
       <h1 className="text-3xl font-bold text-gray-900">
         {currentCategory.name}
       </h1>
       <p className="mt-2 text-sm text-gray-500">
         Browse our collection of {currentCategory.name.toLowerCase()}
       </p>
-    </div>
+    </header>
   );
 };
 
