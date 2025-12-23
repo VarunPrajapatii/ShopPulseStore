@@ -6,7 +6,9 @@ const URL = `${API_URL}/products`;
 const getProduct = async (id: string): Promise<Product | null> => {
   try {
     
-    const res = await fetch(`${URL}/${id}`);
+    const res = await fetch(`${URL}/${id}`, {
+      next: { revalidate: 60 }, // Cache for 1 minute
+    });
     
     if (!res.ok) {
       throw new Error(`HTTP error! status: ${res.status}`);

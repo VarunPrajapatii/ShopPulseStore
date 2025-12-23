@@ -5,7 +5,9 @@ const URL = `${API_URL}/categories`;
 
 const getCategories = async (): Promise<Category[]> => {
   try {
-    const res = await fetch(URL);
+    const res = await fetch(URL, {
+      next: { revalidate: 300 }, // Cache for 5 minutes
+    });
     
     if (!res.ok) {
       throw new Error(`HTTP error! status: ${res.status}`);

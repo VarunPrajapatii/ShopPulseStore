@@ -7,7 +7,7 @@ const getCategoryProducts = async (categoryId: string): Promise<Product[]> => {
     const URL = `${API_URL}/categories/${categoryId}/products`;
     
     const res = await fetch(URL, {
-      cache: 'no-store',
+      next: { revalidate: 60 }, // Cache for 1 minute
     });
     
     if (!res.ok) {

@@ -5,7 +5,9 @@ const URL = `${API_URL}/store-billboards`;
 
 const getStoreBillboards = async (): Promise<StoreBillboard[]> => {
   try {
-    const res = await fetch(URL);
+    const res = await fetch(URL, {
+      next: { revalidate: 600 }, // Cache for 10 minutes
+    });
     
     if (!res.ok) {
       throw new Error(`HTTP error! status: ${res.status}`);

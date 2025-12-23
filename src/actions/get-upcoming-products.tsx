@@ -15,7 +15,9 @@ const getUpcomingProducts = async (query: Query): Promise<UpcomingProduct[]> => 
     },
   });
 
-  const res = await fetch(url);
+  const res = await fetch(url, {
+    next: { revalidate: 300 }, // Cache for 5 minutes
+  });
 
   return res.json();
 };

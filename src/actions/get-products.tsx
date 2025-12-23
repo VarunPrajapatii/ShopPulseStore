@@ -21,7 +21,9 @@ const getProducts = async (query: Query): Promise<Product[]> => {
        },
     })
     
-    const res = await fetch(url);
+    const res = await fetch(url, {
+      next: { revalidate: 60 }, // Cache for 1 minute
+    });
     
     if (!res.ok) {
       throw new Error(`HTTP error! status: ${res.status}`);
