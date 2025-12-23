@@ -81,3 +81,17 @@ export interface Size {
   name: string
   value: string
 }
+
+export interface StoreSEOConfig {
+  storeName: string;
+  storeUrl: string;
+  defaultTitle: string;
+  defaultDescription: string;
+  logoUrl: string | null;
+  socialLinks: {
+    facebook?: string | null;
+    instagram?: string | null;
+    twitter?: string | null;
+  } | null;
+  keywords: string[] | null;
+}

@@ -1,6 +1,6 @@
 {
-  "name": "ecommerce-store",
-  "version": "0.1.0",
+  "name": "shoppulse-store",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev --port 3001",
