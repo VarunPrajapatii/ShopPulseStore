@@ -27,8 +27,8 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
   }
 
   const storeName = seoConfig?.storeName || 'Shop';
-  const storeUrl = seoConfig?.storeUrl || '';
-  const productUrl = `${storeUrl}/product/${product.id}`;
+  const storeUrl = seoConfig?.storeUrl;
+  const productUrl = storeUrl ? `${storeUrl}/product/${product.id}` : undefined;
 
   return {
     title: `${product.name} | ${storeName}`,
@@ -37,11 +37,11 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
       product.name,
       product.category?.name || '',
       ...(seoConfig?.keywords || []),
-    ],
+    ].filter(Boolean),
     openGraph: {
       title: product.name,
-      description: product.description,
-      url: productUrl,
+      description: product.description || undefined,
+      ...(productUrl && { url: productUrl }),
       siteName: storeName,
       images: product.images?.map(img => ({
         url: img.url,
@@ -52,12 +52,14 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
     twitter: {
       card: 'summary_large_image',
       title: product.name,
-      description: product.description,
+      description: product.description || undefined,
       images: product.images?.[0]?.url ? [product.images[0].url] : [],
     },
-    alternates: {
-      canonical: productUrl,
-    },
+    ...(productUrl && {
+      alternates: {
+        canonical: productUrl,
+      },
+    }),
   };
 }
 

@@ -23,12 +23,12 @@ export async function generateMetadata(): Promise<Metadata> {
 
   return {
     title: "Home",
-    description: seoConfig.defaultDescription,
-    keywords: seoConfig.keywords,
+    description: seoConfig.defaultDescription || "Shop the latest products",
+    keywords: seoConfig.keywords || undefined,
     openGraph: {
       title: seoConfig.defaultTitle,
-      description: seoConfig.defaultDescription,
-      url: seoConfig.storeUrl,
+      description: seoConfig.defaultDescription || "Shop the latest products",
+      ...(seoConfig.storeUrl && { url: seoConfig.storeUrl }),
       siteName: seoConfig.storeName,
       images: seoConfig.logoUrl ? [{
         url: seoConfig.logoUrl,
@@ -39,7 +39,7 @@ export async function generateMetadata(): Promise<Metadata> {
     twitter: {
       card: 'summary_large_image',
       title: seoConfig.defaultTitle,
-      description: seoConfig.defaultDescription,
+      description: seoConfig.defaultDescription || "Shop the latest products",
       images: seoConfig.logoUrl ? [seoConfig.logoUrl] : [],
     },
   };

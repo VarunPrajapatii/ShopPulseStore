@@ -36,12 +36,12 @@ export async function generateMetadata(): Promise<Metadata> {
       default: seoConfig.defaultTitle,
       template: `%s | ${seoConfig.storeName}`,
     },
-    description: seoConfig.defaultDescription,
-    keywords: seoConfig.keywords,
+    description: seoConfig.defaultDescription || undefined,
+    keywords: seoConfig.keywords || undefined,
     authors: [{ name: seoConfig.storeName }],
     creator: seoConfig.storeName,
     publisher: seoConfig.storeName,
-    metadataBase: new URL(seoConfig.storeUrl),
+    ...(seoConfig.storeUrl && { metadataBase: new URL(seoConfig.storeUrl) }),
     icons: {
       icon: seoConfig.logoUrl ? [{ url: seoConfig.logoUrl, type: "image/png" }] : [{ url: "/storelogo.png", type: "image/png" }],
       shortcut: seoConfig.logoUrl ? [seoConfig.logoUrl] : ["/storelogo.png"],
@@ -50,10 +50,10 @@ export async function generateMetadata(): Promise<Metadata> {
     openGraph: {
       type: 'website',
       locale: 'en_IN',
-      url: seoConfig.storeUrl,
+      ...(seoConfig.storeUrl && { url: seoConfig.storeUrl }),
       siteName: seoConfig.storeName,
       title: seoConfig.defaultTitle,
-      description: seoConfig.defaultDescription,
+      description: seoConfig.defaultDescription || undefined,
       images: seoConfig.logoUrl ? [{
         url: seoConfig.logoUrl,
         alt: seoConfig.storeName,
@@ -62,7 +62,7 @@ export async function generateMetadata(): Promise<Metadata> {
     twitter: {
       card: 'summary_large_image',
       title: seoConfig.defaultTitle,
-      description: seoConfig.defaultDescription,
+      description: seoConfig.defaultDescription || undefined,
       images: seoConfig.logoUrl ? [seoConfig.logoUrl] : [],
     },
     robots: {

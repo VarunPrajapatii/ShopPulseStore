@@ -29,8 +29,8 @@ export async function generateMetadata({ params }: CategoryPageProps): Promise<M
   }
 
   const storeName = seoConfig?.storeName || 'Shop';
-  const storeUrl = seoConfig?.storeUrl || '';
-  const categoryUrl = `${storeUrl}/category/${category.id}`;
+  const storeUrl = seoConfig?.storeUrl;
+  const categoryUrl = storeUrl ? `${storeUrl}/category/${category.id}` : undefined;
 
   return {
     title: `${category.name} | ${storeName}`,
@@ -40,11 +40,11 @@ export async function generateMetadata({ params }: CategoryPageProps): Promise<M
       `${category.name} products`,
       `buy ${category.name}`,
       ...(seoConfig?.keywords || []),
-    ],
+    ].filter(Boolean),
     openGraph: {
       title: `${category.name} | ${storeName}`,
       description: `Browse our collection of ${category.name.toLowerCase()}`,
-      url: categoryUrl,
+      ...(categoryUrl && { url: categoryUrl }),
       siteName: storeName,
       images: category.billboard?.[0]?.billboard?.imageUrl ? [{
         url: category.billboard[0].billboard.imageUrl,
@@ -58,9 +58,11 @@ export async function generateMetadata({ params }: CategoryPageProps): Promise<M
       description: `Browse our collection of ${category.name.toLowerCase()}`,
       images: category.billboard?.[0]?.billboard?.imageUrl ? [category.billboard[0].billboard.imageUrl] : [],
     },
-    alternates: {
-      canonical: categoryUrl,
-    },
+    ...(categoryUrl && {
+      alternates: {
+        canonical: categoryUrl,
+      },
+    }),
   };
 }
 
