@@ -4,7 +4,7 @@ import { Product } from '@/types';
 import Image from 'next/image';
 import IconButton from '@/components/ui/icon-button';
 import { Expand, ShoppingCart, Sparkles } from 'lucide-react';
-import Currency from '@/components/ui/currency';
+import PriceDisplay from '@/components/ui/price-display';
 import { useRouter } from 'next/navigation';
 import usePreviewModal from '@/hooks/use-preview-modal';
 import useCart from '@/hooks/use-cart';
@@ -36,6 +36,10 @@ const ProductCard: React.FC<ProductCardProps> = ({ data, isNewArrival = false })
   }
 
   const isOutOfStock = data.stockQuantity === 0;
+  // Check if product has a valid discount
+  const hasDiscount = data.sellingPrice && 
+                      data.sellingPrice > 0 && 
+                      data.sellingPrice < Number(data.price);
 
   return (
     <div onClick={handleClick} className="bg-card group cursor-pointer rounded-xl border border-border p-3 space-y-4 transition-shadow hover:shadow-md">
@@ -49,13 +53,19 @@ const ProductCard: React.FC<ProductCardProps> = ({ data, isNewArrival = false })
           className="object-cover aspect-square rounded-md"
         />
         
-        {/* Badges Container - Top Left for NEW, Top Right for Out of Stock */}
+        {/* Badges Container - Top Left */}
         <div className="absolute top-2 left-2 flex flex-col gap-1.5">
           {/* NEW Badge */}
           {isNewArrival && !isOutOfStock && (
             <div className="bg-primary text-primary-foreground text-xs font-bold px-2.5 py-1 rounded-full shadow-md flex items-center gap-1">
               <Sparkles className="w-3 h-3" />
               NEW
+            </div>
+          )}
+          {/* SALE Badge */}
+          {hasDiscount && !isOutOfStock && (
+            <div className="bg-success text-success-foreground text-xs font-bold px-2.5 py-1 rounded-full shadow-md">
+              SALE
             </div>
           )}
         </div>
@@ -85,18 +95,23 @@ const ProductCard: React.FC<ProductCardProps> = ({ data, isNewArrival = false })
 
       {/* Description */}
       <div>
-        <p className='font-semibold text-lg text-foreground'>
+        <p className='font-semibold text-lg text-foreground line-clamp-1'>
           {data.name}
         </p>
-        {data.titlepoints && data.titlepoints.length > 0 && (
+        {/* Short description or title points */}
+        {data.shortDescription ? (
+          <p className='text-xs text-muted-foreground mt-1 line-clamp-2'>
+            {data.shortDescription}
+          </p>
+        ) : data.titlepoints && data.titlepoints.length > 0 ? (
           <p className='text-xs text-muted-foreground mt-1 line-clamp-1'>
             {data.titlepoints.join(' | ')}
           </p>
-        )}
+        ) : null}
         {/* Low Stock Warning */}
-        {data.stockQuantity <= data.lowStockThreshold && (
+        {data.stockQuantity > 0 && data.stockQuantity <= data.lowStockThreshold && (
           <p className='text-xs text-error font-semibold mt-1 animate-pulse'>
-            Only {data.stockQuantity} remaining, Hurry Up!
+            Only {data.stockQuantity} remaining!
           </p>
         )}
         <p className='text-sm text-muted-foreground mt-1'>
@@ -104,9 +119,13 @@ const ProductCard: React.FC<ProductCardProps> = ({ data, isNewArrival = false })
         </p>
       </div>
 
-      {/* Price */}
-      <div className='flex items-center justify-between text-xl'>
-        <Currency amount={data.price} />
+      {/* Price - Using new PriceDisplay component */}
+      <div className='flex items-center justify-between'>
+        <PriceDisplay 
+          price={data.price} 
+          sellingPrice={data.sellingPrice} 
+          size="sm"
+        />
       </div>
     </div>
   );

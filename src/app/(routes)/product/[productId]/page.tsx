@@ -29,18 +29,24 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
   const storeName = seoConfig?.storeName || 'Shop';
   const storeUrl = seoConfig?.storeUrl;
   const productUrl = storeUrl ? `${storeUrl}/product/${product.id}` : undefined;
+  
+  // Use shortDescription for SEO, fallback to description excerpt or bulletPoints
+  const metaDescription = product.shortDescription 
+    || product.description?.substring(0, 160) 
+    || `Buy ${product.name} at ${storeName}. ${product.bulletPoints?.slice(0, 2).join('. ')}.`;
 
   return {
     title: `${product.name} | ${storeName}`,
-    description: product.description || `Buy ${product.name} at ${storeName}. ${product.bulletPoints?.slice(0, 2).join('. ')}.`,
+    description: metaDescription,
     keywords: [
       product.name,
       product.category?.name || '',
+      product.sku || '',
       ...(seoConfig?.keywords || []),
     ].filter(Boolean),
     openGraph: {
       title: product.name,
-      description: product.description || undefined,
+      description: metaDescription,
       ...(productUrl && { url: productUrl }),
       siteName: storeName,
       images: product.images?.map(img => ({
@@ -52,7 +58,7 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
     twitter: {
       card: 'summary_large_image',
       title: product.name,
-      description: product.description || undefined,
+      description: metaDescription,
       images: product.images?.[0]?.url ? [product.images[0].url] : [],
     },
     ...(productUrl && {
@@ -92,14 +98,22 @@ const ProductPage: React.FC<ProductPageProps> = async ({ params }) => {
     '@context': 'https://schema.org',
     '@type': 'Product',
     name: product.name,
-    description: product.description,
+    description: product.shortDescription || product.description,
     image: product.images?.map(img => img.url) || [],
-    sku: product.id,
+    sku: product.sku || product.id,
     offers: {
       '@type': 'Offer',
       url: `${storeUrl}/product/${product.id}`,
       priceCurrency: 'INR',
-      price: product.price,
+      price: product.sellingPrice || product.price,
+      ...(product.sellingPrice && product.sellingPrice < product.price && {
+        priceSpecification: {
+          '@type': 'PriceSpecification',
+          price: product.sellingPrice,
+          priceCurrency: 'INR',
+          validFrom: new Date().toISOString(),
+        },
+      }),
       availability: product.stockQuantity > 0 
         ? 'https://schema.org/InStock' 
         : 'https://schema.org/OutOfStock',

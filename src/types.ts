@@ -42,13 +42,23 @@ export interface Category {
 }
 
 
+export interface Specification {
+  key: string;
+  value: string;
+}
+
 export interface Product {
   id: string
   name: string
   description: string
+  shortDescription?: string | null  // NEW: 160 char tagline for cards & SEO
   titlepoints: string[]
   bulletPoints: string[]
   price: string
+  sellingPrice?: number | null      // NEW: Discounted/sale price
+  sku?: string | null               // NEW: Stock Keeping Unit / Model number
+  specifications?: Specification[] | null  // NEW: Key-value product specs
+  warranty?: string | null          // NEW: Warranty information
   isFeatured: boolean
   isArchived: boolean
   stockQuantity: number
