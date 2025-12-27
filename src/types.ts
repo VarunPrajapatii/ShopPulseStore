@@ -34,8 +34,9 @@ export interface CategoryBillboard {
 export interface Category {
   id: string;
   name: string;
-  billboard: CategoryBillboard[]; // Changed from billboards to billboard
-  storeId: string; // Made optional to match API
+  imageUrl?: string;
+  billboard: CategoryBillboard[];
+  storeId: string;
   CreatedAt: string;
   updatedAt: string;
 }
@@ -57,6 +58,8 @@ export interface Product {
   images: Image[]
   relatedItems: Product[]
   quantity?: number // Optional quantity field for cart items
+  createdAt?: string // Creation date from backend (lowercase 'c')
+  updatedAt?: string // Last update date from backend
 }
 
 export interface UpcomingProduct {
@@ -94,4 +97,32 @@ export interface StoreSEOConfig {
     twitter?: string | null;
   } | null;
   keywords: string[] | null;
+}
+
+// Announcement Bar types
+export interface AnnouncementMessage {
+  text: string;
+  emoji?: string;
+  linkId?: string;
+  linkType?: 'category' | 'product';
+}
+
+export interface AnnouncementBar {
+  id: string;
+  storeId: string;
+  messages: AnnouncementMessage[];
+  backgroundColor: string;
+  dismissible: boolean;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Store info types
+export interface StoreInfo {
+  id: string;
+  name: string;
+  promotionalBanner?: string;
+  createdAt: string;
+  updatedAt: string;
 }

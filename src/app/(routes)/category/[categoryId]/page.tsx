@@ -2,8 +2,8 @@ import getCategoryProducts from "@/actions/get-category-products";
 import getCategories from "@/actions/get-categories";
 import getSEOConfig from "@/actions/get-seo-config";
 import CategoryBillboardsClient from "@/components/category-billboards-client";
-import CategoryHeader from "@/components/category-header";
-import CategoryProductsClient from "@/components/category-products-client";
+import { CategoryProductsEnhanced } from "@/components/category";
+import Breadcrumb from "@/components/ui/breadcrumb";
 import Container from "@/components/ui/container";
 import { Metadata } from "next";
 
@@ -151,16 +151,36 @@ const CategoryPage = async ({ params }: CategoryPageProps) => {
       />
       
       <Container>
-        <article className="space-y-10 pb-10">
+        <article className="space-y-6 pb-10">
+          {/* Breadcrumb Navigation */}
+          <div className="px-4 sm:px-6 lg:px-8 pt-2">
+            <Breadcrumb
+              items={[
+                { label: 'Home', href: '/' },
+                { label: category.name },
+              ]}
+            />
+          </div>
+
           {/* Category Billboards */}
           <CategoryBillboardsClient categoryId={categoryId} />
 
           {/* Category Header */}
-          <CategoryHeader categoryId={categoryId} />
+          <header className="px-4 sm:px-6 lg:px-8">
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
+              {category.name}
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Browse our collection of {category.name.toLowerCase()}
+            </p>
+          </header>
 
-          {/* Products Section with Sorting */}
+          {/* Products Section with Sorting, Filtering & Pagination */}
           <section className="px-4 sm:px-6 lg:px-8">
-            <CategoryProductsClient products={products} />
+            <CategoryProductsEnhanced 
+              products={products} 
+              category={category}
+            />
           </section>
         </article>
       </Container>
