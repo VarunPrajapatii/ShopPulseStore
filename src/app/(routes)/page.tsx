@@ -1,12 +1,24 @@
 import getProducts from "@/actions/get-products";
 import getSEOConfig from "@/actions/get-seo-config";
-import ProductList from "@/components/product-list";
+import getCategories from "@/actions/get-categories";
+import getStoreInfo from "@/actions/get-store-info";
+import getNewArrivals from "@/actions/get-new-arrivals";
+import getUpcomingProducts from "@/actions/get-upcoming-products";
+
 import Container from "@/components/ui/container";
 import StoreBillboardsClient from "@/components/store-billboards-client";
 import Marquee from "@/components/marquee";
-import OurPurpose from "@/components/our-purpose";
 import UpcomingProducts from "@/components/upcoming-products";
-import getUpcomingProducts from "@/actions/get-upcoming-products";
+import { CategoryCarousel } from "@/components/ui/carousel";
+import {
+  ValuePropositionBar,
+  PromotionalBanner,
+  NewArrivalsSection,
+  FeaturedProductsSection,
+  NewsletterSection,
+  OurStorySection,
+  WhyChooseUsSection,
+} from "@/components/home";
 import { Metadata } from "next";
 
 export const revalidate = 0;
@@ -46,24 +58,72 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 const HomePage = async () => {
-  const products = await getProducts({ isFeatured: true });
-  const upcomingProducts = await getUpcomingProducts({});
-  const seoConfig = await getSEOConfig();
+  // Fetch all data in parallel
+  const [
+    featuredProducts,
+    upcomingProducts,
+    seoConfig,
+    categories,
+    storeInfo,
+    newArrivals,
+  ] = await Promise.all([
+    getProducts({ isFeatured: true }),
+    getUpcomingProducts({}),
+    getSEOConfig(),
+    getCategories(),
+    getStoreInfo(),
+    getNewArrivals(),
+  ]);
+
+  console.log('Store Info:', storeInfo);
 
   return (
-    <Container>
+    <>
+      {/* 1. Announcement Bar - Handled in layout (above navbar) */}
+      {/* 2. Navbar - Sticky, handled in layout */}
+      
       {/* Visually hidden h1 for SEO */}
-      <h1 className="sr-only">{seoConfig?.storeName || 'Store'} - {seoConfig?.defaultTitle || 'Home'}</h1>
-      <div className="space-y-10 pb-10">
-        <StoreBillboardsClient />
-        <section className="flex flex-col gap-y-8 px-4 sm:px-6 lg:px-8">
-          <ProductList title="Featured Products" items={products} />
-        </section>
-        <OurPurpose />
+      <h1 className="sr-only">
+        {seoConfig?.storeName || 'Store'} - {seoConfig?.defaultTitle || 'Home'}
+      </h1>
+      
+      {/* 3. Hero Billboard - Full width, edge-to-edge */}
+      <StoreBillboardsClient />
+      
+      <Container>
+        {/* 4. Shop by Category - Horizontal swipe */}
+        <CategoryCarousel categories={categories} />
+        
+        {/* 5. Featured Products - Horizontal swipe */}
+        <FeaturedProductsSection products={featuredProducts} />
+        
+        {/* 6. Our Story Section */}
+        <OurStorySection />
+        
+        {/* 7. Marquee - Visual break */}
         <Marquee />
+        
+        {/* 8. Value Proposition Bar */}
+        <ValuePropositionBar />
+        
+        {/* 9. Promotional Banner - Full width image */}
+        <PromotionalBanner imageUrl={storeInfo?.promotionalBanner} />
+        
+        {/* 10. New Arrivals */}
+        <NewArrivalsSection products={newArrivals} />
+        
+        {/* 11. Why Choose Us */}
+        <WhyChooseUsSection />
+        
+        {/* 12. Upcoming Products */}
         <UpcomingProducts items={upcomingProducts} />
-      </div>
-    </Container>
+      </Container>
+      
+      {/* 13. Newsletter Signup - Full width, outside container */}
+      <NewsletterSection />
+      
+      {/* 14. Footer - Handled in layout */}
+    </>
   );
 };
 

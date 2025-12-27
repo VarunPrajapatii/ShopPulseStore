@@ -10,6 +10,8 @@ import CategoriesHydration from "@/components/categories-hydration";
 import getStoreBillboards from "@/actions/get-store-billboards";
 import StoreBillboardsHydration from "@/components/store-billboards-hydration";
 import getSEOConfig from "@/actions/get-seo-config";
+import getAnnouncementBar from "@/actions/get-announcement-bar";
+import { AnnouncementBar } from "@/components/home";
 
 const font = Urbanist({
   variable: "--font-urbanist",
@@ -21,12 +23,12 @@ export async function generateMetadata(): Promise<Metadata> {
 
   if (!seoConfig) {
     return {
-      title: "Store - NextJS Ecommerce",
-      description: "Its a ecommerce store built with nextjs 15",
+      title: "ShopPulse Template - Feel the Pulse of Your Business",
+      description: "Its a ecommerce storefront template built with nextjs 15",
       icons: {
-        icon: [{ url: "/storelogo.png", type: "image/png" }],
-        shortcut: ["/storelogo.png"],
-        apple: [{ url: "/storelogo.png", type: "image/png" }]
+        icon: [{ url: "/shoppulselogo.png", type: "image/png" }],
+        shortcut: ["/shoppulselogo.png"],
+        apple: [{ url: "/shoppulselogo.png", type: "image/png" }]
       },
     };
   }
@@ -88,6 +90,7 @@ export default async function RootLayout({
   const categories = await getCategories();
   const storeBillboards = await getStoreBillboards();
   const seoConfig = await getSEOConfig();
+  const announcementBar = await getAnnouncementBar();
   
   // Organization Schema (JSON-LD)
   const organizationSchema = seoConfig ? {
@@ -148,8 +151,9 @@ export default async function RootLayout({
         <ToastProvider/>
         <CategoriesHydration categories={categories} />
         <StoreBillboardsHydration storeBillboards={storeBillboards} />
+        <AnnouncementBar data={announcementBar} />
         <Navbar />
-        <main className="pt-16">
+        <main>
           {children}
         </main>
         <Footer />

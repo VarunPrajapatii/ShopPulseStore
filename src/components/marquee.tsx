@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef } from 'react';
+import { Star } from 'lucide-react';
 
 const Marquee = () => {
   const marqueeRef = useRef<HTMLDivElement>(null);
@@ -13,15 +14,25 @@ const Marquee = () => {
     }
   }, []);
 
-  const marqueeItems = ['Tag 1', 'Tag 2', 'Tag 3', 'Tag 4', 'Tag 5'];
+  // Generic marquee items that work for most stores
+  const marqueeItems = [
+    'Premium Quality',
+    'Fast Delivery',
+    'Customer Favorite',
+    'Top Rated',
+    'Trusted Brand',
+    'Best Sellers',
+    'Free Shipping',
+    'Easy Returns',
+  ];
 
   return (
-    <section className="overflow-hidden border-y-2 border-gray-200">
+    <section className="overflow-hidden bg-primary py-4 md:py-5 my-12">
       <div
         ref={marqueeRef}
         className="flex whitespace-nowrap animate-marquee"
         style={{
-          animationDuration: '15s',
+          animationDuration: '30s',
           animationTimingFunction: 'linear',
           animationIterationCount: 'infinite',
           animationPlayState: 'paused',
@@ -32,31 +43,14 @@ const Marquee = () => {
           {marqueeItems.map((item, index) => (
             <div
               key={`original-${index}`}
-              className="flex items-center justify-center px-6 lg:px-8 py-8 lg:py-12 relative"
+              className="flex items-center justify-center"
             >
-              {/* Checkmark icon */}
-              <div className="mr-15 flex-shrink-0">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="10px"
-                  height="10px"
-                  viewBox="0 0 25 25"
-                  fill="none"
-                >
-                  <circle
-                    cx="12.5"
-                    cy="12.5"
-                    r="8"
-                    stroke="#121923"
-                    strokeWidth="1.2"
-                  />
-                </svg>
-              </div>
-
+              {/* Star icon */}
+              <Star className="w-5 h-5 lg:w-6 lg:h-6 mx-8 text-primary-foreground fill-primary-foreground" />
               {/* Text */}
-              <strong className="text-lg lg:text-3xl font-bold text-gray-800">
+              <span className="text-lg lg:text-2xl font-bold text-primary-foreground uppercase tracking-wider">
                 {item}
-              </strong>
+              </span>
             </div>
           ))}
         </div>
@@ -66,56 +60,18 @@ const Marquee = () => {
           {marqueeItems.map((item, index) => (
             <div
               key={`clone-${index}`}
-              className="flex items-center justify-center px-6 lg:px-8 py-8 lg:py-12 relative"
+              className="flex items-center justify-center px-8 lg:px-12"
             >
-              {/* Checkmark icon */}
-              <div className="mr-15 flex-shrink-0">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="10px"
-                  height="10px"
-                  viewBox="0 0 25 25"
-                  fill="none"
-                >
-                  <circle
-                    cx="12.5"
-                    cy="12.5"
-                    r="8"
-                    stroke="#121923"
-                    strokeWidth="1.2"
-                  />
-                </svg>
-              </div>
-
+              {/* Star icon */}
+              <Star className="w-5 h-5 lg:w-6 lg:h-6 mr-4 text-primary-foreground fill-primary-foreground" />
               {/* Text */}
-              <strong className="text-lg lg:text-3xl font-bold text-gray-800">
+              <span className="text-lg lg:text-2xl font-bold text-primary-foreground uppercase tracking-wider">
                 {item}
-              </strong>
+              </span>
             </div>
           ))}
         </div>
       </div>
-
-      <style jsx>{`
-        @keyframes marquee {
-          0% {
-            transform: translate3d(0, 0, 0);
-          }
-          100% {
-            transform: translate3d(-50%, 0, 0);
-          }
-        }
-
-        .animate-marquee {
-          animation-name: marquee;
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-          .animate-marquee {
-            animation-play-state: paused !important;
-          }
-        }
-      `}</style>
     </section>
   );
 };

@@ -1,18 +1,19 @@
-"use client"
+'use client';
 
-import { UpcomingProduct } from "@/types"
-import Image from "next/image"
-import Currency from "@/components/ui/currency"
+import { UpcomingProduct } from '@/types';
+import Image from 'next/image';
+import Currency from '@/components/ui/currency';
+import { Sparkles } from 'lucide-react';
 
 interface UpcomingProductCardProps {
-  data: UpcomingProduct
+  data: UpcomingProduct;
 }
 
 const UpcomingProductCard: React.FC<UpcomingProductCardProps> = ({ data }) => {
   return (
-    <div className="group rounded-xl p-3 space-y-4">
+    <div className="bg-card group rounded-xl border border-border p-3 space-y-4">
       {/* Image */}
-      <div className="aspect-square rounded-xl bg-gray-100 relative overflow-hidden">
+      <div className="aspect-square rounded-xl bg-muted relative overflow-hidden">
         <Image
           src={data.imageUrl}
           alt={data.name}
@@ -20,18 +21,24 @@ const UpcomingProductCard: React.FC<UpcomingProductCardProps> = ({ data }) => {
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           className="object-cover aspect-square rounded-md"
         />
-        {/* Coming Soon Badge */}
-        <div className="absolute top-2 right-2 bg-blue-600 text-white text-xs font-semibold px-3 py-1 rounded-full shadow-md">
-          Coming Soon
+        {/* Badges Container - Top Left for NEW, Top Right for Out of Stock */}
+        <div className="absolute top-2 right-2 flex flex-col gap-1.5">
+          {/* NEW Badge */}
+          
+            <div className="bg-primary text-primary-foreground text-xs font-bold px-2.5 py-1 rounded-full shadow-md flex items-center gap-1">
+              <Sparkles className="w-3 h-3" />
+              Coming Soon
+            </div>
+          
         </div>
       </div>
 
       {/* Description */}
       <div>
-        <p className="font-semibold text-lg">
+        <p className="font-semibold text-lg text-foreground">
           {data.name}
         </p>
-        <p className='text-sm text-gray-500'>
+        <p className="text-sm text-muted-foreground">
           {data.category?.name}
         </p>
       </div>
@@ -41,7 +48,7 @@ const UpcomingProductCard: React.FC<UpcomingProductCardProps> = ({ data }) => {
         <Currency amount={data.price} />
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default UpcomingProductCard
+export default UpcomingProductCard;

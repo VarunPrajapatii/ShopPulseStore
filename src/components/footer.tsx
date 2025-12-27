@@ -1,130 +1,195 @@
+'use client'
+
 import React from 'react'
-// import Image from 'next/image'
 import Link from 'next/link'
-import { Instagram, Youtube, Facebook } from 'lucide-react'
+import { Instagram, Youtube, Facebook, Mail, Phone, MapPin, CreditCard, Wallet, Smartphone, Building2, ArrowUp } from 'lucide-react'
 
 const Footer = () => {
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   return (
-    <footer className="bg-black">
-      <div className="max-w-[95vw] mx-auto px-4 sm:px-6 lg:px-8">
+    <footer className="bg-foreground">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Main Footer Content */}
-        <div className="py-10">
+        <div className="py-12 lg:py-16">
           
           {/* Logo Section */}
-          <div className="mb-8 lg:mb-12">
-            <Link href="/" className="ml-4 flex lg:ml-0 gap-x-2">
-              <p className="font-bold text-7xl text-gray-200">STORE</p>
+          <div className="mb-10 lg:mb-12">
+            <Link href="/" className="inline-block">
+              <p className="font-bold text-4xl lg:text-5xl text-background">STORE</p>
             </Link>
           </div>
 
           {/* Main Footer Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12">
             
-            {/* Left Side - Company Description */}
+            {/* Company Description */}
             <section className="lg:col-span-1">
-              <p className="text-gray-200 leading-relaxed font-medium text-base lg:text-lg">
-                Lorem ipsum dolor sit amet consectetur, adipisicing elit. A repellendus eum officiis consequuntur placeat quidem nostrum, modi rem iusto autem deleniti, libero temporibus obcaecati quibusdam laboriosam cumque inventore similique enim!
-                Quasi commodi quaerat magni dignissimos explicabo sunt!
+              <p className="text-background/80 leading-relaxed text-sm lg:text-base">
+                Your trusted destination for quality products. We&apos;re committed to providing exceptional value and outstanding customer service.
               </p>
+              
+              {/* Contact Info */}
+              <div className="mt-6 space-y-3">
+                <a href="mailto:hello@store.com" className="flex items-center gap-2 text-background/80 hover:text-background transition-colors text-sm">
+                  <Mail className="w-4 h-4" />
+                  hello@store.com
+                </a>
+                <a href="tel:+1234567890" className="flex items-center gap-2 text-background/80 hover:text-background transition-colors text-sm">
+                  <Phone className="w-4 h-4" />
+                  +1 (234) 567-890
+                </a>
+                <p className="flex items-center gap-2 text-background/80 text-sm">
+                  <MapPin className="w-4 h-4" />
+                  Your City, Country
+                </p>
+              </div>
             </section>
 
-            {/* About Us Section */}
+            {/* Quick Links */}
             <section>
-              <h2 className="text-xl font-bold text-gray-200 mb-6">About Us</h2>
-              <ul className="space-y-3">
+              <h2 className="text-base font-semibold text-background mb-4">Quick Links</h2>
+              <ul className="space-y-2.5">
                 <li>
-                  <Link href="/about/our-story" className="text-gray-200 hover:font-semibold transition-all">
-                    Our Story
+                  <Link href="/" className="text-background/70 hover:text-background transition-colors text-sm">
+                    Home
                   </Link>
                 </li>
                 <li>
-                  <Link href="/contact-us" className="text-gray-200 hover:font-semibold transition-all">
+                  <Link href="/about" className="text-background/70 hover:text-background transition-colors text-sm">
+                    About Us
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/contact-us" className="text-background/70 hover:text-background transition-colors text-sm">
                     Contact Us
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/blog" className="text-gray-200 hover:font-semibold transition-all">
-                    Blog
                   </Link>
                 </li>
               </ul>
             </section>
 
-            {/* Help & Support Section */}
+            {/* Help & Support */}
             <section>
-              <h2 className="text-xl font-bold text-gray-200 mb-6">Terms &amp; Conditions</h2>
-              <ul className="space-y-3">
+              <h2 className="text-base font-semibold text-background mb-4">Help & Support</h2>
+              <ul className="space-y-2.5">
                 <li>
-                  <Link href="/returns-exchanges" className="text-gray-200 hover:font-semibold transition-all">
-                    Returns &amp; Exchanges
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/faq" className="text-gray-200 hover:font-semibold transition-all">
+                  <Link href="/faq" className="text-background/70 hover:text-background transition-colors text-sm">
                     FAQ
                   </Link>
                 </li>
                 <li>
-                  <Link href="/terms-of-use" className="text-gray-200 hover:font-semibold transition-all">
+                  <Link href="/returns-exchanges" className="text-background/70 hover:text-background transition-colors text-sm">
+                    Returns & Exchanges
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/terms-of-use" className="text-background/70 hover:text-background transition-colors text-sm">
                     Terms of Use
                   </Link>
                 </li>
-                
               </ul>
             </section>
 
+            {/* Social Media */}
+            <section>
+              <h2 className="text-base font-semibold text-background mb-4">Follow Us</h2>
+              <div className="flex items-center gap-3">
+                <Link 
+                  href="#" 
+                  className="w-10 h-10 bg-background/10 hover:bg-background/20 rounded-full flex items-center justify-center transition-colors"
+                  aria-label="Follow on Instagram"
+                >
+                  <Instagram size={18} className="text-background" />
+                </Link>
+
+                <Link 
+                  href="#" 
+                  className="w-10 h-10 bg-background/10 hover:bg-background/20 rounded-full flex items-center justify-center transition-colors"
+                  aria-label="Follow on Facebook"
+                >
+                  <Facebook size={18} className="text-background" />
+                </Link>
+
+                <Link 
+                  href="#" 
+                  className="w-10 h-10 bg-background/10 hover:bg-background/20 rounded-full flex items-center justify-center transition-colors"
+                  aria-label="Follow on YouTube"
+                >
+                  <Youtube size={18} className="text-background" />
+                </Link>
+
+                <Link 
+                  href="#" 
+                  className="w-10 h-10 bg-background/10 hover:bg-background/20 rounded-full flex items-center justify-center transition-colors"
+                  aria-label="Follow on X (Twitter)"
+                >
+                  <span className="text-background text-sm font-bold">X</span>
+                </Link>
+              </div>
+            </section>
+
           </div>
-
-          {/* Social Media Icons - Horizontal */}
-          <section className="mt-8 pt-5 ">
-            <h2 className="text-lg font-bold text-gray-200 mb-4 text-center lg:text-left">Follow Us</h2>
-            <div className="flex justify-center lg:justify-start items-center gap-4">
-              <Link 
-                href="#" 
-                className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-md hover:shadow-lg hover:scale-110 transition-all group"
-                aria-label="Follow Pure Essence on Instagram"
-              >
-                <Instagram size={22} className="text-gray-800 group-hover:text-pink-600" />
-              </Link>
-
-              <Link 
-                href="#" 
-                className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-md hover:shadow-lg hover:scale-110 transition-all group"
-                aria-label="Follow Pure Essence on Facebook"
-              >
-                <Facebook size={22} className="text-gray-800 group-hover:text-blue-600" />
-              </Link>
-
-              <Link 
-                href="#" 
-                className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-md hover:shadow-lg hover:scale-110 transition-all group"
-                aria-label="Follow Pure Essence on YouTube"
-              >
-                <Youtube size={22} className="text-gray-800 group-hover:text-red-600" />
-              </Link>
-
-              <Link 
-                href="#" 
-                className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-md hover:shadow-lg hover:scale-110 transition-all group"
-                aria-label="Follow Pure Essence on Twitter"
-              >
-                <div className="text-gray-800 group-hover:text-black text-2xl font-extrabold">X</div>
-              </Link>
-
+        </div>
+        
+        {/* Payment Methods Section */}
+        <div className="border-t border-background/10 py-6">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div>
+              <p className="text-xs text-background/60 mb-3 text-center sm:text-left">Powered by Razorpay - We Accept</p>
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3">
+                {/* Cards */}
+                <div className="flex items-center gap-1 px-2.5 py-1.5 bg-background/10 rounded-md">
+                  <CreditCard size={14} className="text-background/80" />
+                  <span className="text-xs text-background/80">Cards</span>
+                </div>
+                
+                {/* UPI */}
+                <div className="flex items-center gap-1 px-2.5 py-1.5 bg-background/10 rounded-md">
+                  <Smartphone size={14} className="text-background/80" />
+                  <span className="text-xs text-background/80">UPI</span>
+                </div>
+                
+                {/* Wallets */}
+                <div className="flex items-center gap-1 px-2.5 py-1.5 bg-background/10 rounded-md">
+                  <Wallet size={14} className="text-background/80" />
+                  <span className="text-xs text-background/80">Wallets</span>
+                </div>
+                
+                {/* Net Banking */}
+                <div className="flex items-center gap-1 px-2.5 py-1.5 bg-background/10 rounded-md">
+                  <Building2 size={14} className="text-background/80" />
+                  <span className="text-xs text-background/80">Net Banking</span>
+                </div>
+              </div>
             </div>
-          </section>
+            
+            {/* Back to Top Button */}
+            <button
+              onClick={scrollToTop}
+              className="flex items-center gap-2 px-4 py-2 bg-background/10 hover:bg-background/20 rounded-full transition-colors group"
+              aria-label="Back to top"
+            >
+              <span className="text-sm text-background/80 group-hover:text-background">Back to Top</span>
+              <ArrowUp size={16} className="text-background/80 group-hover:text-background transition-transform group-hover:-translate-y-0.5" />
+            </button>
+          </div>
         </div>
 
         {/* Copyright Section */}
-        <div className="border-t border-gray-600 py-4">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
-            <p className="text-sm font-light text-gray-200 text-center lg:text-left">
-              Developed in 2025 by <Link href={"https://varuntd.com"} className='font-semibold hover:underline '>varuntd.com</Link>
+        <div className="border-t border-background/10 py-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <p className="text-xs text-background/60 text-center sm:text-left">
+              © {new Date().getFullYear()} Store. All rights reserved.
             </p>
-            <div className="flex flex-wrap justify-center lg:justify-end gap-6 text-sm">
-              <Link href="/terms-of-use" className="text-gray-200 hover:underline transition-colors">
-                Terms of Use
+            <div className="flex flex-wrap justify-center sm:justify-end gap-4 text-xs">
+              <Link href="/terms-of-use" className="text-background/60 hover:text-background transition-colors">
+                Terms
+              </Link>
+              <Link href="/privacy" className="text-background/60 hover:text-background transition-colors">
+                Privacy
               </Link>
             </div>
           </div>

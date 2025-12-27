@@ -3,7 +3,7 @@
 import { Product } from '@/types';
 import Image from 'next/image';
 import IconButton from '@/components/ui/icon-button';
-import { Expand, ShoppingCart } from 'lucide-react';
+import { Expand, ShoppingCart, Sparkles } from 'lucide-react';
 import Currency from '@/components/ui/currency';
 import { useRouter } from 'next/navigation';
 import usePreviewModal from '@/hooks/use-preview-modal';
@@ -11,9 +11,10 @@ import useCart from '@/hooks/use-cart';
 
 interface ProductCardProps {
   data: Product;
+  isNewArrival?: boolean;
 }
 
-const ProductCard: React.FC<ProductCardProps> = ({ data }) => {
+const ProductCard: React.FC<ProductCardProps> = ({ data, isNewArrival = false }) => {
   const cart = useCart();
   const previewModal = usePreviewModal();
   const router = useRouter();
@@ -37,9 +38,9 @@ const ProductCard: React.FC<ProductCardProps> = ({ data }) => {
   const isOutOfStock = data.stockQuantity === 0;
 
   return (
-    <div onClick={handleClick} className="bg-white group cursor-pointer rounded-xl  p-3 space-y-4">
+    <div onClick={handleClick} className="bg-card group cursor-pointer rounded-xl border border-border p-3 space-y-4 transition-shadow hover:shadow-md">
       {/* images and actions */}
-      <div className="aspect-square rounded-xl bg-gray-100 relative overflow-hidden">
+      <div className="aspect-square rounded-xl bg-muted relative overflow-hidden">
         <Image
           src={data?.images?.[0]?.url}
           alt={data.name}
@@ -48,9 +49,20 @@ const ProductCard: React.FC<ProductCardProps> = ({ data }) => {
           className="object-cover aspect-square rounded-md"
         />
         
-        {/* Out of Stock Badge */}
+        {/* Badges Container - Top Left for NEW, Top Right for Out of Stock */}
+        <div className="absolute top-2 left-2 flex flex-col gap-1.5">
+          {/* NEW Badge */}
+          {isNewArrival && !isOutOfStock && (
+            <div className="bg-primary text-primary-foreground text-xs font-bold px-2.5 py-1 rounded-full shadow-md flex items-center gap-1">
+              <Sparkles className="w-3 h-3" />
+              NEW
+            </div>
+          )}
+        </div>
+        
+        {/* Out of Stock Badge - Top Right */}
         {isOutOfStock && (
-          <div className="absolute top-2 right-2 bg-red-600 text-white text-xs font-semibold px-3 py-1 rounded-full shadow-md">
+          <div className="absolute top-2 right-2 bg-error text-error-foreground text-xs font-semibold px-3 py-1 rounded-full shadow-md">
             Out of Stock
           </div>
         )}
@@ -59,12 +71,12 @@ const ProductCard: React.FC<ProductCardProps> = ({ data }) => {
           <div className='flex gap-x-6 justify-center'>
              <IconButton 
               onClick={onPreview}
-              icon={<Expand size={20} className='text-gray-600' />}
+              icon={<Expand size={20} className='text-muted-foreground' />}
              />
              {!isOutOfStock && (
                <IconButton 
                  onClick={onAddToCart}
-                 icon={<ShoppingCart size={20} className='text-gray-600' />}
+                 icon={<ShoppingCart size={20} className='text-muted-foreground' />}
                />
              )}
           </div>
@@ -73,21 +85,21 @@ const ProductCard: React.FC<ProductCardProps> = ({ data }) => {
 
       {/* Description */}
       <div>
-        <p className='font-semibold text-lg'>
+        <p className='font-semibold text-lg text-foreground'>
           {data.name}
         </p>
         {data.titlepoints && data.titlepoints.length > 0 && (
-          <p className='text-xs text-gray-600 mt-1 line-clamp-1'>
+          <p className='text-xs text-muted-foreground mt-1 line-clamp-1'>
             {data.titlepoints.join(' | ')}
           </p>
         )}
         {/* Low Stock Warning */}
         {data.stockQuantity <= data.lowStockThreshold && (
-          <p className='text-xs text-red-600 font-semibold mt-1 animate-pulse'>
+          <p className='text-xs text-error font-semibold mt-1 animate-pulse'>
             Only {data.stockQuantity} remaining, Hurry Up!
           </p>
         )}
-        <p className='text-sm text-gray-500 mt-1'>
+        <p className='text-sm text-muted-foreground mt-1'>
           {data.category?.name}
         </p>
       </div>
