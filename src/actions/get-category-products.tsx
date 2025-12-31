@@ -2,9 +2,13 @@ import { Product } from '@/types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
+/**
+ * Get products for a specific category using unified products endpoint
+ * Uses: GET /api/{storeId}/products?categoryId={categoryId}
+ */
 const getCategoryProducts = async (categoryId: string): Promise<Product[]> => {
   try {
-    const URL = `${API_URL}/categories/${categoryId}/products`;
+    const URL = `${API_URL}/products?categoryId=${categoryId}`;
     
     const res = await fetch(URL, {
       next: { revalidate: 60 }, // Cache for 1 minute

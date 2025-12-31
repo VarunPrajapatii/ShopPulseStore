@@ -3,11 +3,14 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL;
 export interface OrderItem {
   id: string;
   productId: string;
+  variantId?: string | null;   // NEW: For variant tracking
   priceAtPurchase: number;
   quantity: number;
-  productSize: string;
+  productSize: string;         // Size name for display
+  productSizeValue?: string;   // Size value (e.g., "Small", "Medium")
   productName: string;
   productImageUrl: string;
+  productSku?: string | null;  // SKU from product or variant
   lineTotal: number;
 }
 

@@ -93,6 +93,9 @@ const ProductPage: React.FC<ProductPageProps> = async ({ params }) => {
   const storeUrl = seoConfig?.storeUrl || '';
   const storeName = seoConfig?.storeName || 'Shop';
 
+  // Calculate total stock from variants
+  const totalStock = product.variants?.reduce((sum, v) => sum + v.stockQuantity, 0) ?? 0;
+  
   // Product Schema (JSON-LD)
   const productSchema = {
     '@context': 'https://schema.org',
@@ -106,7 +109,7 @@ const ProductPage: React.FC<ProductPageProps> = async ({ params }) => {
       url: `${storeUrl}/product/${product.id}`,
       priceCurrency: 'INR',
       price: product.sellingPrice || product.price,
-      ...(product.sellingPrice && product.sellingPrice < product.price && {
+      ...(product.sellingPrice && product.sellingPrice < Number(product.price) && {
         priceSpecification: {
           '@type': 'PriceSpecification',
           price: product.sellingPrice,
@@ -114,7 +117,7 @@ const ProductPage: React.FC<ProductPageProps> = async ({ params }) => {
           validFrom: new Date().toISOString(),
         },
       }),
-      availability: product.stockQuantity > 0 
+      availability: totalStock > 0 
         ? 'https://schema.org/InStock' 
         : 'https://schema.org/OutOfStock',
       seller: {

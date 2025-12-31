@@ -67,7 +67,7 @@ const HomePage = async () => {
     storeInfo,
     newArrivals,
   ] = await Promise.all([
-    getProducts({ isFeatured: true }),
+    getProducts({ featured: true }),
     getUpcomingProducts({}),
     getSEOConfig(),
     getCategories(),

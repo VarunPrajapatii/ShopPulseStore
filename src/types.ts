@@ -47,29 +47,45 @@ export interface Specification {
   value: string;
 }
 
+// Product Variant for Myntra-style size selection
+export interface ProductVariant {
+  id: string;
+  productId: string;
+  sizeId: string;
+  size: Size;
+  stockQuantity: number;
+  lowStockThreshold: number;
+  sku: string | null;
+  displayOrder: number;
+}
+
 export interface Product {
   id: string
   name: string
   description: string
-  shortDescription?: string | null  // NEW: 160 char tagline for cards & SEO
+  shortDescription: string | null       // 160 char tagline for cards & SEO
   titlepoints: string[]
   bulletPoints: string[]
   price: string
-  sellingPrice?: number | null      // NEW: Discounted/sale price
-  sku?: string | null               // NEW: Stock Keeping Unit / Model number
-  specifications?: Specification[] | null  // NEW: Key-value product specs
-  warranty?: string | null          // NEW: Warranty information
+  sellingPrice: number | null           // Discounted/sale price
+  sku: string | null                    // Stock Keeping Unit / Model number
+  specifications: Specification[] | null // Key-value product specs
+  warranty: string | null               // Warranty information
   isFeatured: boolean
   isArchived: boolean
-  stockQuantity: number
-  lowStockThreshold: number
+  
+  // Inventory System - supports both variant and non-variant products
+  hasVariants: boolean                  // TRUE = size variants, FALSE = single stock
+  baseStockQuantity: number             // Stock when hasVariants=false
+  baseLowStockThreshold: number         // Threshold when hasVariants=false
+  variants: ProductVariant[]            // Size variants (when hasVariants=true)
+  
   category: Category
-  size: Size
   images: Image[]
   relatedItems: Product[]
-  quantity?: number // Optional quantity field for cart items
-  createdAt?: string // Creation date from backend (lowercase 'c')
-  updatedAt?: string // Last update date from backend
+  quantity?: number                     // For cart items
+  createdAt: string
+  updatedAt: string
 }
 
 export interface UpcomingProduct {

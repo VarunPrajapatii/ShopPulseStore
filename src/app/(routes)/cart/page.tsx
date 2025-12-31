@@ -24,10 +24,10 @@ const CartPage = () => {
     quantity: item.quantity || 1
   }));
 
-  // Check for stock issues
+  // Check for stock issues (stock is in selectedVariant)
   const stockIssues = cart.items.filter(item => {
     const requestedQty = item.quantity || 1;
-    return requestedQty > item.stockQuantity;
+    return requestedQty > item.selectedVariant.stockQuantity;
   });
 
   const hasStockIssues = stockIssues.length > 0;
@@ -70,9 +70,9 @@ const CartPage = () => {
                   </h3>
                   <ul className="text-sm text-red-700 space-y-1">
                     {stockIssues.map((item) => (
-                      <li key={item.id}>
-                        <strong>{item.name}</strong>: You requested {item.quantity || 1}, but only{' '}
-                        <strong>{item.stockQuantity}</strong> available.
+                      <li key={`${item.id}-${item.variantId}`}>
+                        <strong>{item.name}</strong> (Size: {item.selectedVariant.size.name}): You requested {item.quantity || 1}, but only{' '}
+                        <strong>{item.selectedVariant.stockQuantity}</strong> available.
                       </li>
                     ))}
                   </ul>
@@ -92,7 +92,7 @@ const CartPage = () => {
               <ul>
                 {itemsWithQuantity.map((item) => (
                   <CartItem
-                    key={item.data.id}
+                    key={`${item.data.id}-${item.data.variantId}`}
                     data={item.data}
                     quantity={item.quantity}
                   />

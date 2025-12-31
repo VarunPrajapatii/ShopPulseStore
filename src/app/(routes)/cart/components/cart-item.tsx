@@ -1,39 +1,47 @@
 'use client';
 
-import Currency from '@/components/ui/currency';
+import PriceDisplay from '@/components/ui/price-display';
 import IconButton from '@/components/ui/icon-button';
 import useCart from '@/hooks/use-cart';
-import { Product } from '@/types';
+import { Product, ProductVariant } from '@/types';
 import { X, Plus, Minus, AlertCircle } from 'lucide-react';
 import Image from 'next/image';
 
+// Cart item includes variant info
+interface CartItemData extends Product {
+  variantId: string;
+  selectedVariant: ProductVariant;
+}
+
 interface CartItemProps {
-  data: Product;
+  data: CartItemData;
   quantity: number;
 }
 
 const CartItem: React.FC<CartItemProps> = ({ data, quantity }) => {
   const cart = useCart();
+  
+  const currentStock = data.selectedVariant.stockQuantity;
 
   const onRemove = () => {
-    cart.removeItem(data.id);
+    cart.removeItem(data.id, data.variantId);
   };
 
   const onIncrease = () => {
-    if (quantity < data.stockQuantity) {
-      cart.increaseQuantity(data.id);
+    if (quantity < currentStock) {
+      cart.increaseQuantity(data.id, data.variantId);
     }
   };
 
   const onDecrease = () => {
-    cart.decreaseQuantity(data.id);
+    cart.decreaseQuantity(data.id, data.variantId);
   };
 
-  const hasStockIssue = quantity > data.stockQuantity;
-  const canIncrease = quantity < data.stockQuantity;
+  const hasStockIssue = quantity > currentStock;
+  const canIncrease = quantity < currentStock;
 
   return (
-    <li className={`flex py-6 border-b ${hasStockIssue ? 'bg-red-50 border-red-200' : ''}`}>
+    <li className={`flex py-6 border-b border-border ${hasStockIssue ? 'bg-error/5 border-error/20' : ''}`}>
       <div className="relative h-24 w-24 rounded-md overflow-hidden sm:h-48 sm:w-48">
         <Image
           fill
@@ -48,52 +56,70 @@ const CartItem: React.FC<CartItemProps> = ({ data, quantity }) => {
         </div>
         <div className="relative pr-9 sm:grid sm:grid-cols-2 sm:gap-x-6 sm:pr-0">
           <div className="flex justify-between">
-            <p className="text-lg font-bold text-black">{data.name}</p>
+            <p className="text-lg font-bold text-foreground">{data.name}</p>
           </div>
 
-          <div className="mt-1 flex text-sm">
-            <p className="text-gray-500 ml-4 border-l border-gray-200 pl-4">
-              {data.size.name}
-            </p>
+          {/* Size Display - only show for variant products (not "Default") */}
+          {data.selectedVariant.size.name !== 'Default' && (
+            <div className="mt-1 flex text-sm">
+              <p className="text-muted-foreground">
+                Size: <span className="font-medium text-foreground">{data.selectedVariant.size.name}</span>
+              </p>
+            </div>
+          )}
+          
+          {/* SKU Display */}
+          {data.selectedVariant.sku && (
+            <div className="mt-0.5 text-xs text-muted-foreground">
+              SKU: <span className="font-mono">{data.selectedVariant.sku}</span>
+            </div>
+          )}
+          
+          {/* Price */}
+          <div className="mt-2">
+            <PriceDisplay 
+              price={data.price} 
+              sellingPrice={data.sellingPrice} 
+              size="sm"
+            />
           </div>
-          <Currency amount={data.price} />
         </div>
 
         {/* Stock Warning */}
         {hasStockIssue && (
-          <div className="flex items-center gap-2 mt-2 text-red-600 text-sm">
+          <div className="flex items-center gap-2 mt-2 text-error text-sm">
             <AlertCircle size={16} />
             <span className="font-semibold">
-              Only {data.stockQuantity} available! Please reduce quantity.
+              Only {currentStock} available{data.selectedVariant.size.name !== 'Default' ? ' in this size' : ''}! Please reduce quantity.
             </span>
           </div>
         )}
 
         {/* Quantity Controls */}
         <div className="flex items-center space-x-3 mt-4">
-          <span className="text-sm text-gray-600 font-medium">Quantity:</span>
+          <span className="text-sm text-muted-foreground font-medium">Quantity:</span>
           <div className="flex items-center space-x-2">
             <button
               onClick={onDecrease}
               disabled={quantity <= 1}
-              className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="w-8 h-8 rounded-full border border-border flex items-center justify-center hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               <Minus size={14} />
             </button>
-            <span className="w-10 text-center text-sm font-semibold">
+            <span className="w-10 text-center text-sm font-semibold text-foreground">
               {data.quantity}
             </span>
             <button
               onClick={onIncrease}
               disabled={!canIncrease}
-              className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              title={!canIncrease ? `Maximum stock available: ${data.stockQuantity}` : ''}
+              className="w-8 h-8 rounded-full border border-border flex items-center justify-center hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              title={!canIncrease ? `Maximum stock available: ${currentStock}` : ''}
             >
               <Plus size={14} />
             </button>
           </div>
-          <span className="text-xs text-gray-500">
-            ({data.stockQuantity} in stock)
+          <span className="text-xs text-muted-foreground">
+            ({currentStock} in stock)
           </span>
         </div>
       </div>

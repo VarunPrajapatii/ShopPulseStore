@@ -6,20 +6,30 @@ const URL = `${API_URL}/products`;
 
 interface Query {
   categoryId?: string;
-  sizeId?: string;
-  isFeatured?: boolean;
+  featured?: boolean;
+  filter?: 'new-arrivals';
 }
 
-const getProducts = async (query: Query): Promise<Product[]> => {
+/**
+ * Unified products fetching function
+ * 
+ * Usage:
+ * - All products: getProducts({})
+ * - Featured products: getProducts({ featured: true })
+ * - Category products: getProducts({ categoryId: 'xxx' })
+ * - Featured in category: getProducts({ categoryId: 'xxx', featured: true })
+ * - New arrivals: getProducts({ filter: 'new-arrivals' })
+ */
+const getProducts = async (query: Query = {}): Promise<Product[]> => {
   try {
     const url = qs.stringifyUrl({
       url: URL,
       query: { 
-        sizeId: query.sizeId,
         categoryId: query.categoryId,
-        isFeatured: query.isFeatured
-       },
-    })
+        featured: query.featured,
+        filter: query.filter,
+      },
+    });
     
     const res = await fetch(url, {
       next: { revalidate: 60 }, // Cache for 1 minute

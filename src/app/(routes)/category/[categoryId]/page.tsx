@@ -97,24 +97,28 @@ const CategoryPage = async ({ params }: CategoryPageProps) => {
     mainEntity: {
       '@type': 'ItemList',
       numberOfItems: products.length,
-      itemListElement: products.slice(0, 10).map((product, index) => ({
-        '@type': 'ListItem',
-        position: index + 1,
-        item: {
-          '@type': 'Product',
-          name: product.name,
-          url: `${storeUrl}/product/${product.id}`,
-          image: product.images?.[0]?.url || '',
-          offers: {
-            '@type': 'Offer',
-            price: product.price,
-            priceCurrency: 'INR',
-            availability: product.stockQuantity > 0 
-              ? 'https://schema.org/InStock' 
-              : 'https://schema.org/OutOfStock',
+      itemListElement: products.slice(0, 10).map((product, index) => {
+        // Calculate total stock from variants
+        const totalStock = product.variants?.reduce((sum, v) => sum + v.stockQuantity, 0) ?? 0;
+        return {
+          '@type': 'ListItem',
+          position: index + 1,
+          item: {
+            '@type': 'Product',
+            name: product.name,
+            url: `${storeUrl}/product/${product.id}`,
+            image: product.images?.[0]?.url || '',
+            offers: {
+              '@type': 'Offer',
+              price: product.price,
+              priceCurrency: 'INR',
+              availability: totalStock > 0 
+                ? 'https://schema.org/InStock' 
+                : 'https://schema.org/OutOfStock',
+            },
           },
-        },
-      })),
+        };
+      }),
     },
   };
 

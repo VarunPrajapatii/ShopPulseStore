@@ -57,23 +57,28 @@ const CheckoutPage = () => {
   const router = useRouter();
 
 
-  // Items for display in order summary (with name)
+  // Items for display in order summary (with name and size from variant)
   const displayItems = items.map((item) => ({
     productId: item.id,
+    variantId: item.variantId,
     name: item.name,
     quantity: item.quantity || 1,
-    priceAtPurchase: item.price,
-    sizeName: item.size.name,
-    sizeValue: item.size.value,
+    priceAtPurchase: item.sellingPrice || item.price,
+    // Only include size info for variant products (not "Default")
+    sizeName: item.selectedVariant.size.name !== 'Default' ? item.selectedVariant.size.name : null,
+    sizeValue: item.selectedVariant.size.name !== 'Default' ? item.selectedVariant.size.value : null,
   }));
 
-  // Items for backend API (with name to match working app)
+  // Items for backend API (with variantId for variant tracking)
   const checkoutItems = items.map((item) => ({
     productId: item.id,
+    // Only send variantId for actual variant products
+    variantId: item.selectedVariant.size.name !== 'Default' ? item.variantId : null,
     name: item.name,
     quantity: item.quantity || 1,
-    priceAtPurchase: item.price,
-    size: item.size.id,
+    priceAtPurchase: item.sellingPrice || item.price,
+    // Only send size for variant products
+    size: item.selectedVariant.size.name !== 'Default' ? item.selectedVariant.sizeId : null,
   }));
 
 
@@ -111,7 +116,9 @@ const CheckoutPage = () => {
   });
 
   const totalPrice = items.reduce((total, item) => {
-    return total + Number(item.price) * (item.quantity || 1);
+    // Use sellingPrice if available, otherwise use regular price
+    const itemPrice = item.sellingPrice || Number(item.price);
+    return total + itemPrice * (item.quantity || 1);
   }, 0);
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars

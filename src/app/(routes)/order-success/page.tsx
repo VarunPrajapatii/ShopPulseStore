@@ -214,9 +214,21 @@ const OrderSuccessContent = () => {
                       <h3 className="text-lg font-semibold text-gray-900 truncate">{item.productName}</h3>
                       <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-600">
                         <span>Quantity: {item.quantity}</span>
+                        {item.productSize && (
+                          <>
+                            <span>•</span>
+                            <span>Size: {item.productSize}</span>
+                          </>
+                        )}
                         <span>•</span>
                         <span>Price: ₹{item.priceAtPurchase}</span>
                       </div>
+                      {/* SKU Display */}
+                      {item.productSku && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          SKU: <span className="font-mono">{item.productSku}</span>
+                        </p>
+                      )}
                     </div>
 
                     <div className="text-right flex-shrink-0">

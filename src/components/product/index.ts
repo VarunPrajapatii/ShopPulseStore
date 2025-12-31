@@ -6,3 +6,4 @@
 
 export { default as SpecificationsTable } from './specifications-table';
 export { default as WarrantyBadge } from './warranty-badge';
+export { default as SizeSelector } from './size-selector';

@@ -7,7 +7,7 @@ import { Expand, ShoppingCart, Sparkles } from 'lucide-react';
 import PriceDisplay from '@/components/ui/price-display';
 import { useRouter } from 'next/navigation';
 import usePreviewModal from '@/hooks/use-preview-modal';
-import useCart from '@/hooks/use-cart';
+import { cn } from '@/lib/utils';
 
 interface ProductCardProps {
   data: Product;
@@ -15,27 +15,41 @@ interface ProductCardProps {
 }
 
 const ProductCard: React.FC<ProductCardProps> = ({ data, isNewArrival = false }) => {
-  const cart = useCart();
   const previewModal = usePreviewModal();
   const router = useRouter();
+  
+  // Check if this is a variant product
+  const isVariantProduct = data.hasVariants && Array.isArray(data.variants) && data.variants.length > 0;
+  
+  // Get sorted variants for display (only for variant products)
+  const sortedVariants = isVariantProduct
+    ? [...data.variants].sort((a, b) => a.displayOrder - b.displayOrder)
+    : [];
+  
+  // Calculate total stock based on product type
+  const totalStock = isVariantProduct 
+    ? sortedVariants.reduce((sum, v) => sum + v.stockQuantity, 0)
+    : (data.baseStockQuantity ?? 0);
+  const isOutOfStock = totalStock === 0;
+  
+  // Count available sizes (only for variant products)
+  const availableSizesCount = sortedVariants.filter(v => v.stockQuantity > 0).length;
+  
   const handleClick = () => {
     router.push(`/product/${data?.id}`);
   }
 
   const onPreview: React.MouseEventHandler<HTMLButtonElement> = (e) => {
-    // this stop propogation is going to override the fact that the main div has an onClick event
     e.stopPropagation();
     previewModal.onOpen(data);
   }
 
   const onAddToCart: React.MouseEventHandler<HTMLButtonElement> = (e) => {
     e.stopPropagation();
-    if (data.stockQuantity > 0) {
-      cart.addItem(data);
-    }
+    // Redirect to product page to select size
+    router.push(`/product/${data?.id}`);
   }
 
-  const isOutOfStock = data.stockQuantity === 0;
   // Check if product has a valid discount
   const hasDiscount = data.sellingPrice && 
                       data.sellingPrice > 0 && 
@@ -98,22 +112,45 @@ const ProductCard: React.FC<ProductCardProps> = ({ data, isNewArrival = false })
         <p className='font-semibold text-lg text-foreground line-clamp-1'>
           {data.name}
         </p>
-        {/* Short description or title points */}
-        {data.shortDescription ? (
-          <p className='text-xs text-muted-foreground mt-1 line-clamp-2'>
-            {data.shortDescription}
-          </p>
-        ) : data.titlepoints && data.titlepoints.length > 0 ? (
-          <p className='text-xs text-muted-foreground mt-1 line-clamp-1'>
-            {data.titlepoints.join(' | ')}
-          </p>
-        ) : null}
-        {/* Low Stock Warning */}
-        {data.stockQuantity > 0 && data.stockQuantity <= data.lowStockThreshold && (
-          <p className='text-xs text-error font-semibold mt-1 animate-pulse'>
-            Only {data.stockQuantity} remaining!
+        
+        {/* Size Preview - only for variant products */}
+        {isVariantProduct && sortedVariants.length > 0 && (
+          <div className='flex flex-wrap gap-1 mt-2'>
+            {sortedVariants.slice(0, 5).map((variant) => (
+              <span 
+                key={variant.id}
+                className={cn(
+                  "text-[10px] px-1.5 py-0.5 rounded border",
+                  variant.stockQuantity > 0 
+                    ? "border-border text-muted-foreground" 
+                    : "border-border/50 text-muted-foreground/50 line-through"
+                )}
+              >
+                {variant.size.name}
+              </span>
+            ))}
+            {sortedVariants.length > 5 && (
+              <span className="text-[10px] text-muted-foreground">
+                +{sortedVariants.length - 5}
+              </span>
+            )}
+          </div>
+        )}
+        
+        {/* Size availability info - only for variant products */}
+        {isVariantProduct && !isOutOfStock && (
+          <p className='text-xs text-muted-foreground mt-1'>
+            {availableSizesCount} of {sortedVariants.length} sizes available
           </p>
         )}
+        
+        {/* Stock info for non-variant products */}
+        {!isVariantProduct && !isOutOfStock && (
+          <p className='text-xs text-muted-foreground mt-1'>
+            In Stock
+          </p>
+        )}
+        
         <p className='text-sm text-muted-foreground mt-1'>
           {data.category?.name}
         </p>
