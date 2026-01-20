@@ -1,16 +1,20 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
 import Container from '@/components/ui/container';
 import useCart from '@/hooks/use-cart';
 import toast from 'react-hot-toast';
-import { formSchema } from '@/lib/zodSchema';
+import { formSchema, CheckoutFormValues } from '@/lib/zodSchema';
 import { AddressForm, OrderSummary } from './components';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
+import { ArrowLeft, ShoppingBag } from 'lucide-react';
+import Link from 'next/link';
+import CheckoutProgress from '@/components/ui/checkout-progress';
+import TrustBadges from '@/components/ui/trust-badges';
+import MobileStickyCheckout from '@/components/ui/mobile-sticky-checkout';
 
 // Declare Razorpay type for TypeScript
 declare global {
@@ -49,12 +53,14 @@ interface RazorpayInstance {
   open: () => void;
 }
 
-type CheckoutFormValues = z.infer<typeof formSchema>;
+type CheckoutStep = "address" | "verification" | "payment" | "done";
 
 const CheckoutPage = () => {
   const cart = useCart();
   const items = cart.items;
   const router = useRouter();
+  const [orderNotes, setOrderNotes] = useState('');
+  const [currentStep, setCurrentStep] = useState<CheckoutStep>('address');
 
 
   // Items for display in order summary (with name and size from variant)
@@ -99,6 +105,15 @@ const CheckoutPage = () => {
     };
   }, []);
 
+  // Update step based on flow
+  useEffect(() => {
+    if (showOtpField) {
+      setCurrentStep('verification');
+    } else {
+      setCurrentStep('address');
+    }
+  }, [showOtpField]);
+
   const form = useForm<CheckoutFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -106,12 +121,25 @@ const CheckoutPage = () => {
       lastName: '',
       phone: '',
       email: '',
-      pincode: '',
-      flatHouse: '',
-      areaStreet: '',
-      landmark: '',
-      townCity: '',
-      state: '',
+      shippingAddress: {
+        line1: '',
+        line2: '',
+        city: '',
+        state: '',
+        pincode: '',
+        country: 'India',
+      },
+      isShippingSameAsBilling: true,
+      billingAddress: {
+        name: '',
+        phone: '',
+        line1: '',
+        line2: '',
+        city: '',
+        state: '',
+        pincode: '',
+        country: 'IN',
+      },
     },
   });
 
@@ -120,6 +148,11 @@ const CheckoutPage = () => {
     const itemPrice = item.sellingPrice || Number(item.price);
     return total + itemPrice * (item.quantity || 1);
   }, 0);
+
+  // Calculate order total with shipping
+  const shippingThreshold = 499;
+  const shippingCost = totalPrice >= shippingThreshold ? 0 : 49;
+  const orderTotal = totalPrice + shippingCost;
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const onSubmit = async (data: CheckoutFormValues) => {
@@ -182,26 +215,70 @@ const CheckoutPage = () => {
         return;
       }
 
-      const address = {
-        flatHouse: form.getValues('flatHouse'),
-        areaStreet: form.getValues('areaStreet'),
-        landmark: form.getValues('landmark'),
-        townCity: form.getValues('townCity'),
-        state: form.getValues('state'),
-        pincode: form.getValues('pincode'),
-      };
+      // Get form values
+      const formData = form.getValues();
+      const isShippingSameAsBilling = formData.isShippingSameAsBilling;
 
-      const addressString = `${address.flatHouse}, ${address.areaStreet}, ${
-        address.landmark ? address.landmark + ', ' : ''
-      }${address.townCity}, ${address.state} - ${address.pincode}`;
-
-      const payload = {
-        name: `${form.getValues('firstName')} ${form.getValues('lastName')}`,
-        phone: form.getValues('phone'),
-        email: form.getValues('email'),
-        address: addressString,
+      // Build the checkout payload with structured addresses
+      const payload: {
+        name: string;
+        email: string;
+        phone: string;
+        shippingAddress: {
+          line1: string;
+          line2?: string;
+          city: string;
+          state: string;
+          pincode: string;
+          country?: string;
+        };
+        billingAddress?: {
+          name?: string;
+          phone?: string;
+          line1: string;
+          line2?: string;
+          city: string;
+          state: string;
+          pincode: string;
+          country?: string;
+        };
+        isShippingSameAsBilling: boolean;
+        notes?: string;
+        items: typeof checkoutItems;
+      } = {
+        name: `${formData.firstName} ${formData.lastName}`,
+        phone: formData.phone,
+        email: formData.email,
+        shippingAddress: {
+          line1: formData.shippingAddress.line1,
+          line2: formData.shippingAddress.line2 || undefined,
+          city: formData.shippingAddress.city,
+          state: formData.shippingAddress.state,
+          pincode: formData.shippingAddress.pincode,
+          country: formData.shippingAddress.country || 'India',
+        },
+        isShippingSameAsBilling,
         items: checkoutItems,
       };
+
+      // Add order notes if provided
+      if (orderNotes.trim()) {
+        payload.notes = orderNotes.trim();
+      }
+
+      // Only include billing address when different from shipping
+      if (!isShippingSameAsBilling && formData.billingAddress) {
+        payload.billingAddress = {
+          name: formData.billingAddress.name || undefined,
+          phone: formData.billingAddress.phone || undefined,
+          line1: formData.billingAddress.line1,
+          line2: formData.billingAddress.line2 || undefined,
+          city: formData.billingAddress.city,
+          state: formData.billingAddress.state,
+          pincode: formData.billingAddress.pincode,
+          country: formData.billingAddress.country || 'IN',
+        };
+      }
 
       const response = await axios.post(
         `${process.env.NEXT_PUBLIC_API_URL}/checkout`,
@@ -309,9 +386,18 @@ const CheckoutPage = () => {
   if (items.length === 0) {
     return (
       <Container>
-        <div className="px-4 py-16 sm:px-6 lg:px-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">Checkout</h1>
-          <p className="text-gray-600">Your cart is empty.</p>
+        <div className="px-4 py-16 sm:px-6 lg:px-8 text-center">
+          <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+            <ShoppingBag className="h-8 w-8 text-gray-400" />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Your cart is empty</h1>
+          <p className="text-gray-600 mb-6">Add items to your cart to checkout.</p>
+          <Link 
+            href="/"
+            className="inline-flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-lg font-medium hover:bg-primary/90 transition-colors"
+          >
+            Continue Shopping
+          </Link>
         </div>
       </Container>
     );
@@ -331,38 +417,89 @@ const CheckoutPage = () => {
   }
 
   return (
-    <Container>
-      <div className="px-4 py-16 sm:px-6 lg:px-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">Checkout</h1>
+    <div className="bg-white min-h-screen pb-24 lg:pb-0">
+      <Container>
+        <div className="px-4 py-8 sm:px-6 lg:px-8">
+          {/* Back to Cart Link */}
+          <Link 
+            href="/cart" 
+            className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition-colors mb-6"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Cart
+          </Link>
 
-        <div className="lg:grid lg:grid-cols-12 lg:gap-x-12 lg:items-start">
-          {/* Delivery Address Form */}
-          <div className="lg:col-span-7">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">
-              Delivery Address
-            </h2>
-
-            <form onSubmit={form.handleSubmit(onSubmit)}>
-              <AddressForm form={form} loading={loading} />
-            </form>
+          {/* Page Header */}
+          <div className="text-center mb-6">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Secure Checkout</h1>
+            <p className="text-sm text-gray-500 mt-1">Complete your purchase securely</p>
           </div>
 
-          {/* Order Summary Sidebar */}
-          <OrderSummary
-            items={displayItems}
-            totalPrice={totalPrice}
-            loading={loading}
-            showOtpField={showOtpField}
-            otp={otp}
-            otpLoading={otpLoading}
-            phoneNumber={form.getValues('phone')}
-            onSubmit={form.handleSubmit(onSubmit)}
-            onSetOtp={setOtp}
-            onVerifyAndPay={handleVerifyAndPay}
-          />
+          {/* Progress Indicator */}
+          <CheckoutProgress currentStep={currentStep} className="mb-8" />
+
+          <div className="lg:grid lg:grid-cols-12 lg:gap-x-12 lg:items-start">
+            {/* Delivery Address Form */}
+            <div className="lg:col-span-7">
+              <div className="bg-white rounded-xl border border-gray-200 p-6">
+                <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <span className="w-8 h-8 bg-primary text-white rounded-full flex items-center justify-center text-sm font-bold">1</span>
+                  Delivery Address
+                </h2>
+
+                <FormProvider {...form}>
+                  <form onSubmit={form.handleSubmit(onSubmit)}>
+                    <AddressForm form={form} loading={loading} />
+                  </form>
+                </FormProvider>
+              </div>
+
+              {/* Order Notes Section */}
+              <div className="mt-6 bg-white rounded-xl border border-gray-200 p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Order Notes (Optional)</h3>
+                <textarea
+                  value={orderNotes}
+                  onChange={(e) => setOrderNotes(e.target.value)}
+                  placeholder="Any special instructions for your order? (e.g., gift wrapping, specific delivery instructions, preferred delivery time)"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
+                  rows={3}
+                  maxLength={500}
+                />
+                <p className="text-xs text-gray-400 mt-1 text-right">{orderNotes.length}/500 characters</p>
+              </div>
+
+              {/* Trust Badges - Desktop */}
+              <div className="mt-6 hidden lg:block">
+                <TrustBadges variant="horizontal" showPaymentMethods showDeliveryPartners />
+              </div>
+            </div>
+
+            {/* Order Summary Sidebar */}
+            <OrderSummary
+              items={displayItems}
+              totalPrice={totalPrice}
+              loading={loading}
+              showOtpField={showOtpField}
+              otp={otp}
+              otpLoading={otpLoading}
+              phoneNumber={form.getValues('phone')}
+              onSubmit={form.handleSubmit(onSubmit)}
+              onSetOtp={setOtp}
+              onVerifyAndPay={handleVerifyAndPay}
+            />
+          </div>
         </div>
-      </div>
-    </Container>
+      </Container>
+
+      {/* Mobile Sticky Checkout Bar */}
+      <MobileStickyCheckout
+        total={orderTotal}
+        onAction={showOtpField ? handleVerifyAndPay : form.handleSubmit(onSubmit)}
+        actionLabel={showOtpField ? "Verify & Pay" : "Continue"}
+        isLoading={loading || otpLoading}
+        disabled={showOtpField && otp.length !== 6}
+      />
+    </div>
   );
 };
 

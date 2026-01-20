@@ -1,6 +1,6 @@
 "use client";
 
-import { UseFormReturn } from "react-hook-form";
+import { UseFormReturn, useWatch } from "react-hook-form";
 import {
   FormControl,
   FormField,
@@ -9,6 +9,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -17,19 +18,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { indianStates } from "@/lib/utils";
-
-interface CheckoutFormValues {
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  pincode: string;
-  flatHouse: string;
-  areaStreet: string;
-  landmark?: string;
-  townCity: string;
-  state: string;
-}
+import { CheckoutFormValues } from "@/lib/zodSchema";
+import { MapPin, Receipt } from "lucide-react";
 
 interface AddressFormProps {
   form: UseFormReturn<CheckoutFormValues>;
@@ -37,22 +27,77 @@ interface AddressFormProps {
 }
 
 const AddressForm: React.FC<AddressFormProps> = ({ form, loading }) => {
+  // Watch the billing toggle to show/hide billing address form
+  const isShippingSameAsBilling = useWatch({
+    control: form.control,
+    name: "isShippingSameAsBilling",
+    defaultValue: true,
+  });
+
   return (
-    <div className="space-y-6">
-      {/* Name Fields */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <div className="space-y-8">
+      {/* Customer Information Section */}
+      <div className="space-y-4">
+        <h3 className="text-lg font-medium text-gray-900 flex items-center gap-2">
+          Contact Information
+        </h3>
+        
+        {/* Name Fields */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="firstName"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>
+                  First Name <span className="text-red-500">*</span>
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    disabled={loading}
+                    placeholder="First name"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="lastName"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>
+                  Last Name <span className="text-red-500">*</span>
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    disabled={loading}
+                    placeholder="Last name"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        {/* Email */}
         <FormField
           control={form.control}
-          name="firstName"
+          name="email"
           render={({ field }) => (
             <FormItem>
               <FormLabel>
-                First Name <span className="text-red-500">*</span>
+                Email <span className="text-red-500">*</span>
               </FormLabel>
               <FormControl>
                 <Input
+                  type="email"
                   disabled={loading}
-                  placeholder="First name"
+                  placeholder="your.email@example.com"
                   {...field}
                 />
               </FormControl>
@@ -60,18 +105,22 @@ const AddressForm: React.FC<AddressFormProps> = ({ form, loading }) => {
             </FormItem>
           )}
         />
+
+        {/* Phone Number */}
         <FormField
           control={form.control}
-          name="lastName"
+          name="phone"
           render={({ field }) => (
             <FormItem>
               <FormLabel>
-                Last Name <span className="text-red-500">*</span>
+                Phone Number <span className="text-red-500">*</span>
               </FormLabel>
               <FormControl>
                 <Input
+                  type="tel"
                   disabled={loading}
-                  placeholder="Last name"
+                  placeholder="10-digit phone number"
+                  maxLength={10}
                   {...field}
                 />
               </FormControl>
@@ -81,192 +130,373 @@ const AddressForm: React.FC<AddressFormProps> = ({ form, loading }) => {
         />
       </div>
 
-      {/* Email */}
-      <FormField
-        control={form.control}
-        name="email"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>
-              Email <span className="text-red-500">*</span>
-            </FormLabel>
-            <FormControl>
-              <Input
-                type="email"
-                disabled={loading}
-                placeholder="your.email@example.com"
-                {...field}
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+      {/* Shipping Address Section */}
+      <div className="space-y-4">
+        <h3 className="text-lg font-medium text-gray-900 flex items-center gap-2">
+          <MapPin className="h-5 w-5 text-primary" />
+          Shipping Address
+        </h3>
 
-      {/* Phone Number */}
-      <FormField
-        control={form.control}
-        name="phone"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>
-              Phone Number <span className="text-red-500">*</span>
-            </FormLabel>
-            <FormControl>
-              <Input
-                type="tel"
-                disabled={loading}
-                placeholder="10-digit phone number"
-                maxLength={10}
-                {...field}
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
-      {/* Pincode */}
-      <FormField
-        control={form.control}
-        name="pincode"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>
-              Pincode <span className="text-red-500">*</span>
-            </FormLabel>
-            <FormControl>
-              <Input
-                disabled={loading}
-                placeholder="6-digit pincode"
-                maxLength={6}
-                {...field}
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
-      {/* Flat/House */}
-      <FormField
-        control={form.control}
-        name="flatHouse"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>
-              Flat, House no., Building, Company, Apartment{" "}
-              <span className="text-red-500">*</span>
-            </FormLabel>
-            <FormControl>
-              <Input
-                disabled={loading}
-                placeholder="Flat, House no., Building, Company, Apartment"
-                {...field}
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
-      {/* Area/Street */}
-      <FormField
-        control={form.control}
-        name="areaStreet"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>
-              Area, Street, Sector, Village{" "}
-              <span className="text-red-500">*</span>
-            </FormLabel>
-            <FormControl>
-              <Input
-                disabled={loading}
-                placeholder="Area, Street, Sector, Village"
-                {...field}
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
-      {/* Landmark */}
-      <FormField
-        control={form.control}
-        name="landmark"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Landmark</FormLabel>
-            <FormControl>
-              <Input
-                disabled={loading}
-                placeholder="Landmark (optional)"
-                {...field}
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
-      {/* Town/City */}
-      <FormField
-        control={form.control}
-        name="townCity"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>
-              Town/City <span className="text-red-500">*</span>
-            </FormLabel>
-            <FormControl>
-              <Input
-                disabled={loading}
-                placeholder="Town/City"
-                {...field}
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
-      {/* State Dropdown */}
-      <FormField
-        control={form.control}
-        name="state"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>
-              State <span className="text-red-500">*</span>
-            </FormLabel>
-            <Select
-              disabled={loading}
-              onValueChange={field.onChange}
-              value={field.value}
-              defaultValue={field.value}
-            >
+        {/* Address Line 1 */}
+        <FormField
+          control={form.control}
+          name="shippingAddress.line1"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>
+                Address Line 1 <span className="text-red-500">*</span>
+              </FormLabel>
               <FormControl>
-                <SelectTrigger>
-                  <SelectValue
-                    defaultValue={field.value}
-                    placeholder="Select a state"
-                  />
-                </SelectTrigger>
+                <Input
+                  disabled={loading}
+                  placeholder="Flat, House no., Building, Company, Apartment"
+                  {...field}
+                />
               </FormControl>
-              <SelectContent>
-                {indianStates.map((state) => (
-                  <SelectItem key={state} value={state}>
-                    {state}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        {/* Address Line 2 */}
+        <FormField
+          control={form.control}
+          name="shippingAddress.line2"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Address Line 2</FormLabel>
+              <FormControl>
+                <Input
+                  disabled={loading}
+                  placeholder="Area, Street, Sector, Village, Landmark (optional)"
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        {/* City and State Row */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="shippingAddress.city"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>
+                  City <span className="text-red-500">*</span>
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    disabled={loading}
+                    placeholder="City"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="shippingAddress.state"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>
+                  State <span className="text-red-500">*</span>
+                </FormLabel>
+                <Select
+                  disabled={loading}
+                  onValueChange={field.onChange}
+                  value={field.value}
+                  defaultValue={field.value}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue
+                        defaultValue={field.value}
+                        placeholder="Select a state"
+                      />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {indianStates.map((state) => (
+                      <SelectItem key={state} value={state}>
+                        {state}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        {/* Pincode and Country Row */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="shippingAddress.pincode"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>
+                  Pincode <span className="text-red-500">*</span>
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    disabled={loading}
+                    placeholder="6-digit pincode"
+                    maxLength={6}
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="shippingAddress.country"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Country</FormLabel>
+                <FormControl>
+                  <Input
+                    disabled={loading}
+                    placeholder="India"
+                    {...field}
+                    value={field.value || "India"}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+      </div>
+
+      {/* Billing Address Toggle */}
+      <div className="border-t pt-6">
+        <FormField
+          control={form.control}
+          name="isShippingSameAsBilling"
+          render={({ field }) => (
+            <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+              <FormControl>
+                <Checkbox
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                  disabled={loading}
+                />
+              </FormControl>
+              <div className="space-y-1 leading-none">
+                <FormLabel className="text-base font-medium cursor-pointer">
+                  Billing address is same as shipping address
+                </FormLabel>
+                <p className="text-sm text-gray-500">
+                  Uncheck if your billing address is different from your shipping address
+                </p>
+              </div>
+            </FormItem>
+          )}
+        />
+      </div>
+
+      {/* Billing Address Section (Conditional) */}
+      {!isShippingSameAsBilling && (
+        <div className="space-y-4 border-t pt-6 animate-in slide-in-from-top-2 duration-300">
+          <h3 className="text-lg font-medium text-gray-900 flex items-center gap-2">
+            <Receipt className="h-5 w-5 text-primary" />
+            Billing Address
+          </h3>
+
+          {/* Billing Name and Phone Row */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="billingAddress.name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Billing Name</FormLabel>
+                  <FormControl>
+                    <Input
+                      disabled={loading}
+                      placeholder="Name for billing (optional)"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="billingAddress.phone"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Billing Phone</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="tel"
+                      disabled={loading}
+                      placeholder="Phone for billing (optional)"
+                      maxLength={10}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          {/* Billing Address Line 1 */}
+          <FormField
+            control={form.control}
+            name="billingAddress.line1"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>
+                  Address Line 1 <span className="text-red-500">*</span>
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    disabled={loading}
+                    placeholder="Flat, House no., Building, Company, Apartment"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Billing Address Line 2 */}
+          <FormField
+            control={form.control}
+            name="billingAddress.line2"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Address Line 2</FormLabel>
+                <FormControl>
+                  <Input
+                    disabled={loading}
+                    placeholder="Area, Street, Sector, Village, Landmark (optional)"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Billing City and State Row */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="billingAddress.city"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    City <span className="text-red-500">*</span>
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      disabled={loading}
+                      placeholder="City"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="billingAddress.state"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    State <span className="text-red-500">*</span>
+                  </FormLabel>
+                  <Select
+                    disabled={loading}
+                    onValueChange={field.onChange}
+                    value={field.value}
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue
+                          defaultValue={field.value}
+                          placeholder="Select a state"
+                        />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {indianStates.map((state) => (
+                        <SelectItem key={state} value={state}>
+                          {state}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          {/* Billing Pincode and Country Row */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="billingAddress.pincode"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    Pincode <span className="text-red-500">*</span>
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      disabled={loading}
+                      placeholder="6-digit pincode"
+                      maxLength={6}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="billingAddress.country"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Country</FormLabel>
+                  <FormControl>
+                    <Input
+                      disabled={loading}
+                      placeholder="IN"
+                      {...field}
+                      value={field.value || "IN"}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
