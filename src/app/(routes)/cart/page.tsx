@@ -6,7 +6,10 @@ import CartItem from './components/cart-item';
 import Summary from './components/summary';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, ShoppingBag, ArrowLeft, Shield, Truck, RotateCcw } from 'lucide-react';
+import Link from 'next/link';
+import TrustBadges from '@/components/ui/trust-badges';
+import MobileStickyCheckout from '@/components/ui/mobile-sticky-checkout';
 
 const CartPage = () => {
   const cart = useCart();
@@ -42,6 +45,11 @@ const CartPage = () => {
     return total + (Number(item.price) * (item.quantity || 1));
   }, 0);
 
+  // Shipping calculation for mobile sticky
+  const shippingThreshold = 499;
+  const shippingCost = totalPrice >= shippingThreshold ? 0 : 49;
+  const orderTotal = totalPrice + shippingCost;
+
   const onCheckout = () => {
     if (hasStockIssues) {
       return; // Prevent checkout if there are stock issues
@@ -54,14 +62,60 @@ const CartPage = () => {
   }
 
   return (
-    <div className="bg-white">
+    <div className="bg-white min-h-screen pb-24 lg:pb-0">
       <Container>
-        <div className="px-4 py-16 sm:px-6 lg:px-8">
-          <h1 className="text-3xl font-bold text-black ">Shopping Cart</h1>
+        <div className="px-4 py-8 sm:px-6 lg:px-8">
+          {/* Page Header */}
+          <div className="mb-8">
+            <Link 
+              href="/" 
+              className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition-colors mb-4"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Continue Shopping
+            </Link>
+
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-primary/10 rounded-full">
+                  <ShoppingBag className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Shopping Cart</h1>
+                  <p className="text-sm text-gray-500 mt-0.5">
+                    {totalItemsCount === 0 
+                      ? 'Your cart is empty' 
+                      : `${totalItemsCount} ${totalItemsCount === 1 ? 'item' : 'items'} in your cart`
+                    }
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Trust Banner */}
+          {cart.items.length > 0 && (
+            <div className="mb-8 bg-gray-50 rounded-xl p-4 hidden sm:block">
+              <div className="flex items-center justify-center gap-8 text-sm text-gray-600">
+                <div className="flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-green-600" />
+                  <span>Secure Checkout</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Truck className="h-4 w-4 text-blue-600" />
+                  <span>Free Shipping over ₹499</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <RotateCcw className="h-4 w-4 text-orange-600" />
+                  <span>Easy Returns</span>
+                </div>
+              </div>
+            </div>
+          )}
           
           {/* Stock Issues Warning */}
           {hasStockIssues && (
-            <div className="mt-6 bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
               <div className="flex gap-3">
                 <AlertTriangle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
                 <div className="flex-1">
@@ -84,30 +138,72 @@ const CartPage = () => {
             </div>
           )}
 
-          <div className="mt-12 lg:grid lg:grid-cols-12 lg:items-start lg:gap-x-12">
+          {/* Main Content - 2 Column Layout */}
+          <div className="lg:grid lg:grid-cols-12 lg:items-start lg:gap-x-12">
+            {/* Cart Items Column */}
             <div className="lg:col-span-7">
-              {cart.items.length === 0 && (
-                <p className="text-neutral-500">No items added to the cart.</p>
+              {cart.items.length === 0 ? (
+                <div className="text-center py-16">
+                  <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                    <ShoppingBag className="h-8 w-8 text-gray-400" />
+                  </div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">Your cart is empty</h3>
+                  <p className="text-gray-500 mb-6">Looks like you haven&apos;t added anything to your cart yet.</p>
+                  <Link 
+                    href="/"
+                    className="inline-flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-lg font-medium hover:bg-primary/90 transition-colors"
+                  >
+                    Start Shopping
+                  </Link>
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  <ul className="divide-y divide-gray-200">
+                    {itemsWithQuantity.map((item) => (
+                      <CartItem
+                        key={`${item.data.id}-${item.data.variantId}`}
+                        data={item.data}
+                        quantity={item.quantity}
+                      />
+                    ))}
+                  </ul>
+                </div>
               )}
-              <ul>
-                {itemsWithQuantity.map((item) => (
-                  <CartItem
-                    key={`${item.data.id}-${item.data.variantId}`}
-                    data={item.data}
-                    quantity={item.quantity}
-                  />
-                ))}
-              </ul>
             </div>
-            <Summary 
-              onCheckout={onCheckout} 
-              itemsLength={totalItemsCount} 
-              totalPrice={totalPrice}
-              hasStockIssues={hasStockIssues}
-            />
+
+            {/* Summary Column - Only show when there are items */}
+            {cart.items.length > 0 && (
+              <Summary 
+                onCheckout={onCheckout} 
+                itemsLength={totalItemsCount} 
+                totalPrice={totalPrice}
+                hasStockIssues={hasStockIssues}
+              />
+            )}
           </div>
+
+          {/* Desktop Trust Badges - Full width at bottom */}
+          {cart.items.length > 0 && (
+            <div className="mt-12 pt-8 border-t border-gray-200 hidden lg:block">
+              <TrustBadges 
+                variant="horizontal" 
+                showPaymentMethods 
+                showDeliveryPartners 
+              />
+            </div>
+          )}
         </div>
       </Container>
+
+      {/* Mobile Sticky Checkout Bar */}
+      {cart.items.length > 0 && (
+        <MobileStickyCheckout
+          total={orderTotal}
+          onAction={onCheckout}
+          actionLabel={hasStockIssues ? "Fix Stock Issues" : "Checkout"}
+          disabled={hasStockIssues}
+        />
+      )}
     </div>
   );
 };
