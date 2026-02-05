@@ -45,9 +45,9 @@ export async function generateMetadata(): Promise<Metadata> {
     publisher: seoConfig.storeName,
     ...(seoConfig.storeUrl && { metadataBase: new URL(seoConfig.storeUrl) }),
     icons: {
-      icon: seoConfig.logoUrl ? [{ url: seoConfig.logoUrl, type: "image/png" }] : [{ url: "/storelogo.png", type: "image/png" }],
-      shortcut: seoConfig.logoUrl ? [seoConfig.logoUrl] : ["/storelogo.png"],
-      apple: seoConfig.logoUrl ? [{ url: seoConfig.logoUrl, type: "image/png" }] : [{ url: "/storelogo.png", type: "image/png" }]
+      icon: seoConfig.logoUrl ? [{ url: seoConfig.logoUrl, type: "image/png" }] : [{ url: "/shoppulselogo.png", type: "image/png" }],
+      shortcut: seoConfig.logoUrl ? [seoConfig.logoUrl] : ["/shoppulselogo.png"],
+      apple: seoConfig.logoUrl ? [{ url: seoConfig.logoUrl, type: "image/png" }] : [{ url: "/shoppulselogo.png", type: "image/png" }]
     },
     openGraph: {
       type: 'website',
@@ -153,7 +153,7 @@ export default async function RootLayout({
         <StoreBillboardsHydration storeBillboards={storeBillboards} />
         <AnnouncementBar data={announcementBar} />
         <Navbar />
-        <main>
+        <main className="pt-16" style={{ paddingTop: 'calc(var(--announcement-bar-height, 0px) + 4rem)' }}>
           {children}
         </main>
         <Footer />

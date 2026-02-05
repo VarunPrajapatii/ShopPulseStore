@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { X } from 'lucide-react';
 import Link from 'next/link';
 import { AnnouncementBar as AnnouncementBarType } from '@/types';
@@ -12,6 +12,21 @@ interface AnnouncementBarProps {
 const AnnouncementBar: React.FC<AnnouncementBarProps> = ({ data }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isDismissed, setIsDismissed] = useState(false);
+
+  // Update CSS variable for announcement bar height
+  const updateAnnouncementHeight = useCallback((height: number) => {
+    document.documentElement.style.setProperty('--announcement-bar-height', `${height}px`);
+  }, []);
+
+  useEffect(() => {
+    // Set initial height or 0 if not shown
+    if (!data || !data.isActive || isDismissed || data.messages.length === 0) {
+      updateAnnouncementHeight(0);
+    } else {
+      // Default height for announcement bar (~40px)
+      updateAnnouncementHeight(40);
+    }
+  }, [data, isDismissed, updateAnnouncementHeight]);
 
   useEffect(() => {
     if (!data || data.messages.length <= 1) return;
@@ -63,7 +78,7 @@ const AnnouncementBar: React.FC<AnnouncementBarProps> = ({ data }) => {
 
   return (
     <div
-      className="relative transition-colors"
+      className="fixed top-0 left-0 right-0 z-[60] transition-colors"
       style={{ backgroundColor: data.backgroundColor }}
     >
       {linkUrl ? (
@@ -81,6 +96,7 @@ const AnnouncementBar: React.FC<AnnouncementBarProps> = ({ data }) => {
             e.preventDefault();
             e.stopPropagation();
             setIsDismissed(true);
+            updateAnnouncementHeight(0);
           }}
           className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-black/10 rounded-full transition-colors z-10"
           aria-label="Dismiss announcement"

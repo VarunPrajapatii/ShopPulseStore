@@ -57,6 +57,9 @@ export interface ProductVariant {
   lowStockThreshold: number;
   sku: string | null;
   displayOrder: number;
+  // Individual variant pricing (optional - falls back to product price if null)
+  price: number | null;        // MRP / Original Price for this variant
+  sellingPrice: number | null; // Discounted/Selling price for this variant
 }
 
 export interface Product {

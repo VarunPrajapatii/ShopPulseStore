@@ -10,6 +10,7 @@ import { AlertTriangle, ShoppingBag, ArrowLeft, Shield, Truck, RotateCcw } from 
 import Link from 'next/link';
 import TrustBadges from '@/components/ui/trust-badges';
 import MobileStickyCheckout from '@/components/ui/mobile-sticky-checkout';
+import { CartSkeleton } from '@/components/ui/skeleton';
 
 const CartPage = () => {
   const cart = useCart();
@@ -40,9 +41,11 @@ const CartPage = () => {
     return total + (item.quantity || 1);
   }, 0);
 
-  // Calculate total price
+  // Calculate total price using variant-specific effectivePrice, with fallback
   const totalPrice = cart.items.reduce((total, item) => {
-    return total + (Number(item.price) * (item.quantity || 1));
+    // Use effectivePrice from cart (variant price), fallback to sellingPrice, then price
+    const itemPrice = item.effectivePrice ?? item.sellingPrice ?? Number(item.price);
+    return total + (itemPrice * (item.quantity || 1));
   }, 0);
 
   // Shipping calculation for mobile sticky
@@ -58,7 +61,7 @@ const CartPage = () => {
   };
 
   if (!isMounted) {
-    return null;
+    return <CartSkeleton />;
   }
 
   return (
@@ -66,18 +69,18 @@ const CartPage = () => {
       <Container>
         <div className="px-4 py-8 sm:px-6 lg:px-8">
           {/* Page Header */}
-          <div className="mb-8">
+          <div className="mb-8 animate-fade-in">
             <Link 
               href="/" 
-              className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition-colors mb-4"
+              className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition-colors mb-4 btn-arrow-slide"
             >
-              <ArrowLeft className="h-4 w-4" />
+              <ArrowLeft className="h-4 w-4 arrow" />
               Continue Shopping
             </Link>
 
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-primary/10 rounded-full">
+                <div className="p-2 bg-primary/10 rounded-full hover-scale">
                   <ShoppingBag className="h-6 w-6 text-primary" />
                 </div>
                 <div>
@@ -95,7 +98,7 @@ const CartPage = () => {
 
           {/* Trust Banner */}
           {cart.items.length > 0 && (
-            <div className="mb-8 bg-gray-50 rounded-xl p-4 hidden sm:block">
+            <div className="mb-8 bg-gray-50 rounded-xl p-4 hidden sm:block animate-fade-in" style={{ animationDelay: '100ms' }}>
               <div className="flex items-center justify-center gap-8 text-sm text-gray-600">
                 <div className="flex items-center gap-2">
                   <Shield className="h-4 w-4 text-green-600" />
@@ -141,17 +144,17 @@ const CartPage = () => {
           {/* Main Content - 2 Column Layout */}
           <div className="lg:grid lg:grid-cols-12 lg:items-start lg:gap-x-12">
             {/* Cart Items Column */}
-            <div className="lg:col-span-7">
+            <div className="lg:col-span-7 animate-fade-in" style={{ animationDelay: '150ms' }}>
               {cart.items.length === 0 ? (
                 <div className="text-center py-16">
-                  <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                  <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4 hover-scale">
                     <ShoppingBag className="h-8 w-8 text-gray-400" />
                   </div>
                   <h3 className="text-lg font-medium text-gray-900 mb-2">Your cart is empty</h3>
                   <p className="text-gray-500 mb-6">Looks like you haven&apos;t added anything to your cart yet.</p>
                   <Link 
                     href="/"
-                    className="inline-flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-lg font-medium hover:bg-primary/90 transition-colors"
+                    className="inline-flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-lg font-medium btn-press"
                   >
                     Start Shopping
                   </Link>
@@ -173,12 +176,14 @@ const CartPage = () => {
 
             {/* Summary Column - Only show when there are items */}
             {cart.items.length > 0 && (
-              <Summary 
-                onCheckout={onCheckout} 
-                itemsLength={totalItemsCount} 
-                totalPrice={totalPrice}
-                hasStockIssues={hasStockIssues}
-              />
+              <div className="lg:col-span-5 animate-fade-in" style={{ animationDelay: '200ms' }}>
+                <Summary 
+                  onCheckout={onCheckout} 
+                  itemsLength={totalItemsCount} 
+                  totalPrice={totalPrice}
+                  hasStockIssues={hasStockIssues}
+                />
+              </div>
             )}
           </div>
 

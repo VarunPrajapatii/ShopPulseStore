@@ -57,14 +57,14 @@ const ProductCarousel: React.FC<ProductCarouselProps> = ({
             <div className="hidden md:flex items-center gap-2">
               <button
                 onClick={() => swiperRef.current?.slidePrev()}
-                className="bg-muted hover:bg-border rounded-full p-2 transition-colors"
+                className="bg-muted hover:bg-border rounded-full p-2 hover-scale"
                 aria-label="Previous"
               >
                 <ChevronLeft className="w-5 h-5 text-foreground" />
               </button>
               <button
                 onClick={() => swiperRef.current?.slideNext()}
-                className="bg-muted hover:bg-border rounded-full p-2 transition-colors"
+                className="bg-muted hover:bg-border rounded-full p-2 hover-scale"
                 aria-label="Next"
               >
                 <ChevronRight className="w-5 h-5 text-foreground" />
@@ -75,47 +75,49 @@ const ProductCarousel: React.FC<ProductCarouselProps> = ({
       )}
 
       {/* Carousel */}
-      <Swiper
-        modules={[Navigation, A11y, FreeMode]}
-        onSwiper={(swiper) => {
-          swiperRef.current = swiper;
-        }}
-        spaceBetween={16}
-        slidesPerView={1.2}
-        freeMode={{
-          enabled: true,
-          sticky: false,
-        }}
-        breakpoints={{
-          480: {
-            slidesPerView: 1.5,
-            spaceBetween: 16,
-          },
-          640: {
-            slidesPerView: 2.2,
-            spaceBetween: 16,
-          },
-          768: {
-            slidesPerView: 2.5,
-            spaceBetween: 20,
-          },
-          1024: {
-            slidesPerView: 3.2,
-            spaceBetween: 20,
-          },
-          1280: {
-            slidesPerView: 4,
-            spaceBetween: 24,
-          },
-        }}
-        className="!overflow-visible"
-      >
-        {children.map((child, index) => (
-          <SwiperSlide key={index} className="!h-auto">
-            {child}
-          </SwiperSlide>
-        ))}
-      </Swiper>
+      <div className="overflow-hidden">
+        <Swiper
+          modules={[Navigation, A11y, FreeMode]}
+          onSwiper={(swiper) => {
+            swiperRef.current = swiper;
+          }}
+          spaceBetween={16}
+          slidesPerView={1.2}
+          freeMode={{
+            enabled: true,
+            sticky: false,
+          }}
+          breakpoints={{
+            480: {
+              slidesPerView: 1.5,
+              spaceBetween: 16,
+            },
+            640: {
+              slidesPerView: 2.2,
+              spaceBetween: 16,
+            },
+            768: {
+              slidesPerView: 2.5,
+              spaceBetween: 20,
+            },
+            1024: {
+              slidesPerView: 3.2,
+              spaceBetween: 20,
+            },
+            1280: {
+              slidesPerView: 4,
+              spaceBetween: 24,
+            },
+          }}
+          className="!overflow-visible"
+        >
+          {children.map((child, index) => (
+            <SwiperSlide key={index} className="!h-auto">
+              {child}
+            </SwiperSlide>
+          ))}
+        </Swiper>
+      </div>
     </div>
   );
 };

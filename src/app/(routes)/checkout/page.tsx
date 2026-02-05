@@ -5,9 +5,10 @@ import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Container from '@/components/ui/container';
 import useCart from '@/hooks/use-cart';
+import useShipping from '@/hooks/use-shipping';
 import toast from 'react-hot-toast';
 import { formSchema, CheckoutFormValues } from '@/lib/zodSchema';
-import { AddressForm, OrderSummary } from './components';
+import { AddressForm, OrderSummary, type PaymentMethod } from './components';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, ShoppingBag } from 'lucide-react';
@@ -15,6 +16,7 @@ import Link from 'next/link';
 import CheckoutProgress from '@/components/ui/checkout-progress';
 import TrustBadges from '@/components/ui/trust-badges';
 import MobileStickyCheckout from '@/components/ui/mobile-sticky-checkout';
+import { CheckoutSkeleton } from '@/components/ui/skeleton';
 
 // Declare Razorpay type for TypeScript
 declare global {
@@ -59,30 +61,41 @@ const CheckoutPage = () => {
   const cart = useCart();
   const items = cart.items;
   const router = useRouter();
+  const { shippingData, clearShippingData } = useShipping();
   const [orderNotes, setOrderNotes] = useState('');
   const [currentStep, setCurrentStep] = useState<CheckoutStep>('address');
+  const [isMounted, setIsMounted] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('PREPAID');
 
+  // Set mounted state for hydration
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Items for display in order summary (with name and size from variant)
+  // Use variant-specific pricing (effectivePrice from cart)
   const displayItems = items.map((item) => ({
     productId: item.id,
     variantId: item.variantId,
     name: item.name,
     quantity: item.quantity || 1,
-    priceAtPurchase: item.sellingPrice || item.price,
+    // Use effectivePrice (variant price) from cart, with fallbacks
+    priceAtPurchase: item.effectivePrice ?? item.sellingPrice ?? Number(item.price),
     // Only include size info for variant products (not "Default")
     sizeName: item.selectedVariant.size.name !== 'Default' ? item.selectedVariant.size.name : null,
     sizeValue: item.selectedVariant.size.name !== 'Default' ? item.selectedVariant.size.value : null,
   }));
 
   // Items for backend API (with variantId for variant tracking)
+  // Note: priceAtPurchase must be a string per API spec, uses variant-specific pricing
   const checkoutItems = items.map((item) => ({
     productId: item.id,
     // Only send variantId for actual variant products
     variantId: item.selectedVariant.size.name !== 'Default' ? item.variantId : null,
     name: item.name,
     quantity: item.quantity || 1,
-    priceAtPurchase: item.sellingPrice || item.price,
+    // Use effectivePrice (variant price) from cart, with fallbacks
+    priceAtPurchase: String(item.effectivePrice ?? item.sellingPrice ?? Number(item.price)),
     // Only send size for variant products
     size: item.selectedVariant.size.name !== 'Default' ? item.selectedVariant.sizeId : null,
   }));
@@ -144,14 +157,26 @@ const CheckoutPage = () => {
   });
 
   const totalPrice = items.reduce((total, item) => {
-    // Use sellingPrice if available, otherwise use regular price
-    const itemPrice = item.sellingPrice || Number(item.price);
+    // Use effectivePrice (variant-specific price) from cart, with fallbacks
+    const itemPrice = item.effectivePrice ?? item.sellingPrice ?? Number(item.price);
     return total + itemPrice * (item.quantity || 1);
   }, 0);
 
-  // Calculate order total with shipping
-  const shippingThreshold = 499;
-  const shippingCost = totalPrice >= shippingThreshold ? 0 : 49;
+  // Check if pincode has been checked
+  const hasPincodeChecked = !!shippingData?.pincode;
+  const isServiceable = shippingData?.serviceable ?? false;
+
+  // Calculate shipping cost from pincode check
+  const shippingCost = (hasPincodeChecked && isServiceable && shippingData?.deliveryCharge) 
+    ? shippingData.deliveryCharge 
+    : 0;
+  
+  // COD charge from pincode check
+  const codCharge = (hasPincodeChecked && isServiceable && shippingData?.codChargeAmount) 
+    ? shippingData.codChargeAmount 
+    : 0;
+  
+  // Calculate order total (COD charge is added in order summary based on selected payment method)
   const orderTotal = totalPrice + shippingCost;
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -245,6 +270,8 @@ const CheckoutPage = () => {
         isShippingSameAsBilling: boolean;
         notes?: string;
         items: typeof checkoutItems;
+        paymentMethod: 'PREPAID';
+        shippingCost: number;
       } = {
         name: `${formData.firstName} ${formData.lastName}`,
         phone: formData.phone,
@@ -259,6 +286,8 @@ const CheckoutPage = () => {
         },
         isShippingSameAsBilling,
         items: checkoutItems,
+        paymentMethod: 'PREPAID',
+        shippingCost: shippingCost,
       };
 
       // Add order notes if provided
@@ -383,6 +412,206 @@ const CheckoutPage = () => {
     }
   };
 
+  // Handle COD order - Step 1: Validate and send OTP
+  const handlePlaceCODOrder = async () => {
+    // Trigger form validation first
+    const isValid = await form.trigger();
+    if (!isValid) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    // Check if delivery is serviceable
+    if (!hasPincodeChecked || !isServiceable) {
+      toast.error('Please enter a valid delivery pincode');
+      return;
+    }
+
+    // Check if COD is available (must be enabled for store AND available for this pincode)
+    if (!shippingData?.codAvailable || !shippingData?.codEnabledForStore) {
+      toast.error('Cash on Delivery is not available for this pincode');
+      setPaymentMethod('PREPAID');
+      return;
+    }
+
+    // Send OTP for verification (same as prepaid flow)
+    setLoading(true);
+    try {
+      // TODO: Uncomment API call when OTP backend is ready
+      // const response = await axios.post(
+      //   `${process.env.NEXT_PUBLIC_API_URL}/phone-verification`,
+      //   {
+      //     phone: form.getValues('phone'),
+      //     fullName: `${form.getValues('firstName')} ${form.getValues('lastName')}`,
+      //   }
+      // );
+      
+      // For now, showing OTP field for testing
+      setShowOtpField(true);
+      toast.success('OTP sent to your phone number');
+    } catch (error) {
+      console.error('Error sending OTP:', error);
+      toast.error('Failed to send OTP. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle COD order - Step 2: Verify OTP and place order
+  const handleVerifyAndPlaceCODOrder = async () => {
+    if (!otp || otp.length !== 6) {
+      toast.error('Please enter a valid 6-digit OTP');
+      return;
+    }
+
+    setOtpLoading(true);
+    try {
+      // TODO: Add OTP verification API call
+      // const verifyResponse = await axios.post(
+      //   `${process.env.NEXT_PUBLIC_API_URL}/otp`,
+      //   {
+      //     phone: form.getValues("phone"),
+      //     otp: otp,
+      //   }
+      // );
+
+      // TEMPORARY: Hardcoded OTP verification for testing
+      const isOtpVerified = true; // TODO: Replace with: verifyResponse.data.verified
+
+      if (!isOtpVerified) {
+        toast.error('Invalid OTP. Please try again.');
+        return;
+      }
+
+      const formData = form.getValues();
+      const isShippingSameAsBilling = formData.isShippingSameAsBilling;
+
+      // Build the checkout payload with COD payment method
+      const payload: {
+        name: string;
+        email: string;
+        phone: string;
+        shippingAddress: {
+          line1: string;
+          line2?: string;
+          city: string;
+          state: string;
+          pincode: string;
+          country?: string;
+        };
+        billingAddress?: {
+          name?: string;
+          phone?: string;
+          line1: string;
+          line2?: string;
+          city: string;
+          state: string;
+          pincode: string;
+          country?: string;
+        };
+        isShippingSameAsBilling: boolean;
+        notes?: string;
+        items: typeof checkoutItems;
+        paymentMethod: 'COD';
+        shippingCost: number;
+        codCharge?: number;
+      } = {
+        name: `${formData.firstName} ${formData.lastName}`,
+        phone: formData.phone,
+        email: formData.email,
+        shippingAddress: {
+          line1: formData.shippingAddress.line1,
+          line2: formData.shippingAddress.line2 || undefined,
+          city: formData.shippingAddress.city,
+          state: formData.shippingAddress.state,
+          pincode: formData.shippingAddress.pincode,
+          country: formData.shippingAddress.country || 'India',
+        },
+        isShippingSameAsBilling,
+        items: checkoutItems,
+        paymentMethod: 'COD',
+        shippingCost: shippingCost,
+        codCharge: codCharge > 0 ? codCharge : undefined,
+      };
+
+      // Add order notes if provided
+      if (orderNotes.trim()) {
+        payload.notes = orderNotes.trim();
+      }
+
+      // Only include billing address when different from shipping
+      if (!isShippingSameAsBilling && formData.billingAddress) {
+        payload.billingAddress = {
+          name: formData.billingAddress.name || undefined,
+          phone: formData.billingAddress.phone || undefined,
+          line1: formData.billingAddress.line1,
+          line2: formData.billingAddress.line2 || undefined,
+          city: formData.billingAddress.city,
+          state: formData.billingAddress.state,
+          pincode: formData.billingAddress.pincode,
+          country: formData.billingAddress.country || 'IN',
+        };
+      }
+
+      // Call the checkout endpoint with paymentMethod: 'COD'
+      const response = await axios.post(
+        `${process.env.NEXT_PUBLIC_API_URL}/checkout`,
+        payload,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      // For COD, backend should return success with orderId directly (no Razorpay)
+      if (response.data.orderId) {
+        // Clear cart and shipping data
+        cart.removeAll();
+        clearShippingData();
+        toast.success('OTP verified! Order placed successfully!');
+        setShowOtpField(false);
+        setOtp('');
+        router.push(`/order-success?orderId=${response.data.orderId}`);
+      } else {
+        toast.error(response.data.error || 'Failed to place order');
+      }
+    } catch (error) {
+      console.error('Error placing COD order:', error);
+      if (axios.isAxiosError(error) && error.response) {
+        const errorData = error.response.data;
+        
+        // Handle insufficient stock error
+        if (typeof errorData === 'string' && errorData.includes('Insufficient stock')) {
+          const stockMatch = errorData.match(/Insufficient stock for (.+)\. Available: (\d+), Requested: (\d+)/);
+          if (stockMatch) {
+            const [, productName, available, requested] = stockMatch;
+            toast.error(
+              `Sorry, we don't have enough stock for "${productName}". Only ${available} available, but you requested ${requested}. Please update your cart.`,
+              { duration: 6000 }
+            );
+          } else {
+            toast.error(errorData, { duration: 5000 });
+          }
+        } else if (errorData.error === 'Some products are not available') {
+          toast.error('Some products in your cart are no longer available. Please refresh and try again.');
+        } else {
+          const errorMessage = errorData.error || errorData || 'Failed to place order';
+          toast.error(errorMessage);
+        }
+      } else {
+        toast.error('Failed to place order. Please try again.');
+      }
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  // Show skeleton during hydration
+  if (!isMounted) {
+    return <CheckoutSkeleton />;
+  }
+
   if (items.length === 0) {
     return (
       <Container>
@@ -394,7 +623,7 @@ const CheckoutPage = () => {
           <p className="text-gray-600 mb-6">Add items to your cart to checkout.</p>
           <Link 
             href="/"
-            className="inline-flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-lg font-medium hover:bg-primary/90 transition-colors"
+            className="inline-flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-lg font-medium"
           >
             Continue Shopping
           </Link>
@@ -461,7 +690,7 @@ const CheckoutPage = () => {
                   value={orderNotes}
                   onChange={(e) => setOrderNotes(e.target.value)}
                   placeholder="Any special instructions for your order? (e.g., gift wrapping, specific delivery instructions, preferred delivery time)"
-                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent resize-none transition-all duration-200 hover:border-gray-300"
                   rows={3}
                   maxLength={500}
                 />
@@ -475,18 +704,24 @@ const CheckoutPage = () => {
             </div>
 
             {/* Order Summary Sidebar */}
-            <OrderSummary
-              items={displayItems}
-              totalPrice={totalPrice}
-              loading={loading}
-              showOtpField={showOtpField}
-              otp={otp}
-              otpLoading={otpLoading}
-              phoneNumber={form.getValues('phone')}
-              onSubmit={form.handleSubmit(onSubmit)}
-              onSetOtp={setOtp}
-              onVerifyAndPay={handleVerifyAndPay}
-            />
+            <div className="lg:col-span-5">
+              <OrderSummary
+                items={displayItems}
+                totalPrice={totalPrice}
+                loading={loading}
+                showOtpField={showOtpField}
+                otp={otp}
+                otpLoading={otpLoading}
+                phoneNumber={form.getValues('phone')}
+                paymentMethod={paymentMethod}
+                onPaymentMethodChange={setPaymentMethod}
+                onSubmit={form.handleSubmit(onSubmit)}
+                onSetOtp={setOtp}
+                onVerifyAndPay={handleVerifyAndPay}
+                onPlaceCODOrder={handlePlaceCODOrder}
+                onVerifyAndPlaceCODOrder={handleVerifyAndPlaceCODOrder}
+              />
+            </div>
           </div>
         </div>
       </Container>
@@ -494,10 +729,22 @@ const CheckoutPage = () => {
       {/* Mobile Sticky Checkout Bar */}
       <MobileStickyCheckout
         total={orderTotal}
-        onAction={showOtpField ? handleVerifyAndPay : form.handleSubmit(onSubmit)}
-        actionLabel={showOtpField ? "Verify & Pay" : "Continue"}
+        onAction={
+          showOtpField 
+            ? (paymentMethod === 'COD' ? handleVerifyAndPlaceCODOrder : handleVerifyAndPay)
+            : paymentMethod === 'COD' 
+              ? handlePlaceCODOrder 
+              : form.handleSubmit(onSubmit)
+        }
+        actionLabel={
+          showOtpField 
+            ? (paymentMethod === 'COD' ? "Verify & Place Order" : "Verify & Pay")
+            : paymentMethod === 'COD' 
+              ? `Place Order (₹${orderTotal} COD)` 
+              : "Continue"
+        }
         isLoading={loading || otpLoading}
-        disabled={showOtpField && otp.length !== 6}
+        disabled={(showOtpField && otp.length !== 6) || !shippingData?.serviceable}
       />
     </div>
   );

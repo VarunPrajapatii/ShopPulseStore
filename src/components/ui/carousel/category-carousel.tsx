@@ -8,6 +8,7 @@ import type { Swiper as SwiperType } from 'swiper';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Category } from '@/types';
+import { useInView } from '@/hooks/use-in-view';
 
 import 'swiper/css';
 import 'swiper/css/navigation';
@@ -17,15 +18,28 @@ interface CategoryCarouselProps {
   categories: Category[];
 }
 
+// Helper to check if imageUrl is valid
+const isValidImageUrl = (url: unknown): url is string => {
+  if (!url || typeof url !== 'string') return false;
+  const trimmed = url.trim();
+  if (trimmed === '') return false;
+  // Must start with http://, https://, or /
+  return trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('/');
+};
+
 const CategoryCarousel: React.FC<CategoryCarouselProps> = ({ categories }) => {
   const swiperRef = useRef<SwiperType | null>(null);
+  const { ref, isInView } = useInView({ threshold: 0.1 });
+
+  // Debug log - remove after fixing
+  console.log('Categories:', categories.map(c => ({ name: c.name, imageUrl: c.imageUrl })));
 
   if (!categories || categories.length === 0) {
     return null;
   }
 
   return (
-    <section className="w-full py-10">
+    <section ref={ref} className={`w-full py-10 scroll-animate ${isInView ? 'in-view' : ''}`}>
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -36,14 +50,14 @@ const CategoryCarousel: React.FC<CategoryCarouselProps> = ({ categories }) => {
         <div className="hidden md:flex items-center gap-2">
           <button
             onClick={() => swiperRef.current?.slidePrev()}
-            className="bg-muted hover:bg-border rounded-full p-2 transition-colors"
+            className="bg-muted hover:bg-border rounded-full p-2 hover-scale"
             aria-label="Previous category"
           >
             <ChevronLeft className="w-5 h-5 text-foreground" />
           </button>
           <button
             onClick={() => swiperRef.current?.slideNext()}
-            className="bg-muted hover:bg-border rounded-full p-2 transition-colors"
+            className="bg-muted hover:bg-border rounded-full p-2 hover-scale"
             aria-label="Next category"
           >
             <ChevronRight className="w-5 h-5 text-foreground" />
@@ -94,8 +108,8 @@ const CategoryCarousel: React.FC<CategoryCarouselProps> = ({ categories }) => {
                 href={`/category/${category.id}`}
                 className="group block"
               >
-                <div className="relative aspect-square rounded-2xl overflow-hidden bg-muted shadow-sm group-hover:shadow-lg transition-shadow duration-300">
-                  {category.imageUrl ? (
+                <div className="relative aspect-square rounded-2xl overflow-hidden bg-muted shadow-sm card-hover">
+                  {isValidImageUrl(category.imageUrl) ? (
                     <Image
                       src={category.imageUrl}
                       alt={category.name}
