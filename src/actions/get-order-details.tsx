@@ -2,37 +2,91 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export interface OrderItem {
   id: string;
-  productId: string;
-  variantId?: string | null;   // NEW: For variant tracking
+  productId: string | null;
+  variantId?: string | null;   // For variant tracking
   priceAtPurchase: number;
   quantity: number;
-  productSize: string;         // Size name for display
-  productSizeValue?: string;   // Size value (e.g., "Small", "Medium")
+  productSize: string | null;         // Size name for display
+  productSizeValue?: string | null;   // Size value (e.g., "Small", "Medium")
   productName: string;
-  productImageUrl: string;
+  productImageUrl: string | null;
   productSku?: string | null;  // SKU from product or variant
   lineTotal: number;
+  productStatus: "available" | "archived" | "deleted";
+  
+  // If product is still available
+  currentProduct?: {
+    id: string;
+    name: string;
+    price: number;
+    sellingPrice: number | null;
+    imageUrl: string;
+  };
+  currentVariant?: {
+    id: string;
+    sizeName: string;
+    sizeValue: string;
+    currentStock: number;
+  };
+  
+  // If product was archived
+  archivedProduct?: {
+    id: string;
+    originalProductId: string;
+    name: string;
+    price: number;
+    imageUrl: string;
+    categoryName: string;
+    sizeName: string;
+    sizeValue: string;
+    archivedAt: string;
+    archiveReason: string;
+  };
+}
+
+export interface ShippingAddress {
+  line1: string;
+  line2: string | null;
+  city: string;
+  state: string;
+  pincode: string;
+  country: string;
 }
 
 export interface OrderDetails {
   orderId: string;
   orderItems: OrderItem[];
   isPaid: boolean;
-  orderStatus: string;
+  orderStatus: "PENDING" | "CONFIRMED" | "SHIPPED" | "DELIVERED" | "CANCELLED" | "REFUNDED";
+  
+  // Customer Info
   name: string;
   email: string;
-  address: string;
   phone: string;
+  
+  // Shipping Address (now structured)
+  shippingAddress: ShippingAddress;
+  address?: string; // Legacy fallback
+  
+  // Payment Details
+  paymentMethod: 'PREPAID' | 'COD';
+  codAmount: number | null;            // Amount to collect for COD orders
+  
+  // Pricing Breakdown
   subtotal: number;
   tax: number;
   shippingCost: number;
+  shippingEstimate: number | null;     // Original estimate shown at checkout
   totalAmount: number;
-  razorpayOrderId: string;
-  razorpayPaymentId: string;
+  
+  // Razorpay Details (PREPAID only)
+  razorpayOrderId: string | null;
+  razorpayPaymentId: string | null;
+  
   notes: string | null;
   createdAt: string;
   updatedAt: string;
-  paidAt: string;
+  paidAt: string | null;
 }
 
 const getOrderDetails = async (orderId: string): Promise<OrderDetails | null> => {

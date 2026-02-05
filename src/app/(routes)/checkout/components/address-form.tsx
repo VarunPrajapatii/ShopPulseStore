@@ -1,6 +1,7 @@
 "use client";
 
 import { UseFormReturn, useWatch } from "react-hook-form";
+import { useEffect } from "react";
 import {
   FormControl,
   FormField,
@@ -19,7 +20,8 @@ import {
 } from "@/components/ui/select";
 import { indianStates } from "@/lib/utils";
 import { CheckoutFormValues } from "@/lib/zodSchema";
-import { MapPin, Receipt } from "lucide-react";
+import { MapPin, Receipt, Lock } from "lucide-react";
+import useShipping from "@/hooks/use-shipping";
 
 interface AddressFormProps {
   form: UseFormReturn<CheckoutFormValues>;
@@ -27,12 +29,24 @@ interface AddressFormProps {
 }
 
 const AddressForm: React.FC<AddressFormProps> = ({ form, loading }) => {
+  const { shippingData } = useShipping();
+  
   // Watch the billing toggle to show/hide billing address form
   const isShippingSameAsBilling = useWatch({
     control: form.control,
     name: "isShippingSameAsBilling",
     defaultValue: true,
   });
+
+  // Pre-fill pincode from shipping data if available
+  useEffect(() => {
+    if (shippingData?.pincode) {
+      form.setValue("shippingAddress.pincode", shippingData.pincode);
+    }
+  }, [shippingData?.pincode, form]);
+
+  // Check if pincode has been verified
+  const hasPincodeFromShipping = !!shippingData?.pincode;
 
   return (
     <div className="space-y-8">
@@ -242,14 +256,21 @@ const AddressForm: React.FC<AddressFormProps> = ({ form, loading }) => {
             name="shippingAddress.pincode"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>
+                <FormLabel className="flex items-center gap-2">
                   Pincode <span className="text-red-500">*</span>
+                  {hasPincodeFromShipping && (
+                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground font-normal">
+                      <Lock className="h-3 w-3" />
+                      <span>Change in order summary</span>
+                    </span>
+                  )}
                 </FormLabel>
                 <FormControl>
                   <Input
-                    disabled={loading}
+                    disabled={loading || hasPincodeFromShipping}
                     placeholder="6-digit pincode"
                     maxLength={6}
+                    className={hasPincodeFromShipping ? "bg-muted cursor-not-allowed" : ""}
                     {...field}
                   />
                 </FormControl>

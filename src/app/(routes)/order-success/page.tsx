@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Container from '@/components/ui/container';
-import { CheckCircle, Package, Mail, Phone, MapPin, Calendar, CreditCard, AlertCircle } from 'lucide-react';
+import { CheckCircle, Package, Mail, Phone, MapPin, Calendar, CreditCard, AlertCircle, Banknote, Wallet } from 'lucide-react';
 import Link from 'next/link';
 import confetti from 'canvas-confetti';
 import getOrderDetails, { OrderDetails } from '@/actions/get-order-details';
@@ -17,8 +17,8 @@ const OrderSuccessContent = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
-  useEffect(() => {
-    // Trigger confetti animation on page load
+  // Trigger confetti animation only after successful order fetch
+  const triggerConfetti = () => {
     const duration = 3 * 1000;
     const animationEnd = Date.now() + duration;
     const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
@@ -48,7 +48,7 @@ const OrderSuccessContent = () => {
     }, 250);
 
     return () => clearInterval(interval);
-  }, []);
+  };
 
   useEffect(() => {
     const fetchOrderDetails = async () => {
@@ -62,6 +62,8 @@ const OrderSuccessContent = () => {
         const data = await getOrderDetails(orderId);
         if (data) {
           setOrderDetails(data);
+          // Only trigger confetti on successful order fetch
+          triggerConfetti();
         } else {
           setError(true);
         }
@@ -100,8 +102,11 @@ const OrderSuccessContent = () => {
     const statusConfig: Record<string, { bg: string; text: string; label: string }> = {
       PAID: { bg: 'bg-green-100', text: 'text-green-800', label: 'Payment Confirmed' },
       PAYMENT_INITIATED: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Payment Pending' },
+      PENDING: { bg: 'bg-amber-100', text: 'text-amber-800', label: 'Order Confirmed' },  // COD initial status
+      CONFIRMED: { bg: 'bg-blue-100', text: 'text-blue-800', label: 'Order Confirmed' },
       PROCESSING: { bg: 'bg-blue-100', text: 'text-blue-800', label: 'Processing' },
       SHIPPED: { bg: 'bg-purple-100', text: 'text-purple-800', label: 'Shipped' },
+      OUT_FOR_DELIVERY: { bg: 'bg-indigo-100', text: 'text-indigo-800', label: 'Out for Delivery' },
       DELIVERED: { bg: 'bg-green-100', text: 'text-green-800', label: 'Delivered' },
       CANCELLED: { bg: 'bg-red-100', text: 'text-red-800', label: 'Cancelled' },
     };
@@ -117,8 +122,8 @@ const OrderSuccessContent = () => {
   if (loading) {
     return (
       <Container>
-        <div className="px-4 py-16 sm:px-6 lg:px-8">
-          <div className="max-w-4xl mx-auto text-center">
+        <div className="min-h-[calc(100vh-8rem)] flex items-center justify-center px-4 py-16 sm:px-6 lg:px-8">
+          <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
             <p className="mt-4 text-gray-600">Loading order details...</p>
           </div>
@@ -131,9 +136,9 @@ const OrderSuccessContent = () => {
     return (
       <Container>
         <div className="px-4 py-16 sm:px-6 lg:px-8">
-          <div className="max-w-2xl mx-auto text-center">
+          <div className="max-w-2xl mx-auto text-center animate-fade-in">
             <div className="flex justify-center mb-6">
-              <div className="rounded-full bg-red-100 p-6">
+              <div className="rounded-full bg-red-100 p-6 animate-bounce-in">
                 <AlertCircle className="h-16 w-16 text-red-600" />
               </div>
             </div>
@@ -146,7 +151,7 @@ const OrderSuccessContent = () => {
 
             <Link
               href="/"
-              className="inline-block bg-black text-white px-8 py-3 rounded-lg font-semibold hover:bg-gray-800 transition-colors"
+              className="inline-block bg-black text-white px-8 py-3 rounded-lg font-semibold hover:bg-gray-800 transition-colors btn-press"
             >
               Return to Home
             </Link>
@@ -163,9 +168,9 @@ const OrderSuccessContent = () => {
       <div className="px-4 py-16 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto">
           {/* Success Header */}
-          <div className="text-center mb-12">
+          <div className="text-center mb-12 animate-fade-in">
             <div className="flex justify-center mb-6">
-              <div className="rounded-full bg-green-100 p-6">
+              <div className="rounded-full bg-green-100 p-6 animate-bounce-in">
                 <CheckCircle className="h-16 w-16 text-green-600" />
               </div>
             </div>
@@ -177,7 +182,7 @@ const OrderSuccessContent = () => {
             </p>
 
             {/* Order ID Card */}
-            <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg p-6 mb-6 border border-gray-200">
+            <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg p-6 mb-6 border border-gray-200 animate-fade-in-up">
               <p className="text-sm text-gray-600 mb-2 font-medium">Your Order ID</p>
               <p className="text-2xl font-bold text-gray-900 mb-2 font-mono">{orderDetails.orderId}</p>
               <p className="text-sm text-gray-600">
@@ -186,12 +191,12 @@ const OrderSuccessContent = () => {
             </div>
 
             {/* Order Status Badge */}
-            <div className="mb-4">{getStatusBadge(orderDetails.orderStatus)}</div>
+            <div className="mb-4 animate-fade-in-up">{getStatusBadge(orderDetails.orderStatus)}</div>
           </div>
 
           <div className="space-y-8">
             {/* Order Items */}
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <div className="bg-white rounded-lg border border-gray-200 p-6 animate-fade-in-up">
               <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
                 <Package className="h-6 w-6" />
                 Order Items
@@ -201,13 +206,19 @@ const OrderSuccessContent = () => {
                 {orderDetails.orderItems.map((item) => (
                   <div key={item.id} className="flex gap-4 p-4 bg-gray-50 rounded-lg">
                     <div className="relative w-24 h-24 flex-shrink-0 bg-white rounded-md overflow-hidden border border-gray-200">
-                      <Image
-                        src={item.productImageUrl}
-                        alt={item.productName}
-                        fill
-                        sizes="96px"
-                        className="object-cover"
-                      />
+                      {item.productImageUrl ? (
+                        <Image
+                          src={item.productImageUrl}
+                          alt={item.productName}
+                          fill
+                          sizes="96px"
+                          className="object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                          <Package className="h-8 w-8 text-gray-400" />
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex-1 min-w-0">
@@ -259,10 +270,28 @@ const OrderSuccessContent = () => {
                       <Currency amount={orderDetails.shippingCost.toString()} />
                     )}
                   </div>
+                  {/* COD Charge - Only for COD orders */}
+                  {orderDetails.paymentMethod === 'COD' && orderDetails.codAmount && (
+                    (() => {
+                      // Calculate COD charge: codAmount - subtotal - shippingCost - tax
+                      const codCharge = orderDetails.codAmount - orderDetails.subtotal - orderDetails.shippingCost - orderDetails.tax;
+                      return codCharge > 0 ? (
+                        <div className="flex justify-between text-gray-600">
+                          <span>COD Handling Charge</span>
+                          <Currency amount={codCharge.toString()} />
+                        </div>
+                      ) : null;
+                    })()
+                  )}
                   <div className="flex justify-between text-xl font-bold text-gray-900 pt-2 border-t border-gray-200">
                     <span>Total</span>
                     <Currency amount={orderDetails.totalAmount.toString()} />
                   </div>
+                  {orderDetails.paymentMethod === 'COD' && !orderDetails.isPaid && (
+                    <p className="text-sm text-amber-600 text-right">
+                      Pay on Delivery
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -270,7 +299,7 @@ const OrderSuccessContent = () => {
             {/* Customer & Delivery Information */}
             <div className="grid md:grid-cols-2 gap-6">
               {/* Contact Information */}
-              <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <div className="bg-white rounded-lg border border-gray-200 p-6 animate-fade-in-up" style={{ animationDelay: '500ms' }}>
                 <h3 className="text-xl font-bold text-gray-900 mb-4">Contact Information</h3>
 
                 <div className="space-y-4">
@@ -296,14 +325,31 @@ const OrderSuccessContent = () => {
               </div>
 
               {/* Delivery Address */}
-              <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <div className="bg-white rounded-lg border border-gray-200 p-6 animate-fade-in-up" style={{ animationDelay: '550ms' }}>
                 <h3 className="text-xl font-bold text-gray-900 mb-4">Delivery Address</h3>
 
                 <div className="flex items-start gap-3">
                   <MapPin className="h-5 w-5 text-gray-400 mt-0.5 flex-shrink-0" />
                   <div>
                     <p className="text-sm text-gray-600 mb-1">Shipping To</p>
-                    <p className="text-gray-900 leading-relaxed">{orderDetails.address}</p>
+                    {/* Support both structured address and legacy string address */}
+                    {orderDetails.shippingAddress ? (
+                      <div className="text-gray-900 leading-relaxed">
+                        <p>{orderDetails.shippingAddress.line1}</p>
+                        {orderDetails.shippingAddress.line2 && (
+                          <p>{orderDetails.shippingAddress.line2}</p>
+                        )}
+                        <p>{orderDetails.shippingAddress.city}, {orderDetails.shippingAddress.state}</p>
+                        <p>{orderDetails.shippingAddress.pincode}</p>
+                        {orderDetails.shippingAddress.country && orderDetails.shippingAddress.country !== 'India' && (
+                          <p>{orderDetails.shippingAddress.country}</p>
+                        )}
+                      </div>
+                    ) : orderDetails.address ? (
+                      <p className="text-gray-900 leading-relaxed">{orderDetails.address}</p>
+                    ) : (
+                      <p className="text-gray-500">Address not available</p>
+                    )}
                     <p className="text-xs text-gray-500 mt-2">
                       Your order will be delivered to this address.
                     </p>
@@ -315,7 +361,7 @@ const OrderSuccessContent = () => {
             {/* Order Timeline & Payment Info */}
             <div className="grid md:grid-cols-2 gap-6">
               {/* Order Timeline */}
-              <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <div className="bg-white rounded-lg border border-gray-200 p-6 animate-fade-in-up" style={{ animationDelay: '600ms' }}>
                 <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
                   <Calendar className="h-5 w-5" />
                   Order Timeline
@@ -343,28 +389,78 @@ const OrderSuccessContent = () => {
               </div>
 
               {/* Payment Information */}
-              <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <div className="bg-white rounded-lg border border-gray-200 p-6 animate-fade-in-up" style={{ animationDelay: '650ms' }}>
                 <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-                  <CreditCard className="h-5 w-5" />
+                  {orderDetails.paymentMethod === 'COD' ? (
+                    <Banknote className="h-5 w-5" />
+                  ) : (
+                    <CreditCard className="h-5 w-5" />
+                  )}
                   Payment Details
                 </h3>
 
                 <div className="space-y-3">
+                  {/* Payment Method */}
                   <div>
-                    <p className="text-sm text-gray-600">Payment Status</p>
-                    <p className={`font-semibold ${orderDetails.isPaid ? 'text-green-600' : 'text-yellow-600'}`}>
-                      {orderDetails.isPaid ? 'Paid' : 'Pending'}
+                    <p className="text-sm text-gray-600">Payment Method</p>
+                    <p className="font-semibold text-gray-900 flex items-center gap-2">
+                      {orderDetails.paymentMethod === 'COD' ? (
+                        <>
+                          <Wallet className="h-4 w-4 text-amber-600" />
+                          Cash on Delivery
+                        </>
+                      ) : (
+                        <>
+                          <CreditCard className="h-4 w-4 text-blue-600" />
+                          Online Payment
+                        </>
+                      )}
                     </p>
                   </div>
 
+                  {/* COD-specific messaging */}
+                  {orderDetails.paymentMethod === 'COD' && (
+                    <div className="pt-3 border-t border-gray-100">
+                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                        <p className="text-sm text-amber-800 font-medium">
+                          Pay <Currency amount={orderDetails.totalAmount.toString()} className="inline font-bold" /> on delivery
+                        </p>
+                        <p className="text-xs text-amber-700 mt-1">
+                          Please keep the exact amount ready when your order arrives.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Payment Status */}
                   <div className="pt-3 border-t border-gray-100">
-                    <p className="text-sm text-gray-600">Razorpay Order ID</p>
-                    <p className="text-gray-900 font-mono text-sm break-all">
-                      {orderDetails.razorpayOrderId}
+                    <p className="text-sm text-gray-600">Payment Status</p>
+                    <p className={`font-semibold ${
+                      orderDetails.isPaid 
+                        ? 'text-green-600' 
+                        : orderDetails.paymentMethod === 'COD' 
+                          ? 'text-amber-600' 
+                          : 'text-yellow-600'
+                    }`}>
+                      {orderDetails.isPaid 
+                        ? 'Paid' 
+                        : orderDetails.paymentMethod === 'COD' 
+                          ? 'Pay on Delivery' 
+                          : 'Pending'}
                     </p>
                   </div>
 
-                  {orderDetails.razorpayPaymentId && (
+                  {/* Razorpay IDs - only for online payments */}
+                  {orderDetails.paymentMethod !== 'COD' && orderDetails.razorpayOrderId && (
+                    <div className="pt-3 border-t border-gray-100">
+                      <p className="text-sm text-gray-600">Razorpay Order ID</p>
+                      <p className="text-gray-900 font-mono text-sm break-all">
+                        {orderDetails.razorpayOrderId}
+                      </p>
+                    </div>
+                  )}
+
+                  {orderDetails.paymentMethod !== 'COD' && orderDetails.razorpayPaymentId && (
                     <div className="pt-3 border-t border-gray-100">
                       <p className="text-sm text-gray-600">Razorpay Payment ID</p>
                       <p className="text-gray-900 font-mono text-sm break-all">
@@ -377,7 +473,7 @@ const OrderSuccessContent = () => {
             </div>
 
             {/* Email Confirmation Notice */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 animate-fade-in-up" style={{ animationDelay: '700ms' }}>
               <div className="flex gap-3">
                 <Mail className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
                 <div>
@@ -392,10 +488,10 @@ const OrderSuccessContent = () => {
             </div>
 
             {/* Action Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-center pt-6">
+            <div className="flex flex-col sm:flex-row gap-4 justify-center pt-6 animate-fade-in-up" style={{ animationDelay: '800ms' }}>
               <Link
                 href="/"
-                className="bg-black text-white px-8 py-3 rounded-lg font-semibold hover:bg-gray-800 transition-colors text-center"
+                className="bg-black text-white px-8 py-3 rounded-lg font-semibold hover:bg-gray-800 transition-colors text-center btn-press"
               >
                 Continue Shopping
               </Link>

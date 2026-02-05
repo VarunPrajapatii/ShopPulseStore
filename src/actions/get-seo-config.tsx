@@ -20,7 +20,6 @@ const getSEOConfig = async (): Promise<StoreSEOConfig | null> => {
       throw new Error(`HTTP error! status: ${res.status}`);
     }
 
-    console.log('Fetched SEO config for storeId:', storeId, await res.clone().json());
     
     const contentType = res.headers.get('content-type');
     if (!contentType || !contentType.includes('application/json')) {

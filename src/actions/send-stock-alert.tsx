@@ -6,6 +6,8 @@ interface StockAlertResponse {
   productName: string;
   currentStock: number;
   lowStockThreshold: number;
+  hasVariants?: boolean;
+  lowStockVariants?: { sizeName: string; stock: number; threshold: number }[];
 }
 
 const sendStockAlert = async (productId: string): Promise<StockAlertResponse | null> => {
@@ -14,10 +16,15 @@ const sendStockAlert = async (productId: string): Promise<StockAlertResponse | n
       return null;
     }
 
+    if (!API_URL) {
+      console.error('API_URL is not defined');
+      return null;
+    }
+
     const url = `${API_URL}/stock-alert/${productId}`;
     
     const res = await fetch(url, {
-      method: 'POST',
+      method: 'GET',
       cache: 'no-store',
     });
     

@@ -7,6 +7,7 @@ import ProductList from '@/components/product-list';
 import Container from '@/components/ui/container';
 import React from 'react'
 import { Metadata } from 'next';
+import ProductPageClient from './product-page-client';
 
 interface ProductPageProps {
     params: Promise<{
@@ -170,22 +171,10 @@ const ProductPage: React.FC<ProductPageProps> = async ({ params }) => {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
       />
       
-      <div className='bg-white'>
-        <Container>
-          <article className='px-4 py-10 sm:px-6 lg:px-8'>
-            <div className='lg:grid lg:grid-cols-2 lg:items-start lg:gap-x-8'>
-              <Gallery images={product?.images || []} />
-              <div className='mt-10 px-4 sm:mt-16 sm:px-0 lg:mt-0'>
-                <Info data={product} />
-              </div>
-            </div>
-            <hr className='my-10' />
-            <section>
-              <ProductList title="Related Items" items={suggestedProducts} />
-            </section>
-          </article>
-        </Container>
-      </div>
+      <ProductPageClient 
+        product={product}
+        suggestedProducts={suggestedProducts}
+      />
     </>
   )
 }

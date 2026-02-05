@@ -157,7 +157,7 @@ const CategoryPage = async ({ params }: CategoryPageProps) => {
       <Container>
         <article className="space-y-6 pb-10">
           {/* Breadcrumb Navigation */}
-          <div className="px-4 sm:px-6 lg:px-8 pt-2">
+          <div className="px-4 sm:px-6 lg:px-8 pt-2 animate-fade-in">
             <Breadcrumb
               items={[
                 { label: 'Home', href: '/' },
@@ -170,7 +170,7 @@ const CategoryPage = async ({ params }: CategoryPageProps) => {
           <CategoryBillboardsClient categoryId={categoryId} />
 
           {/* Category Header */}
-          <header className="px-4 sm:px-6 lg:px-8">
+          <header className="px-4 sm:px-6 lg:px-8 animate-fade-in-up" style={{ animationDelay: '100ms' }}>
             <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
               {category.name}
             </h1>
@@ -180,7 +180,7 @@ const CategoryPage = async ({ params }: CategoryPageProps) => {
           </header>
 
           {/* Products Section with Sorting, Filtering & Pagination */}
-          <section className="px-4 sm:px-6 lg:px-8">
+          <section className="px-4 sm:px-6 lg:px-8 animate-fade-in-up" >
             <CategoryProductsEnhanced 
               products={products} 
               category={category}

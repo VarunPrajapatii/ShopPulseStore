@@ -3,10 +3,11 @@
 import Button from '@/components/ui/button';
 import Currency from '@/components/ui/currency';
 import TrustBadges from '@/components/ui/trust-badges';
+import PincodeChecker from '@/components/pincode-checker';
+import useShipping from '@/hooks/use-shipping';
 import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { ArrowRight, Lock, Tag, Truck } from 'lucide-react';
-import { formatPrice } from '@/lib/utils';
+import { ArrowRight, Lock, Tag, Truck, AlertCircle } from 'lucide-react';
 
 interface SummaryProps { 
   onCheckout: () => void;
@@ -22,35 +23,61 @@ const Summary: React.FC<SummaryProps> = ({
   hasStockIssues = false
 }) => {
   const [isMounted, setIsMounted] = useState(false);
+  const { shippingData } = useShipping();
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  // Has pincode been checked?
+  const hasPincodeChecked = !!shippingData?.pincode;
+  // Is pincode serviceable? Only matters if pincode has been checked
+  const isServiceable = shippingData?.serviceable ?? false;
+  // Block checkout only if pincode has been checked AND is not serviceable
+  const isPincodeBlocking = hasPincodeChecked && !isServiceable;
 
   const handleCheckout = () => {
     if (hasStockIssues) {
       toast.error('Please resolve stock issues before proceeding to checkout.');
       return;
     }
+    // If pincode has been checked and is not serviceable, block checkout
+    if (isPincodeBlocking) {
+      toast.error('Delivery is not available to the entered pincode. Please try a different pincode.');
+      return;
+    }
     onCheckout();
   };
 
-  // Calculate breakdown (shipping is free above ₹499)
+  // Calculate breakdown
   const subtotal = totalPrice;
-  const shippingThreshold = 499;
-  const shippingCost = subtotal >= shippingThreshold ? 0 : 49;
+  // Use shipping cost from pincode check
+  const shippingCost = (hasPincodeChecked && isServiceable && shippingData?.deliveryCharge) 
+    ? shippingData.deliveryCharge 
+    : 0;
   const tax = 0; // Tax included in price
   const orderTotal = subtotal + shippingCost + tax;
+
+  // Checkout button disabled conditions:
+  // 1. No items in cart
+  // 2. Stock issues exist
+  // 3. Pincode has been checked AND is not serviceable
+  const canCheckout = itemsLength > 0 && !hasStockIssues && !isPincodeBlocking;
 
   if (!isMounted) {
     return null;
   }
 
   return (
-    <div className="mt-16 rounded-xl bg-gray-50 px-4 py-6 sm:p-6 lg:col-span-5 lg:mt-0 lg:p-8 lg:sticky lg:top-4">
+    <div className="mt-16 rounded-xl bg-gray-50 px-4 py-6 sm:p-6 lg:col-span-5 lg:mt-0 lg:p-8 lg:sticky lg:top-20">
       <h2 className="text-lg font-semibold text-gray-900">
         Order Summary
       </h2>
+
+      {/* Pincode Checker */}
+      <div className="mt-4">
+        <PincodeChecker compact />
+      </div>
 
       {/* Price Breakdown */}
       <div className="mt-6 space-y-3">
@@ -64,20 +91,16 @@ const Summary: React.FC<SummaryProps> = ({
             <Truck className="h-4 w-4" />
             <span>Shipping</span>
           </div>
-          {shippingCost === 0 ? (
+          {!hasPincodeChecked ? (
+            <span className="text-muted-foreground text-xs">Enter pincode</span>
+          ) : !isServiceable ? (
+            <span className="text-red-600 text-xs">Not available</span>
+          ) : shippingCost === 0 ? (
             <span className="text-green-600 font-medium">FREE</span>
           ) : (
             <Currency amount={shippingCost} />
           )}
         </div>
-
-        {shippingCost > 0 && (
-          <div className="bg-amber-50 rounded-lg p-3 text-xs text-amber-800">
-            <p>
-              Add <strong>{formatPrice(shippingThreshold - subtotal)}</strong> more for FREE shipping!
-            </p>
-          </div>
-        )}
 
         <div className="flex items-center justify-between text-sm">
           <span className="text-gray-600">Tax (Included)</span>
@@ -102,7 +125,7 @@ const Summary: React.FC<SummaryProps> = ({
           </span>
         </div>
 
-        {subtotal > 0 && shippingCost === 0 && (
+        {hasPincodeChecked && isServiceable && shippingCost === 0 && (
           <div className="flex items-center justify-center gap-2 text-xs text-green-600">
             <Truck className="h-3.5 w-3.5" />
             <span>You qualify for FREE shipping!</span>
@@ -112,12 +135,17 @@ const Summary: React.FC<SummaryProps> = ({
 
       {/* Checkout Button */}
       <Button 
-        disabled={itemsLength === 0 || hasStockIssues} 
+        disabled={!canCheckout} 
         onClick={handleCheckout} 
         className='w-full mt-6 gap-2 h-12 text-base'
       >
         {hasStockIssues ? (
           'Resolve Stock Issues'
+        ) : isPincodeBlocking ? (
+          <>
+            <AlertCircle className="h-4 w-4" />
+            <span>Delivery Not Available</span>
+          </>
         ) : (
           <>
             <Lock className="h-4 w-4" />
@@ -130,6 +158,12 @@ const Summary: React.FC<SummaryProps> = ({
       {hasStockIssues && (
         <p className="text-xs text-red-600 text-center mt-2">
           Update item quantities to proceed
+        </p>
+      )}
+
+      {isPincodeBlocking && (
+        <p className="text-xs text-red-600 text-center mt-2">
+          Change pincode or contact support for delivery options
         </p>
       )}
 
