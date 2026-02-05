@@ -5,7 +5,7 @@ import { Image as ImageType } from '@/types';
 import GalleryTab from '@/components/gallery/gallery-tab';
 import Image from 'next/image';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 interface GalleryProps {
   images: ImageType[];
@@ -13,6 +13,9 @@ interface GalleryProps {
 
 const Gallery: React.FC<GalleryProps> = ({ images }) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const thumbnailContainerRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
 
   const goToPrevious = () => {
     setSelectedIndex((prev) => (prev > 0 ? prev - 1 : images.length - 1));
@@ -22,14 +25,88 @@ const Gallery: React.FC<GalleryProps> = ({ images }) => {
     setSelectedIndex((prev) => (prev < images.length - 1 ? prev + 1 : 0));
   };
 
+  // Check scroll state for thumbnail carousel
+  const checkScrollState = () => {
+    const container = thumbnailContainerRef.current;
+    if (container) {
+      setCanScrollLeft(container.scrollLeft > 0);
+      setCanScrollRight(
+        container.scrollLeft < container.scrollWidth - container.clientWidth - 1
+      );
+    }
+  };
+
+  useEffect(() => {
+    checkScrollState();
+    const container = thumbnailContainerRef.current;
+    if (container) {
+      container.addEventListener('scroll', checkScrollState);
+      // Also check on resize
+      window.addEventListener('resize', checkScrollState);
+      return () => {
+        container.removeEventListener('scroll', checkScrollState);
+        window.removeEventListener('resize', checkScrollState);
+      };
+    }
+  }, [images]);
+
+  const scrollThumbnails = (direction: 'left' | 'right') => {
+    const container = thumbnailContainerRef.current;
+    if (container) {
+      const scrollAmount = 120; // Width of one thumbnail + gap
+      container.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth',
+      });
+    }
+  };
+
+  // Get thumbnails excluding the currently selected image
+  const thumbnailImages = images.filter((_, index) => index !== selectedIndex);
+
   return (
     <Tab.Group as="div" className="flex flex-col-reverse" selectedIndex={selectedIndex} onChange={setSelectedIndex}>
+        {/* Thumbnail Carousel */}
         <div className='mx-auto mt-6 w-full max-w-2xl hidden sm:block lg:max-w-none'>
-            <Tab.List className="grid grid-cols-4 gap-6">
-                {images.map((image) => (
-                    <GalleryTab key={image.id} image={image} />
-                ))}
-            </Tab.List>
+          <div className="relative">
+            {/* Left scroll button */}
+            {canScrollLeft && images.length > 4 && (
+              <button
+                onClick={() => scrollThumbnails('left')}
+                className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white/90 hover:bg-white rounded-full p-1.5 shadow-md transition-all duration-200 hover:scale-110 -ml-3"
+                aria-label="Scroll thumbnails left"
+              >
+                <ChevronLeft size={16} className="text-gray-700" />
+              </button>
+            )}
+            
+            {/* Thumbnails container */}
+            <div 
+              ref={thumbnailContainerRef}
+              className="flex gap-4 overflow-x-auto scrollbar-hide scroll-smooth px-1"
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            >
+              {images.map((image, index) => (
+                <div key={image.id} className="flex-shrink-0">
+                  <GalleryTab 
+                    image={image} 
+                    isSelected={index === selectedIndex}
+                  />
+                </div>
+              ))}
+            </div>
+
+            {/* Right scroll button */}
+            {canScrollRight && images.length > 4 && (
+              <button
+                onClick={() => scrollThumbnails('right')}
+                className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white/90 hover:bg-white rounded-full p-1.5 shadow-md transition-all duration-200 hover:scale-110 -mr-3"
+                aria-label="Scroll thumbnails right"
+              >
+                <ChevronRight size={16} className="text-gray-700" />
+              </button>
+            )}
+          </div>
         </div>
         
         {/* Selected Image with Navigation */}

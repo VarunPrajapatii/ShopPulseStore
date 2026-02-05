@@ -3,11 +3,11 @@
 import { Product } from '@/types';
 import Image from 'next/image';
 import IconButton from '@/components/ui/icon-button';
-import { Expand, ShoppingCart, Sparkles } from 'lucide-react';
+import { Expand, Sparkles } from 'lucide-react';
 import PriceDisplay from '@/components/ui/price-display';
 import { useRouter } from 'next/navigation';
 import usePreviewModal from '@/hooks/use-preview-modal';
-import { cn } from '@/lib/utils';
+import { cn, getVariantPriceRange, formatPrice } from '@/lib/utils';
 
 interface ProductCardProps {
   data: Product;
@@ -35,6 +35,9 @@ const ProductCard: React.FC<ProductCardProps> = ({ data, isNewArrival = false })
   // Count available sizes (only for variant products)
   const availableSizesCount = sortedVariants.filter(v => v.stockQuantity > 0).length;
   
+  // Get price range for variant products
+  const priceRange = getVariantPriceRange(data);
+  
   const handleClick = () => {
     router.push(`/product/${data?.id}`);
   }
@@ -44,21 +47,21 @@ const ProductCard: React.FC<ProductCardProps> = ({ data, isNewArrival = false })
     previewModal.onOpen(data);
   }
 
-  const onAddToCart: React.MouseEventHandler<HTMLButtonElement> = (e) => {
-    e.stopPropagation();
-    // Redirect to product page to select size
-    router.push(`/product/${data?.id}`);
-  }
+  // const onAddToCart: React.MouseEventHandler<HTMLButtonElement> = (e) => {
+  //   e.stopPropagation();
+  //   // Redirect to product page to select size
+  //   router.push(`/product/${data?.id}`);
+  // }
 
-  // Check if product has a valid discount
+  // Check if product has a valid discount (for non-variant products or when showing base price)
   const hasDiscount = data.sellingPrice && 
                       data.sellingPrice > 0 && 
                       data.sellingPrice < Number(data.price);
 
   return (
-    <div onClick={handleClick} className="bg-card group cursor-pointer rounded-xl border border-border p-3 space-y-4 transition-shadow hover:shadow-md">
+    <div onClick={handleClick} className="bg-card group cursor-pointer rounded-xl border border-border p-3 space-y-4 product-card-hover">
       {/* images and actions */}
-      <div className="aspect-square rounded-xl bg-muted relative overflow-hidden">
+      <div className="aspect-square rounded-xl bg-muted relative overflow-hidden image-zoom-subtle">
         <Image
           src={data?.images?.[0]?.url}
           alt={data.name}
@@ -71,15 +74,9 @@ const ProductCard: React.FC<ProductCardProps> = ({ data, isNewArrival = false })
         <div className="absolute top-2 left-2 flex flex-col gap-1.5">
           {/* NEW Badge */}
           {isNewArrival && !isOutOfStock && (
-            <div className="bg-primary text-primary-foreground text-xs font-bold px-2.5 py-1 rounded-full shadow-md flex items-center gap-1">
+            <div className="bg-primary text-primary-foreground text-xs font-bold px-2.5 py-1 rounded-full shadow-md flex items-center gap-1 badge-pop">
               <Sparkles className="w-3 h-3" />
               NEW
-            </div>
-          )}
-          {/* SALE Badge */}
-          {hasDiscount && !isOutOfStock && (
-            <div className="bg-success text-success-foreground text-xs font-bold px-2.5 py-1 rounded-full shadow-md">
-              SALE
             </div>
           )}
         </div>
@@ -97,12 +94,12 @@ const ProductCard: React.FC<ProductCardProps> = ({ data, isNewArrival = false })
               onClick={onPreview}
               icon={<Expand size={20} className='text-muted-foreground' />}
              />
-             {!isOutOfStock && (
+             {/* {!isOutOfStock && (
                <IconButton 
                  onClick={onAddToCart}
                  icon={<ShoppingCart size={20} className='text-muted-foreground' />}
                />
-             )}
+             )} */}
           </div>
         </div>
       </div>
@@ -144,25 +141,28 @@ const ProductCard: React.FC<ProductCardProps> = ({ data, isNewArrival = false })
           </p>
         )}
         
-        {/* Stock info for non-variant products */}
-        {!isVariantProduct && !isOutOfStock && (
-          <p className='text-xs text-muted-foreground mt-1'>
-            In Stock
-          </p>
-        )}
-        
         <p className='text-sm text-muted-foreground mt-1'>
           {data.category?.name}
         </p>
       </div>
 
-      {/* Price - Using new PriceDisplay component */}
+      {/* Price - Using new PriceDisplay component with variant price range support */}
       <div className='flex items-center justify-between'>
-        <PriceDisplay 
-          price={data.price} 
-          sellingPrice={data.sellingPrice} 
-          size="sm"
-        />
+        {isVariantProduct && priceRange.hasRange ? (
+          // Show price range for variant products with different prices
+          <div className='flex flex-col'>
+            <span className='text-lg font-bold text-foreground'>
+              {formatPrice(priceRange.minPrice)} - {formatPrice(priceRange.maxPrice)}
+            </span>
+          </div>
+        ) : (
+          // Show regular price display for non-variant products or uniform pricing
+          <PriceDisplay 
+            price={data.price} 
+            sellingPrice={isVariantProduct ? priceRange.minPrice : data.sellingPrice} 
+            size="sm"
+          />
+        )}
       </div>
     </div>
   );

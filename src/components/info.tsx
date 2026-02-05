@@ -4,18 +4,22 @@ import { Product, ProductVariant } from '@/types'
 import React, { useEffect, useState } from 'react'
 import PriceDisplay from '@/components/ui/price-display'
 import Button from '@/components/ui/button'
-import { ShoppingCart, Check, AlertCircle } from 'lucide-react'
+import { ShoppingCart, Check, Plus, Minus } from 'lucide-react'
 import useCart from '@/hooks/use-cart'
 import sendStockAlert from '@/actions/send-stock-alert'
 import { WarrantyBadge, SpecificationsTable, SizeSelector } from '@/components/product'
+import usePreviewModal from '@/hooks/use-preview-modal'
+import { getDisplayPrices } from '@/lib/utils'
 
 interface InfoProps {
     data: Product
 }
 
 const Info: React.FC<InfoProps> = ({ data }) => {
+  const previewModal = usePreviewModal();
   const cart = useCart();
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
+  const [quantity, setQuantity] = useState(1);
   
   // Check if this is a variant product
   const isVariantProduct = data.hasVariants && Array.isArray(data.variants) && data.variants.length > 0;
@@ -24,6 +28,21 @@ const Info: React.FC<InfoProps> = ({ data }) => {
   const availableSizes = isVariantProduct 
     ? [...data.variants].sort((a, b) => a.displayOrder - b.displayOrder)
     : [];
+  
+  // Auto-select first in-stock variant on mount
+  useEffect(() => {
+    if (isVariantProduct && availableSizes.length > 0 && !selectedVariant) {
+      const firstInStockVariant = availableSizes.find(v => v.stockQuantity > 0);
+      if (firstInStockVariant) {
+        setSelectedVariant(firstInStockVariant);
+      }
+    }
+  }, [isVariantProduct, availableSizes, selectedVariant]);
+  
+  // Reset quantity when variant changes
+  useEffect(() => {
+    setQuantity(1);
+  }, [selectedVariant?.id]);
   
   // Get current stock based on product type
   const getCurrentStock = () => {
@@ -49,6 +68,9 @@ const Info: React.FC<InfoProps> = ({ data }) => {
     ? availableSizes.some(v => v.stockQuantity > 0)
     : (data.baseStockQuantity ?? 0) > 0;
 
+  // Get display prices - updates based on selected variant
+  const displayPrices = getDisplayPrices(data, selectedVariant);
+
   // Send stock alert when stock is low
   useEffect(() => {
     if (isVariantProduct && selectedVariant && selectedVariant.stockQuantity <= selectedVariant.lowStockThreshold) {
@@ -63,7 +85,8 @@ const Info: React.FC<InfoProps> = ({ data }) => {
     
     if (isVariantProduct) {
       if (!selectedVariant) return; // Button should be disabled anyway
-      cart.addItem(data, selectedVariant);
+      cart.addItem(data, selectedVariant, quantity);
+      previewModal.onClose();
     } else {
       // For non-variant products, create a "default" variant
       const defaultVariant: ProductVariant = {
@@ -75,10 +98,30 @@ const Info: React.FC<InfoProps> = ({ data }) => {
         lowStockThreshold: data.baseLowStockThreshold ?? 5,
         sku: data.sku,
         displayOrder: 0,
+        // Non-variant products don't have variant-specific pricing
+        price: null,
+        sellingPrice: null,
       };
-      cart.addItem(data, defaultVariant);
+      cart.addItem(data, defaultVariant, quantity);
     }
+    setQuantity(1); // Reset quantity after adding to cart
   }
+  
+  // Quantity controls
+  const canIncreaseQuantity = quantity < currentStock;
+  const canDecreaseQuantity = quantity > 1;
+  
+  const increaseQuantity = () => {
+    if (canIncreaseQuantity) {
+      setQuantity(prev => prev + 1);
+    }
+  };
+  
+  const decreaseQuantity = () => {
+    if (canDecreaseQuantity) {
+      setQuantity(prev => prev - 1);
+    }
+  };
 
   // Function to format description with bold "Ingredients:" if present
   const formatDescription = (description: string) => {
@@ -135,11 +178,11 @@ const Info: React.FC<InfoProps> = ({ data }) => {
           </div>
         )}
 
-        {/* Price Display with Discount */}
+        {/* Price Display with Discount - Updates based on selected variant */}
         <div className='flex items-end justify-between'>
           <PriceDisplay 
-            price={data.price} 
-            sellingPrice={data.sellingPrice} 
+            price={displayPrices.mrp} 
+            sellingPrice={displayPrices.hasDiscount ? displayPrices.sellingPrice : null} 
             size="lg"
           />
         </div>
@@ -211,21 +254,57 @@ const Info: React.FC<InfoProps> = ({ data }) => {
 
       <hr className='border-border' />
 
-      {/* Add to Cart Button */}
-      <section className='pt-4'>
+      {/* Quantity Selector and Add to Cart */}
+      <section className='pt-4 space-y-4'>
         {!isInStock ? (
           <div className='w-full flex items-center justify-center gap-x-2 bg-muted text-muted-foreground py-3 px-6 rounded-lg font-medium cursor-not-allowed'>
             Out of Stock
           </div>
         ) : (
-          <Button 
-            onClick={onAddToCart}
-            disabled={isAddToCartDisabled}
-            className='w-full flex items-center justify-center gap-x-2 bg-primary hover:bg-primary/90 text-primary-foreground py-3 px-6 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
-          >
-            {isVariantProduct && !selectedVariant ? 'Select a Size' : 'Add to Cart'}
-            <ShoppingCart size={18} />
-          </Button>
+          <>
+            {/* Quantity Selector */}
+            <div className='flex items-center gap-4'>
+              <span className='text-sm font-medium text-foreground'>Quantity:</span>
+              <div className='flex items-center gap-2'>
+                <button
+                  type="button"
+                  onClick={decreaseQuantity}
+                  disabled={!canDecreaseQuantity || isAddToCartDisabled}
+                  className='w-10 h-10 rounded-lg border border-border flex items-center justify-center hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:scale-105 active:scale-95'
+                >
+                  <Minus size={16} />
+                </button>
+                <span className='w-12 text-center text-lg font-semibold text-foreground'>
+                  {quantity}
+                </span>
+                <button
+                  type="button"
+                  onClick={increaseQuantity}
+                  disabled={!canIncreaseQuantity || isAddToCartDisabled}
+                  className='w-10 h-10 rounded-lg border border-border flex items-center justify-center hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:scale-105 active:scale-95'
+                  title={!canIncreaseQuantity ? `Maximum stock available: ${currentStock}` : ''}
+                >
+                  <Plus size={16} />
+                </button>
+              </div>
+              {/* Low stock warning */}
+              {isLowStock && (
+                <span className='text-sm text-warning font-medium'>
+                  Only {currentStock} left!
+                </span>
+              )}
+            </div>
+            
+            {/* Add to Cart Button */}
+            <Button 
+              onClick={onAddToCart}
+              disabled={isAddToCartDisabled}
+              className='w-full flex items-center justify-center gap-x-2 bg-primary hover:bg-primary/90 text-primary-foreground py-3 px-6 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
+            >
+              {isVariantProduct && !selectedVariant ? 'Select a Size' : `Add ${quantity > 1 ? `${quantity} Items` : ''} to Cart`}
+              <ShoppingCart size={18} />
+            </Button>
+          </>
         )}
       </section>
     </article>
