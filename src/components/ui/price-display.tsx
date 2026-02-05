@@ -68,15 +68,15 @@ const PriceDisplay: React.FC<PriceDisplayProps> = ({
   // Size-based styles
   const styles = {
     sm: {
-      container: 'flex items-center gap-1.5 flex-wrap',
-      salePrice: 'text-base font-bold text-success',
-      originalPrice: 'text-xs text-muted-foreground line-through',
-      regularPrice: 'text-base font-bold text-foreground',
+      container: 'flex items-center gap-2 flex-wrap',
+      salePrice: 'text-lg font-bold text-foreground',
+      originalPrice: 'text-sm text-muted-foreground line-through',
+      regularPrice: 'text-lg font-bold text-foreground',
       badge: 'text-[10px] font-semibold bg-success/10 text-success px-1.5 py-0.5 rounded',
     },
     lg: {
       container: 'flex items-center gap-2 flex-wrap',
-      salePrice: 'text-2xl font-bold text-success',
+      salePrice: 'text-2xl font-bold text-foreground',
       originalPrice: 'text-lg text-muted-foreground line-through',
       regularPrice: 'text-2xl font-bold text-foreground',
       badge: 'text-sm font-semibold bg-success/10 text-success px-2 py-0.5 rounded-md',

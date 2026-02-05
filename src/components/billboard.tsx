@@ -60,7 +60,7 @@ const Billboard: React.FC<BillboardProps> = ({ data }) => {
     <div className="relative w-full overflow-hidden">
       <div className="relative rounded-xl overflow-hidden">
         {/* Billboard Container with Sliding Animation */}
-        <div className="relative aspect-square md:aspect-[2.4/1]">
+        <div className="relative aspect-square md:aspect-[2.4/1] bg-gray-200">
           {data.map((billboard, index) => (
             <div
               key={billboard.id}

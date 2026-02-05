@@ -1,4 +1,7 @@
+'use client';
+
 import { Truck, RotateCcw, Shield, Headphones, LucideIcon } from 'lucide-react';
+import { useInView } from '@/hooks/use-in-view';
 
 interface ValueProp {
   icon: LucideIcon;
@@ -30,8 +33,10 @@ const valueProps: ValueProp[] = [
 ];
 
 const ValuePropositionBar = () => {
+  const { ref, isInView } = useInView({ threshold: 0.2 });
+
   return (
-    <section className="w-full bg-muted py-10 md:py-12 my-12 rounded-2xl">
+    <section ref={ref} className="w-full bg-muted py-10 md:py-12 my-12 rounded-2xl">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-0">
           {valueProps.map((prop, index) => {
@@ -41,14 +46,15 @@ const ValuePropositionBar = () => {
             return (
               <div
                 key={index}
-                className={`flex flex-col items-center text-center gap-3 py-2 md:py-0 ${
+                className={`flex flex-col items-center text-center gap-3 py-2 md:py-0 scroll-animate-scale ${isInView ? 'in-view' : ''} ${
                   // Add divider on desktop (not on last item)
                   index < valueProps.length - 1 ? 'md:border-r md:border-border/50' : ''
                 }`}
+                style={{ transitionDelay: `${index * 100}ms` }}
               >
                 {/* Icon - alternating position on mobile */}
                 <div className={`${!isEven ? 'md:order-1 order-2' : 'order-1'}`}>
-                  <div className="w-14 h-14 rounded-full bg-background flex items-center justify-center shadow-sm border border-border/50">
+                  <div className="w-14 h-14 rounded-full bg-background flex items-center justify-center shadow-sm border border-border/50 hover-scale">
                     <prop.icon className="w-6 h-6 text-primary" />
                   </div>
                 </div>

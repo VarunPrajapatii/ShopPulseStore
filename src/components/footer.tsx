@@ -54,17 +54,17 @@ const Footer = () => {
               <h2 className="text-base font-semibold text-background mb-4">Quick Links</h2>
               <ul className="space-y-2.5">
                 <li>
-                  <Link href="/" className="text-background/70 hover:text-background transition-colors text-sm">
+                  <Link href="/" className="text-background/70 hover:text-background transition-colors text-sm link-underline">
                     Home
                   </Link>
                 </li>
                 <li>
-                  <Link href="/about" className="text-background/70 hover:text-background transition-colors text-sm">
+                  <Link href="/about" className="text-background/70 hover:text-background transition-colors text-sm link-underline">
                     About Us
                   </Link>
                 </li>
                 <li>
-                  <Link href="/contact-us" className="text-background/70 hover:text-background transition-colors text-sm">
+                  <Link href="/contact-us" className="text-background/70 hover:text-background transition-colors text-sm link-underline">
                     Contact Us
                   </Link>
                 </li>
@@ -76,17 +76,17 @@ const Footer = () => {
               <h2 className="text-base font-semibold text-background mb-4">Help & Support</h2>
               <ul className="space-y-2.5">
                 <li>
-                  <Link href="/faq" className="text-background/70 hover:text-background transition-colors text-sm">
+                  <Link href="/faq" className="text-background/70 hover:text-background transition-colors text-sm link-underline">
                     FAQ
                   </Link>
                 </li>
                 <li>
-                  <Link href="/returns-exchanges" className="text-background/70 hover:text-background transition-colors text-sm">
+                  <Link href="/returns-exchanges" className="text-background/70 hover:text-background transition-colors text-sm link-underline">
                     Returns & Exchanges
                   </Link>
                 </li>
                 <li>
-                  <Link href="/terms-of-use" className="text-background/70 hover:text-background transition-colors text-sm">
+                  <Link href="/terms-of-use" className="text-background/70 hover:text-background transition-colors text-sm link-underline">
                     Terms of Use
                   </Link>
                 </li>
@@ -99,7 +99,7 @@ const Footer = () => {
               <div className="flex items-center gap-3">
                 <Link 
                   href="#" 
-                  className="w-10 h-10 bg-background/10 hover:bg-background/20 rounded-full flex items-center justify-center transition-colors"
+                  className="w-10 h-10 bg-background/10 hover:bg-background/20 rounded-full flex items-center justify-center transition-colors hover-scale"
                   aria-label="Follow on Instagram"
                 >
                   <Instagram size={18} className="text-background" />
@@ -107,7 +107,7 @@ const Footer = () => {
 
                 <Link 
                   href="#" 
-                  className="w-10 h-10 bg-background/10 hover:bg-background/20 rounded-full flex items-center justify-center transition-colors"
+                  className="w-10 h-10 bg-background/10 hover:bg-background/20 rounded-full flex items-center justify-center transition-colors hover-scale"
                   aria-label="Follow on Facebook"
                 >
                   <Facebook size={18} className="text-background" />
@@ -115,7 +115,7 @@ const Footer = () => {
 
                 <Link 
                   href="#" 
-                  className="w-10 h-10 bg-background/10 hover:bg-background/20 rounded-full flex items-center justify-center transition-colors"
+                  className="w-10 h-10 bg-background/10 hover:bg-background/20 rounded-full flex items-center justify-center transition-colors hover-scale"
                   aria-label="Follow on YouTube"
                 >
                   <Youtube size={18} className="text-background" />
@@ -123,7 +123,7 @@ const Footer = () => {
 
                 <Link 
                   href="#" 
-                  className="w-10 h-10 bg-background/10 hover:bg-background/20 rounded-full flex items-center justify-center transition-colors"
+                  className="w-10 h-10 bg-background/10 hover:bg-background/20 rounded-full flex items-center justify-center transition-colors hover-scale"
                   aria-label="Follow on X (Twitter)"
                 >
                   <span className="text-background text-sm font-bold">X</span>

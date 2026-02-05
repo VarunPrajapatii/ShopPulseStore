@@ -87,14 +87,14 @@ const NewsletterSection = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Enter your email"
-                className="w-full px-5 py-3.5 rounded-full bg-primary-foreground text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary-foreground/50"
+                className="w-full px-5 py-3.5 rounded-full bg-primary-foreground text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary-foreground/50 input-focus-scale"
                 disabled={isSubmitting}
               />
             </div>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-6 py-3.5 bg-background text-foreground font-semibold rounded-full hover:bg-background/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
+              className="px-6 py-3.5 bg-background text-foreground font-semibold rounded-full btn-press flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
             >
               {isSubmitting ? (
                 'Subscribing...'

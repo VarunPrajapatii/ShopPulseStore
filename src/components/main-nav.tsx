@@ -20,19 +20,32 @@ const MainNav: React.FC<MainNavProps> = ({ data }) => {
 
 
   return (
-    <nav className="mx-6 flex items-center space-x-4 lg:space-x-6">
-      {routes.map((route) => (
-        <Link
-          key={route.href}
-          href={route.href}
-          className={cn(
-            'text-sm font-medium transition-colors hover:text-primary',
-            route.active ? 'text-foreground' : 'text-muted-foreground'
-          )}
-        >
-          {route.label}
-        </Link>
-      ))}
+    <nav className="hidden md:flex items-center justify-center flex-1">
+      <div className="flex items-center gap-x-1">
+        {routes.map((route) => (
+          <Link
+            key={route.href}
+            href={route.href}
+            className={cn(
+              'relative px-4 py-2 text-[13px] font-medium tracking-wide uppercase transition-all duration-300',
+              'hover:text-foreground',
+              'group',
+              route.active 
+                ? 'text-foreground' 
+                : 'text-muted-foreground/80'
+            )}
+          >
+            {route.label}
+            {/* Animated underline */}
+            <span 
+              className={cn(
+                'absolute bottom-0 left-1/2 -translate-x-1/2 h-[1.5px] bg-foreground transition-all duration-300 ease-out',
+                route.active ? 'w-4' : 'w-0 group-hover:w-4'
+              )} 
+            />
+          </Link>
+        ))}
+      </div>
     </nav>
   );
 };

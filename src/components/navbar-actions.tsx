@@ -1,11 +1,11 @@
 "use client"
 
 import { useEffect, useState } from 'react'
-import Button from '@/components/ui/button'
 import { ShoppingBag } from 'lucide-react'
 import useCart from '@/hooks/use-cart'
 import { useRouter } from 'next/navigation'
 import OrderSearch from '@/components/order-search'
+import { cn } from '@/lib/utils'
 
 const NavbarAction = () => {
   // we add mount because we want to use cart and store items in the local storage so that can cause hydration error
@@ -19,21 +19,43 @@ const NavbarAction = () => {
   const cart = useCart();
 
   if (!isMounted) {
-    return null
+    return (
+      <div className='flex items-center gap-x-3'>
+        {/* Skeleton for search */}
+        <div className="w-8 h-8 rounded-full bg-muted animate-pulse" />
+        {/* Skeleton for cart */}
+        <div className="w-[72px] h-9 rounded-full bg-muted animate-pulse" />
+      </div>
+    )
   }
 
   return (
-    <div className='ml-auto flex items-center gap-x-4'>
+    <div className='flex items-center gap-x-3'>
       <OrderSearch />
-      <Button onClick={() => router.push('/cart')} className='flex items-center rounded-full bg-primary px-4 py-2'>
+      <button 
+        onClick={() => router.push('/cart')} 
+        className={cn(
+          'group relative flex items-center gap-x-2 rounded-full px-4 py-2 transition-all duration-300 border',
+          cart.items.length > 0
+            ? 'bg-foreground border-foreground hover:bg-foreground/90'
+            : 'bg-foreground/5 border-border/50 hover:bg-foreground/10 hover:border-border'
+        )}
+      >
         <ShoppingBag
-           size={20}
-           className='text-primary-foreground' 
+          size={18}
+          strokeWidth={1.5}
+          className={cn(
+            'transition-transform duration-300 group-hover:scale-110',
+            cart.items.length > 0 ? 'text-background' : 'text-foreground'
+          )}
         />
-        <span className='ml-2 text-sm font-medium text-primary-foreground'>
+        <span className={cn(
+          'text-sm font-medium tabular-nums',
+          cart.items.length > 0 ? 'text-background' : 'text-foreground'
+        )}>
           {cart.items.length}
         </span>
-      </Button>
+      </button>
     </div>
   )
 }

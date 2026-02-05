@@ -1,3 +1,5 @@
+'use client';
+
 import Image from 'next/image';
 import { 
   Shield, 
@@ -8,6 +10,7 @@ import {
   Heart,
   LucideIcon
 } from 'lucide-react';
+import { useInView } from '@/hooks/use-in-view';
 
 interface FeatureItem {
   icon: LucideIcon;
@@ -49,11 +52,17 @@ const features: FeatureItem[] = [
 ];
 
 const WhyChooseUsSection = () => {
+  const { ref: leftRef, isInView: leftInView } = useInView({ threshold: 0.2 });
+  const { ref: rightRef, isInView: rightInView } = useInView({ threshold: 0.1 });
+
   return (
     <section className="w-full py-8 lg:py-16">
       <div className="flex flex-col lg:flex-row min-h-[500px]">
         {/* Left side - Hero with overlay text */}
-        <div className="relative w-full lg:w-1/2 min-h-[400px] lg:min-h-[600px] rounded-xl lg:rounded-r-3xl overflow-hidden">
+        <div 
+          ref={leftRef}
+          className={`relative w-full lg:w-1/2 min-h-[400px] lg:min-h-[600px] rounded-xl lg:rounded-r-3xl overflow-hidden scroll-animate-left ${leftInView ? 'in-view' : ''}`}
+        >
           {/* Hero Image */}
           <Image
             src="/why-choose-us-hero.webp"
@@ -96,18 +105,19 @@ const WhyChooseUsSection = () => {
         </div>
 
         {/* Right side - Feature blocks */}
-        <div className="w-full lg:w-1/2 p-6 sm:p-8 lg:p-12">
+        <div ref={rightRef} className="w-full lg:w-1/2 p-6 sm:p-8 lg:p-12">
           <div className="space-y-6">
             {features.map((feature, index) => (
               <div 
                 key={index}
-                className={`flex gap-4 lg:gap-6 pb-6 ${
+                className={`flex gap-4 lg:gap-6 pb-6 scroll-animate-right ${rightInView ? 'in-view' : ''} ${
                   index < features.length - 1 ? 'border-b border-border' : ''
                 }`}
+                style={{ transitionDelay: `${index * 100}ms` }}
               >
                 {/* Icon */}
                 <div className="flex-shrink-0">
-                  <div className="w-14 h-14 sm:w-16 sm:h-16 lg:w-20 lg:h-20 bg-muted rounded-xl flex items-center justify-center">
+                  <div className="w-14 h-14 sm:w-16 sm:h-16 lg:w-20 lg:h-20 bg-muted rounded-xl flex items-center justify-center hover-scale">
                     <feature.icon className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-foreground" />
                   </div>
                 </div>

@@ -3,13 +3,20 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
+import { useInView } from '@/hooks/use-in-view';
 
 const OurStorySection = () => {
+  const { ref: imageRef, isInView: imageInView } = useInView({ threshold: 0.2 });
+  const { ref: contentRef, isInView: contentInView } = useInView({ threshold: 0.2 });
+
   return (
     <section className="py-16 lg:py-24">
       <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
         {/* Left Side - Image Grid */}
-        <div className="relative grid grid-cols-2 gap-4">
+        <div 
+          ref={imageRef}
+          className={`relative grid grid-cols-2 gap-4 scroll-animate-left ${imageInView ? 'in-view' : ''}`}
+        >
           {/* Main Large Image */}
           <div className="col-span-2 aspect-[16/10] relative rounded-2xl overflow-hidden shadow-lg">
             <Image
@@ -48,7 +55,7 @@ const OurStorySection = () => {
         </div>
         
         {/* Right Side - Content */}
-        <div className="lg:pl-8">
+        <div ref={contentRef} className={`lg:pl-8 scroll-animate-right ${contentInView ? 'in-view' : ''}`}>
           {/* Section Label */}
           <div className="flex items-center gap-2 mb-4">
             <div className="w-8 h-[2px] bg-primary" />
@@ -95,10 +102,10 @@ const OurStorySection = () => {
           {/* CTA */}
           <Link 
             href="/about" 
-            className="inline-flex items-center gap-2 text-foreground font-semibold hover:text-primary transition-colors group"
+            className="inline-flex items-center gap-2 text-foreground font-semibold hover:text-primary transition-colors group btn-arrow-slide"
           >
             Learn More About Us
-            <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+            <ArrowRight className="w-4 h-4 arrow" />
           </Link>
         </div>
       </div>

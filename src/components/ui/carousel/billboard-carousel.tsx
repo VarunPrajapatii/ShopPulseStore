@@ -22,7 +22,15 @@ const BillboardCarousel: React.FC<BillboardCarouselProps> = ({ items }) => {
   const swiperRef = useRef<SwiperType | null>(null);
 
   if (!items || items.length === 0) {
-    return null;
+    // Return a placeholder that maintains the aspect ratio
+    return (
+      <div className="relative w-full rounded-xl overflow-hidden aspect-square md:aspect-[2.4/1] bg-gray-200 animate-pulse flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 rounded-full bg-gray-300 mx-auto mb-4" />
+          <div className="h-4 w-32 bg-gray-300 rounded mx-auto" />
+        </div>
+      </div>
+    );
   }
 
   return (

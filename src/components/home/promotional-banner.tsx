@@ -1,19 +1,24 @@
+'use client';
+
 import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
+import { useInView } from '@/hooks/use-in-view';
 
 interface PromotionalBannerProps {
   imageUrl?: string | null;
 }
 
 const PromotionalBanner: React.FC<PromotionalBannerProps> = ({ imageUrl }) => {
+  const { ref, isInView } = useInView({ threshold: 0.2 });
+
   if (!imageUrl) {
     return null;
   }
 
   return (
-    <section className="w-full py-10">
-      <div className="relative w-full aspect-[21/9] md:aspect-[3/1] rounded-2xl overflow-hidden">
+    <section ref={ref} className={`w-full py-10 scroll-animate-scale ${isInView ? 'in-view' : ''}`}>
+      <div className="relative w-full aspect-[21/9] md:aspect-[3/1] rounded-2xl overflow-hidden image-zoom">
         <Image
           src={imageUrl}
           alt="Promotional Banner"
@@ -36,7 +41,7 @@ const PromotionalBanner: React.FC<PromotionalBannerProps> = ({ imageUrl }) => {
             </p>
             <Link
               href="/"
-              className="inline-flex items-center gap-2 bg-background text-foreground px-5 py-2.5 rounded-full font-medium text-sm hover:bg-background/90 transition-colors w-fit"
+              className="inline-flex items-center gap-2 bg-background text-foreground px-5 py-2.5 rounded-full font-medium text-sm btn-press w-fit"
             >
               Shop Now
               <ArrowRight className="w-4 h-4" />
