@@ -1,12 +1,11 @@
 "use client"
 
 import { Product, ProductVariant } from '@/types'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import PriceDisplay from '@/components/ui/price-display'
 import Button from '@/components/ui/button'
 import { ShoppingCart, Check, Plus, Minus } from 'lucide-react'
 import useCart from '@/hooks/use-cart'
-import sendStockAlert from '@/actions/send-stock-alert'
 import { WarrantyBadge, SpecificationsTable, SizeSelector } from '@/components/product'
 import usePreviewModal from '@/hooks/use-preview-modal'
 import { getDisplayPrices } from '@/lib/utils'
@@ -25,9 +24,11 @@ const Info: React.FC<InfoProps> = ({ data }) => {
   const isVariantProduct = data.hasVariants && Array.isArray(data.variants) && data.variants.length > 0;
   
   // Get sorted variants (only for variant products)
-  const availableSizes = isVariantProduct 
-    ? [...data.variants].sort((a, b) => a.displayOrder - b.displayOrder)
-    : [];
+  const availableSizes = useMemo(() => 
+    isVariantProduct 
+      ? [...data.variants].sort((a, b) => a.displayOrder - b.displayOrder)
+      : []
+  , [isVariantProduct, data.variants]);
   
   // Auto-select first in-stock variant on mount
   useEffect(() => {
@@ -70,15 +71,6 @@ const Info: React.FC<InfoProps> = ({ data }) => {
 
   // Get display prices - updates based on selected variant
   const displayPrices = getDisplayPrices(data, selectedVariant);
-
-  // Send stock alert when stock is low
-  useEffect(() => {
-    if (isVariantProduct && selectedVariant && selectedVariant.stockQuantity <= selectedVariant.lowStockThreshold) {
-      sendStockAlert(data.id);
-    } else if (!isVariantProduct && (data.baseStockQuantity ?? 0) <= (data.baseLowStockThreshold ?? 5)) {
-      sendStockAlert(data.id);
-    }
-  }, [data.id, data.baseStockQuantity, data.baseLowStockThreshold, isVariantProduct, selectedVariant]);
 
   const onAddToCart: React.MouseEventHandler<HTMLButtonElement> = (e) => {
     e.stopPropagation();
