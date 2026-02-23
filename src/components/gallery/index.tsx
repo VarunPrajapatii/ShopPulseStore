@@ -5,24 +5,28 @@ import { Image as ImageType } from '@/types';
 import GalleryTab from '@/components/gallery/gallery-tab';
 import Image from 'next/image';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
+import { getOptimizedUrl, sortImagesByPosition, getAltText } from '@/lib/cloudinary-utils';
 
 interface GalleryProps {
   images: ImageType[];
+  productName?: string;
 }
 
-const Gallery: React.FC<GalleryProps> = ({ images }) => {
+const Gallery: React.FC<GalleryProps> = ({ images, productName = 'Product image' }) => {
+  // Sort images by position field
+  const sortedImages = useMemo(() => sortImagesByPosition(images), [images]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const thumbnailContainerRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
 
   const goToPrevious = () => {
-    setSelectedIndex((prev) => (prev > 0 ? prev - 1 : images.length - 1));
+    setSelectedIndex((prev) => (prev > 0 ? prev - 1 : sortedImages.length - 1));
   };
 
   const goToNext = () => {
-    setSelectedIndex((prev) => (prev < images.length - 1 ? prev + 1 : 0));
+    setSelectedIndex((prev) => (prev < sortedImages.length - 1 ? prev + 1 : 0));
   };
 
   // Check scroll state for thumbnail carousel
@@ -70,7 +74,7 @@ const Gallery: React.FC<GalleryProps> = ({ images }) => {
         <div className='mx-auto mt-6 w-full max-w-2xl hidden sm:block lg:max-w-none'>
           <div className="relative">
             {/* Left scroll button */}
-            {canScrollLeft && images.length > 4 && (
+            {canScrollLeft && sortedImages.length > 4 && (
               <button
                 onClick={() => scrollThumbnails('left')}
                 className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white/90 hover:bg-white rounded-full p-1.5 shadow-md transition-all duration-200 hover:scale-110 -ml-3"
@@ -86,18 +90,19 @@ const Gallery: React.FC<GalleryProps> = ({ images }) => {
               className="flex gap-4 overflow-x-auto scrollbar-hide scroll-smooth px-1"
               style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
             >
-              {images.map((image, index) => (
+              {sortedImages.map((image, index) => (
                 <div key={image.id} className="flex-shrink-0">
                   <GalleryTab 
                     image={image} 
                     isSelected={index === selectedIndex}
+                    productName={productName}
                   />
                 </div>
               ))}
             </div>
 
             {/* Right scroll button */}
-            {canScrollRight && images.length > 4 && (
+            {canScrollRight && sortedImages.length > 4 && (
               <button
                 onClick={() => scrollThumbnails('right')}
                 className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white/90 hover:bg-white rounded-full p-1.5 shadow-md transition-all duration-200 hover:scale-110 -mr-3"
@@ -112,14 +117,16 @@ const Gallery: React.FC<GalleryProps> = ({ images }) => {
         {/* Selected Image with Navigation */}
         <div className="relative w-full max-w-xl mx-auto">
           <Tab.Panels className="aspect-square w-full">
-              {images.map((image) => (
+              {sortedImages.map((image, index) => (
                   <Tab.Panel key={image.id}>
                       <div className='aspect-square relative h-full w-full sm:rounded-lg overflow-hidden'>
                           <Image
                               fill
-                              src={image.url}
-                              alt="Selected product image"
+                              src={getOptimizedUrl(image.url, 'f_auto,q_auto')}
+                              alt={getAltText(image, productName)}
                               className='object-cover object-center'
+                              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 800px"
+                              {...(index === 0 ? { priority: true } : { loading: 'lazy' as const })}
                           />
                       </div>
                   </Tab.Panel>
@@ -127,7 +134,7 @@ const Gallery: React.FC<GalleryProps> = ({ images }) => {
           </Tab.Panels>
           
           {/* Navigation Buttons */}
-          {images.length > 1 && (
+          {sortedImages.length > 1 && (
             <>
               {/* Previous Button */}
               <button

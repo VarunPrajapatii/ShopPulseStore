@@ -103,9 +103,20 @@ export interface UpcomingProduct {
   category: Category
 }
 
+export type MediaType = 'IMAGE' | 'VIDEO' | 'GIF';
+
 export interface Image {
   id: string
   url: string
+  bytes?: number
+  width?: number
+  height?: number
+  format?: string
+  type?: MediaType
+  duration?: number | null
+  position?: number
+  altText?: string | null
+  isFeatured?: boolean
 }
 
 export interface Size {

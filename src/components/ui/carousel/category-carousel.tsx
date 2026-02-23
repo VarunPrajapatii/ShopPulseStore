@@ -9,6 +9,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Category } from '@/types';
 import { useInView } from '@/hooks/use-in-view';
+import { getOptimizedUrl } from '@/lib/cloudinary-utils';
 
 import 'swiper/css';
 import 'swiper/css/navigation';
@@ -30,9 +31,6 @@ const isValidImageUrl = (url: unknown): url is string => {
 const CategoryCarousel: React.FC<CategoryCarouselProps> = ({ categories }) => {
   const swiperRef = useRef<SwiperType | null>(null);
   const { ref, isInView } = useInView({ threshold: 0.1 });
-
-  // Debug log - remove after fixing
-  console.log('Categories:', categories.map(c => ({ name: c.name, imageUrl: c.imageUrl })));
 
   if (!categories || categories.length === 0) {
     return null;
@@ -111,7 +109,7 @@ const CategoryCarousel: React.FC<CategoryCarouselProps> = ({ categories }) => {
                 <div className="relative aspect-square rounded-2xl overflow-hidden bg-muted shadow-sm card-hover">
                   {isValidImageUrl(category.imageUrl) ? (
                     <Image
-                      src={category.imageUrl}
+                      src={getOptimizedUrl(category.imageUrl, 'f_auto,q_auto,w_300,h_300,c_fill')}
                       alt={category.name}
                       fill
                       sizes="(max-width: 768px) 50vw, 20vw"

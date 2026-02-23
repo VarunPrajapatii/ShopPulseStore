@@ -3,6 +3,8 @@
 import { Billboard as BillboardType } from '@/types';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
+import Image from 'next/image';
+import { getOptimizedUrl } from '@/lib/cloudinary-utils';
 
 interface BillboardProps {
   data: BillboardType[];
@@ -75,13 +77,18 @@ const Billboard: React.FC<BillboardProps> = ({ data }) => {
                   ? 'translate-x-full opacity-0'
                   : '-translate-x-full opacity-0'
               }`}
-              style={{
-                backgroundImage: `url(${billboard?.imageUrl})`,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-              }}
             >
-              <div className="h-full w-full flex flex-col justify-center items-center text-center gap-y-8 bg-black/20">
+              {billboard?.imageUrl && (
+                <Image
+                  src={getOptimizedUrl(billboard.imageUrl, 'f_auto,q_auto')}
+                  alt={billboard.label || 'Promotional banner'}
+                  fill
+                  className="object-cover object-center"
+                  sizes="100vw"
+                  {...(index === 0 ? { priority: true } : { loading: 'lazy' as const })}
+                />
+              )}
+              <div className="h-full w-full flex flex-col justify-center items-center text-center gap-y-8 bg-black/20 relative z-10">
                 <div className='font-bold text-3xl sm:text-5xl lg:text-6xl sm:max-w-xl max-w-sm text-white drop-shadow-lg px-4'>
                   {billboard.label}
                 </div>

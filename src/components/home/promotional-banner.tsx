@@ -4,6 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { useInView } from '@/hooks/use-in-view';
+import { getOptimizedUrl } from '@/lib/cloudinary-utils';
 
 interface PromotionalBannerProps {
   imageUrl?: string | null;
@@ -20,7 +21,7 @@ const PromotionalBanner: React.FC<PromotionalBannerProps> = ({ imageUrl }) => {
     <section ref={ref} className={`w-full py-10 scroll-animate-scale ${isInView ? 'in-view' : ''}`}>
       <div className="relative w-full aspect-[21/9] md:aspect-[3/1] rounded-2xl overflow-hidden image-zoom">
         <Image
-          src={imageUrl}
+          src={getOptimizedUrl(imageUrl, 'f_auto,q_auto')}
           alt="Promotional Banner"
           fill
           sizes="100vw"

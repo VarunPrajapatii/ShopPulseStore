@@ -8,6 +8,7 @@ import PriceDisplay from '@/components/ui/price-display';
 import { useRouter } from 'next/navigation';
 import usePreviewModal from '@/hooks/use-preview-modal';
 import { cn, getVariantPriceRange, formatPrice } from '@/lib/utils';
+import { getOptimizedUrl, sortImagesByPosition, getAltText } from '@/lib/cloudinary-utils';
 
 interface ProductCardProps {
   data: Product;
@@ -62,13 +63,20 @@ const ProductCard: React.FC<ProductCardProps> = ({ data, isNewArrival = false })
     <div onClick={handleClick} className="bg-card group cursor-pointer rounded-xl border border-border p-3 space-y-4 product-card-hover">
       {/* images and actions */}
       <div className="aspect-square rounded-xl bg-muted relative overflow-hidden image-zoom-subtle">
-        <Image
-          src={data?.images?.[0]?.url}
-          alt={data.name}
-          fill
-          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-          className="object-cover aspect-square rounded-md"
-        />
+        {(() => {
+          const sorted = data?.images ? sortImagesByPosition(data.images) : [];
+          const heroImg = sorted[0];
+          if (!heroImg?.url) return null;
+          return (
+            <Image
+              src={getOptimizedUrl(heroImg.url, 'f_auto,q_auto')}
+              alt={getAltText(heroImg, data.name)}
+              fill
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+              className="object-cover aspect-square rounded-md"
+            />
+          );
+        })()}
         
         {/* Badges Container - Top Left */}
         <div className="absolute top-2 left-2 flex flex-col gap-1.5">

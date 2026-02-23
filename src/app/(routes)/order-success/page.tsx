@@ -9,6 +9,7 @@ import confetti from 'canvas-confetti';
 import getOrderDetails, { OrderDetails } from '@/actions/get-order-details';
 import Currency from '@/components/ui/currency';
 import Image from 'next/image';
+import { getOptimizedUrl } from '@/lib/cloudinary-utils';
 
 const OrderSuccessContent = () => {
   const searchParams = useSearchParams();
@@ -208,7 +209,7 @@ const OrderSuccessContent = () => {
                     <div className="relative w-24 h-24 flex-shrink-0 bg-white rounded-md overflow-hidden border border-gray-200">
                       {item.productImageUrl ? (
                         <Image
-                          src={item.productImageUrl}
+                          src={getOptimizedUrl(item.productImageUrl, 'f_auto,q_auto,w_96,h_96,c_fill')}
                           alt={item.productName}
                           fill
                           sizes="96px"

@@ -4,6 +4,7 @@ import { UpcomingProduct } from '@/types';
 import Image from 'next/image';
 import Currency from '@/components/ui/currency';
 import { Sparkles } from 'lucide-react';
+import { getOptimizedUrl } from '@/lib/cloudinary-utils';
 
 interface UpcomingProductCardProps {
   data: UpcomingProduct;
@@ -15,10 +16,10 @@ const UpcomingProductCard: React.FC<UpcomingProductCardProps> = ({ data }) => {
       {/* Image */}
       <div className="aspect-square rounded-xl bg-muted relative overflow-hidden">
         <Image
-          src={data.imageUrl}
+          src={getOptimizedUrl(data.imageUrl, 'f_auto,q_auto')}
           alt={data.name}
           fill
-          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
           className="object-cover aspect-square rounded-md"
         />
         {/* Badges Container - Top Left for NEW, Top Right for Out of Stock */}
