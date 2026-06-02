@@ -79,6 +79,19 @@ export function getUpcomingProductUrl(url: string): string {
 // -- Image helpers ------------------------------------------------------
 
 /**
+ * Generate a tiny blurred placeholder URL for LQIP (Low Quality Image Placeholder).
+ * Produces a ~200-byte blurred thumbnail that can be inlined as blurDataURL in next/image.
+ * Returns empty string for non-Cloudinary URLs (guard against non-matching patterns).
+ */
+export function getBlurUrl(url: string): string {
+  if (!url || !url.includes('/upload/')) return '';
+  return url.replace(
+    /\/(image|video)\/upload\//,
+    `/$1/upload/w_20,q_10,e_blur:500,f_webp/`
+  );
+}
+
+/**
  * Sort images by position field (ascending), falling back to original order.
  */
 export function sortImagesByPosition(images: Image[]): Image[] {

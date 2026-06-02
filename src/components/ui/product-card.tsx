@@ -8,7 +8,7 @@ import PriceDisplay from '@/components/ui/price-display';
 import { useRouter } from 'next/navigation';
 import usePreviewModal from '@/hooks/use-preview-modal';
 import { cn, getVariantPriceRange, formatPrice } from '@/lib/utils';
-import { getOptimizedUrl, sortImagesByPosition, getAltText } from '@/lib/cloudinary-utils';
+import { getOptimizedUrl, sortImagesByPosition, getAltText, getBlurUrl } from '@/lib/cloudinary-utils';
 
 interface ProductCardProps {
   data: Product;
@@ -70,10 +70,11 @@ const ProductCard: React.FC<ProductCardProps> = ({ data, isNewArrival = false })
           return (
             <Image
               src={getOptimizedUrl(heroImg.url, 'f_auto,q_auto')}
-              alt={getAltText(heroImg, data.name)}
+              alt={getAltText(heroImg, `${data.name} - Image 1`)}
               fill
               sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
               className="object-cover aspect-square rounded-md"
+              {...(getBlurUrl(heroImg.url) ? { placeholder: "blur" as const, blurDataURL: getBlurUrl(heroImg.url) } : {})}
             />
           );
         })()}

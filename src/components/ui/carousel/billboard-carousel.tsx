@@ -5,6 +5,8 @@ import { Navigation, Pagination, Autoplay, A11y } from 'swiper/modules';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useRef } from 'react';
 import type { Swiper as SwiperType } from 'swiper';
+import Image from 'next/image';
+import { getOptimizedUrl, getBlurUrl } from '@/lib/cloudinary-utils';
 
 import 'swiper/css';
 import 'swiper/css/navigation';
@@ -15,6 +17,7 @@ interface BillboardCarouselProps {
     id: string;
     label: string;
     imageUrl: string;
+    imageAltText?: string | null;
   }[];
 }
 
@@ -54,13 +57,21 @@ const BillboardCarousel: React.FC<BillboardCarouselProps> = ({ items }) => {
         }}
         className="rounded-xl overflow-hidden aspect-square md:aspect-[2.4/1]"
       >
-        {items.map((item) => (
+        {items.map((item, index) => (
           <SwiperSlide key={item.id}>
-            <div
-              className="w-full h-full bg-cover bg-center"
-              style={{ backgroundImage: `url(${item.imageUrl})` }}
-            >
-              <div className="h-full w-full flex flex-col justify-center items-center text-center gap-y-8 bg-black/20">
+            <div className="relative w-full h-full">
+              {item.imageUrl && (
+                <Image
+                  src={getOptimizedUrl(item.imageUrl, 'f_auto,q_auto')}
+                  alt={item.imageAltText || item.label || 'Promotional banner'}
+                  fill
+                  className="object-cover object-center"
+                  sizes="100vw"
+                  {...(getBlurUrl(item.imageUrl) ? { placeholder: "blur" as const, blurDataURL: getBlurUrl(item.imageUrl) } : {})}
+                  {...(index === 0 ? { priority: true } : { loading: 'lazy' as const })}
+                />
+              )}
+              <div className="h-full w-full flex flex-col justify-center items-center text-center gap-y-8 bg-black/20 relative z-10">
                 <div className="font-bold text-3xl sm:text-5xl lg:text-6xl sm:max-w-xl max-w-sm text-white drop-shadow-lg px-4">
                   {item.label}
                 </div>

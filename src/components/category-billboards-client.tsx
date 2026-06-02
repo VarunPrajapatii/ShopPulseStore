@@ -24,6 +24,7 @@ const CategoryBillboardsClient = ({ categoryId }: CategoryBillboardsClientProps)
     id: item.billboard.id,
     label: item.billboard.label,
     imageUrl: item.billboard.imageUrl,
+    imageAltText: item.billboard.imageAltText,
   })) || [];
 
   // Show skeleton while not mounted or no billboards yet

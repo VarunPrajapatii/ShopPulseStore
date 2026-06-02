@@ -6,7 +6,7 @@ import GalleryTab from '@/components/gallery/gallery-tab';
 import Image from 'next/image';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useState, useRef, useEffect, useMemo } from 'react';
-import { getOptimizedUrl, sortImagesByPosition, getAltText } from '@/lib/cloudinary-utils';
+import { getOptimizedUrl, sortImagesByPosition, getAltText, getBlurUrl } from '@/lib/cloudinary-utils';
 
 interface GalleryProps {
   images: ImageType[];
@@ -123,9 +123,10 @@ const Gallery: React.FC<GalleryProps> = ({ images, productName = 'Product image'
                           <Image
                               fill
                               src={getOptimizedUrl(image.url, 'f_auto,q_auto')}
-                              alt={getAltText(image, productName)}
+                              alt={getAltText(image, `${productName} - Image ${index + 1}`)}
                               className='object-cover object-center'
                               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 800px"
+                              {...(getBlurUrl(image.url) ? { placeholder: "blur" as const, blurDataURL: getBlurUrl(image.url) } : {})}
                               {...(index === 0 ? { priority: true } : { loading: 'lazy' as const })}
                           />
                       </div>

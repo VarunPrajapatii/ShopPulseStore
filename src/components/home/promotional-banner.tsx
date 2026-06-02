@@ -4,13 +4,14 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { useInView } from '@/hooks/use-in-view';
-import { getOptimizedUrl } from '@/lib/cloudinary-utils';
+import { getOptimizedUrl, getBlurUrl } from '@/lib/cloudinary-utils';
 
 interface PromotionalBannerProps {
   imageUrl?: string | null;
+  altText?: string | null;
 }
 
-const PromotionalBanner: React.FC<PromotionalBannerProps> = ({ imageUrl }) => {
+const PromotionalBanner: React.FC<PromotionalBannerProps> = ({ imageUrl, altText }) => {
   const { ref, isInView } = useInView({ threshold: 0.2 });
 
   if (!imageUrl) {
@@ -22,11 +23,12 @@ const PromotionalBanner: React.FC<PromotionalBannerProps> = ({ imageUrl }) => {
       <div className="relative w-full aspect-[21/9] md:aspect-[3/1] rounded-2xl overflow-hidden image-zoom">
         <Image
           src={getOptimizedUrl(imageUrl, 'f_auto,q_auto')}
-          alt="Promotional Banner"
+          alt={altText || 'Promotional Banner'}
           fill
           sizes="100vw"
           className="object-cover"
           priority
+          {...(getBlurUrl(imageUrl) ? { placeholder: "blur" as const, blurDataURL: getBlurUrl(imageUrl) } : {})}
         />
         {/* Overlay with CTA - can be customized */}
         <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/30 to-transparent">

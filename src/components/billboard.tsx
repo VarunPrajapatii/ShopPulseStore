@@ -4,7 +4,7 @@ import { Billboard as BillboardType } from '@/types';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
-import { getOptimizedUrl } from '@/lib/cloudinary-utils';
+import { getOptimizedUrl, getBlurUrl } from '@/lib/cloudinary-utils';
 
 interface BillboardProps {
   data: BillboardType[];
@@ -81,10 +81,11 @@ const Billboard: React.FC<BillboardProps> = ({ data }) => {
               {billboard?.imageUrl && (
                 <Image
                   src={getOptimizedUrl(billboard.imageUrl, 'f_auto,q_auto')}
-                  alt={billboard.label || 'Promotional banner'}
+                  alt={billboard.imageAltText || billboard.label || 'Promotional banner'}
                   fill
                   className="object-cover object-center"
                   sizes="100vw"
+                  {...(getBlurUrl(billboard.imageUrl) ? { placeholder: "blur" as const, blurDataURL: getBlurUrl(billboard.imageUrl) } : {})}
                   {...(index === 0 ? { priority: true } : { loading: 'lazy' as const })}
                 />
               )}

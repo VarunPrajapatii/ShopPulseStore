@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 import { Image as ImageType } from '@/types';
 import { Tab } from '@headlessui/react';
 import Image from 'next/image';
-import { getOptimizedUrl, getAltText } from '@/lib/cloudinary-utils';
+import { getOptimizedUrl, getAltText, getBlurUrl } from '@/lib/cloudinary-utils';
 
 interface GalleryTabProps {
     image: ImageType;
@@ -27,6 +27,7 @@ const GalleryTab: React.FC<GalleryTabProps> = ({ image, isSelected: externalSele
                             alt={getAltText(image, productName)}
                             className='object-cover object-center'
                             sizes="100px"
+                            {...(getBlurUrl(image.url) ? { placeholder: "blur" as const, blurDataURL: getBlurUrl(image.url) } : {})}
                         />
                     </span>
                     <span className={cn(

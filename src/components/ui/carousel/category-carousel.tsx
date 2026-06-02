@@ -9,7 +9,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Category } from '@/types';
 import { useInView } from '@/hooks/use-in-view';
-import { getOptimizedUrl } from '@/lib/cloudinary-utils';
+import { getOptimizedUrl, getBlurUrl } from '@/lib/cloudinary-utils';
 
 import 'swiper/css';
 import 'swiper/css/navigation';
@@ -110,10 +110,11 @@ const CategoryCarousel: React.FC<CategoryCarouselProps> = ({ categories }) => {
                   {isValidImageUrl(category.imageUrl) ? (
                     <Image
                       src={getOptimizedUrl(category.imageUrl, 'f_auto,q_auto,w_300,h_300,c_fill')}
-                      alt={category.name}
+                      alt={category.imageAltText || category.name}
                       fill
                       sizes="(max-width: 768px) 50vw, 20vw"
                       className="object-cover transition-transform duration-500 ease-out group-hover:scale-110"
+                      {...(getBlurUrl(category.imageUrl) ? { placeholder: "blur" as const, blurDataURL: getBlurUrl(category.imageUrl) } : {})}
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-muted to-border">

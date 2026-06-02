@@ -4,7 +4,7 @@ import { UpcomingProduct } from '@/types';
 import Image from 'next/image';
 import Currency from '@/components/ui/currency';
 import { Sparkles } from 'lucide-react';
-import { getOptimizedUrl } from '@/lib/cloudinary-utils';
+import { getOptimizedUrl, getBlurUrl } from '@/lib/cloudinary-utils';
 
 interface UpcomingProductCardProps {
   data: UpcomingProduct;
@@ -21,6 +21,7 @@ const UpcomingProductCard: React.FC<UpcomingProductCardProps> = ({ data }) => {
           fill
           sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
           className="object-cover aspect-square rounded-md"
+          {...(getBlurUrl(data.imageUrl) ? { placeholder: "blur" as const, blurDataURL: getBlurUrl(data.imageUrl) } : {})}
         />
         {/* Badges Container - Top Left for NEW, Top Right for Out of Stock */}
         <div className="absolute top-2 right-2 flex flex-col gap-1.5">

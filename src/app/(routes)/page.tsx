@@ -75,8 +75,6 @@ const HomePage = async () => {
     getNewArrivals(),
   ]);
 
-  console.log('Store Info:', storeInfo);
-
   return (
     <>
       {/* 1. Announcement Bar - Handled in layout (above navbar) */}
@@ -107,7 +105,7 @@ const HomePage = async () => {
         <ValuePropositionBar />
         
         {/* 9. Promotional Banner - Full width image */}
-        <PromotionalBanner imageUrl={storeInfo?.promotionalBanner} />
+        <PromotionalBanner imageUrl={storeInfo?.promotionalBanner} altText={storeInfo?.promotionalBannerAltText} />
         
         {/* 10. New Arrivals */}
         <NewArrivalsSection products={newArrivals} />

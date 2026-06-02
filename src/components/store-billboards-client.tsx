@@ -32,6 +32,7 @@ const StoreBillboardsClient = () => {
     id: item.billboard.id,
     label: item.billboard.label,
     imageUrl: item.billboard.imageUrl,
+    imageAltText: item.billboard.imageAltText,
   }));
 
   return (

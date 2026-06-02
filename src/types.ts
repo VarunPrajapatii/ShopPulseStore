@@ -2,6 +2,7 @@ export interface Billboard {
   id: string;
   label: string;
   imageUrl: string;
+  imageAltText?: string | null;
 }
 
 export interface StoreBillboard {
@@ -14,6 +15,7 @@ export interface StoreBillboard {
     storeId: string;
     label: string;
     imageUrl: string;
+    imageAltText?: string | null;
     CreatedAt: string;
     updatedAt: string;
   };
@@ -26,6 +28,7 @@ export interface CategoryBillboard {
   createdAt: string;
   billboard: Billboard & {
     storeId: string;
+    imageAltText?: string | null;
     CreatedAt: string;
     updatedAt: string;
   };
@@ -35,6 +38,7 @@ export interface Category {
   id: string;
   name: string;
   imageUrl?: string;
+  imageAltText?: string | null;
   billboard: CategoryBillboard[];
   storeId: string;
   CreatedAt: string;
@@ -163,6 +167,7 @@ export interface StoreInfo {
   id: string;
   name: string;
   promotionalBanner?: string;
+  promotionalBannerAltText?: string | null;
   createdAt: string;
   updatedAt: string;
 }
