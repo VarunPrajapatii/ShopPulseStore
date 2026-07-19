@@ -3,13 +3,24 @@
 import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Container from '@/components/ui/container';
-import { CheckCircle, Package, Mail, Phone, MapPin, Calendar, CreditCard, AlertCircle, Banknote, Wallet } from 'lucide-react';
+import {
+  CheckCircle,
+  Package,
+  Mail,
+  Phone,
+  MapPin,
+  Calendar,
+  CreditCard,
+  AlertCircle,
+  Banknote,
+  Wallet,
+} from 'lucide-react';
 import Link from 'next/link';
 import confetti from 'canvas-confetti';
 import getOrderDetails, { OrderDetails } from '@/actions/get-order-details';
 import Currency from '@/components/ui/currency';
 import Image from 'next/image';
-import { getOptimizedUrl } from '@/lib/cloudinary-utils';
+import { getOptimizedUrl, getBlurUrl } from '@/lib/cloudinary-utils';
 
 const OrderSuccessContent = () => {
   const searchParams = useSearchParams();
@@ -100,21 +111,62 @@ const OrderSuccessContent = () => {
 
   // Get order status badge styling
   const getStatusBadge = (status: string) => {
-    const statusConfig: Record<string, { bg: string; text: string; label: string }> = {
-      PAID: { bg: 'bg-green-100', text: 'text-green-800', label: 'Payment Confirmed' },
-      PAYMENT_INITIATED: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Payment Pending' },
-      PENDING: { bg: 'bg-amber-100', text: 'text-amber-800', label: 'Order Confirmed' },  // COD initial status
-      CONFIRMED: { bg: 'bg-blue-100', text: 'text-blue-800', label: 'Order Confirmed' },
-      PROCESSING: { bg: 'bg-blue-100', text: 'text-blue-800', label: 'Processing' },
-      SHIPPED: { bg: 'bg-purple-100', text: 'text-purple-800', label: 'Shipped' },
-      OUT_FOR_DELIVERY: { bg: 'bg-indigo-100', text: 'text-indigo-800', label: 'Out for Delivery' },
-      DELIVERED: { bg: 'bg-green-100', text: 'text-green-800', label: 'Delivered' },
+    const statusConfig: Record<
+      string,
+      { bg: string; text: string; label: string }
+    > = {
+      PAID: {
+        bg: 'bg-green-100',
+        text: 'text-green-800',
+        label: 'Payment Confirmed',
+      },
+      PAYMENT_INITIATED: {
+        bg: 'bg-yellow-100',
+        text: 'text-yellow-800',
+        label: 'Payment Pending',
+      },
+      PENDING: {
+        bg: 'bg-amber-100',
+        text: 'text-amber-800',
+        label: 'Order Confirmed',
+      }, // COD initial status
+      CONFIRMED: {
+        bg: 'bg-blue-100',
+        text: 'text-blue-800',
+        label: 'Order Confirmed',
+      },
+      PROCESSING: {
+        bg: 'bg-blue-100',
+        text: 'text-blue-800',
+        label: 'Processing',
+      },
+      SHIPPED: {
+        bg: 'bg-purple-100',
+        text: 'text-purple-800',
+        label: 'Shipped',
+      },
+      OUT_FOR_DELIVERY: {
+        bg: 'bg-indigo-100',
+        text: 'text-indigo-800',
+        label: 'Out for Delivery',
+      },
+      DELIVERED: {
+        bg: 'bg-green-100',
+        text: 'text-green-800',
+        label: 'Delivered',
+      },
       CANCELLED: { bg: 'bg-red-100', text: 'text-red-800', label: 'Cancelled' },
     };
 
-    const config = statusConfig[status] || { bg: 'bg-gray-100', text: 'text-gray-800', label: status };
+    const config = statusConfig[status] || {
+      bg: 'bg-gray-100',
+      text: 'text-gray-800',
+      label: status,
+    };
     return (
-      <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold ${config.bg} ${config.text}`}>
+      <span
+        className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold ${config.bg} ${config.text}`}
+      >
         {config.label}
       </span>
     );
@@ -144,10 +196,13 @@ const OrderSuccessContent = () => {
               </div>
             </div>
 
-            <h1 className="text-4xl font-bold text-gray-900 mb-4">Invalid Order</h1>
+            <h1 className="text-4xl font-bold text-gray-900 mb-4">
+              Invalid Order
+            </h1>
 
             <p className="text-lg text-gray-600 mb-8">
-              We couldn&apos;t find the order you&apos;re looking for. Please check your order ID or contact support.
+              We couldn&apos;t find the order you&apos;re looking for. Please
+              check your order ID or contact support.
             </p>
 
             <Link
@@ -176,23 +231,33 @@ const OrderSuccessContent = () => {
               </div>
             </div>
 
-            <h1 className="text-4xl font-bold text-gray-900 mb-4">Order Placed Successfully!</h1>
+            <h1 className="text-4xl font-bold text-gray-900 mb-4">
+              Order Placed Successfully!
+            </h1>
 
             <p className="text-lg text-gray-600 mb-6">
-              Thank you for your purchase, {orderDetails.name}! Your order has been confirmed.
+              Thank you for your purchase, {orderDetails.name}! Your order has
+              been confirmed.
             </p>
 
             {/* Order ID Card */}
             <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg p-6 mb-6 border border-gray-200 animate-fade-in-up">
-              <p className="text-sm text-gray-600 mb-2 font-medium">Your Order ID</p>
-              <p className="text-2xl font-bold text-gray-900 mb-2 font-mono">{orderDetails.orderId}</p>
+              <p className="text-sm text-gray-600 mb-2 font-medium">
+                Your Order ID
+              </p>
+              <p className="text-2xl font-bold text-gray-900 mb-2 font-mono">
+                {orderDetails.orderId}
+              </p>
               <p className="text-sm text-gray-600">
-                Keep this order ID for tracking your order or if you need any assistance regarding your order.
+                Keep this order ID for tracking your order or if you need any
+                assistance regarding your order.
               </p>
             </div>
 
             {/* Order Status Badge */}
-            <div className="mb-4 animate-fade-in-up">{getStatusBadge(orderDetails.orderStatus)}</div>
+            <div className="mb-4 animate-fade-in-up">
+              {getStatusBadge(orderDetails.orderStatus)}
+            </div>
           </div>
 
           <div className="space-y-8">
@@ -205,15 +270,27 @@ const OrderSuccessContent = () => {
 
               <div className="space-y-4">
                 {orderDetails.orderItems.map((item) => (
-                  <div key={item.id} className="flex gap-4 p-4 bg-gray-50 rounded-lg">
+                  <div
+                    key={item.id}
+                    className="flex gap-4 p-4 bg-gray-50 rounded-lg"
+                  >
                     <div className="relative w-24 h-24 flex-shrink-0 bg-white rounded-md overflow-hidden border border-gray-200">
                       {item.productImageUrl ? (
                         <Image
-                          src={getOptimizedUrl(item.productImageUrl, 'f_auto,q_auto,w_96,h_96,c_fill')}
+                          src={getOptimizedUrl(
+                            item.productImageUrl,
+                            'f_auto,q_auto,w_96,h_96,c_fill'
+                          )}
                           alt={item.productName}
                           fill
                           sizes="96px"
                           className="object-cover"
+                          {...(getBlurUrl(item.productImageUrl)
+                            ? {
+                                placeholder: 'blur' as const,
+                                blurDataURL: getBlurUrl(item.productImageUrl),
+                              }
+                            : {})}
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center bg-gray-100">
@@ -223,7 +300,9 @@ const OrderSuccessContent = () => {
                     </div>
 
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-lg font-semibold text-gray-900 truncate">{item.productName}</h3>
+                      <h3 className="text-lg font-semibold text-gray-900 truncate">
+                        {item.productName}
+                      </h3>
                       <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-600">
                         <span>Quantity: {item.quantity}</span>
                         {item.productSize && (
@@ -238,7 +317,8 @@ const OrderSuccessContent = () => {
                       {/* SKU Display */}
                       {item.productSku && (
                         <p className="text-xs text-gray-500 mt-1">
-                          SKU: <span className="font-mono">{item.productSku}</span>
+                          SKU:{' '}
+                          <span className="font-mono">{item.productSku}</span>
                         </p>
                       )}
                     </div>
@@ -271,28 +351,32 @@ const OrderSuccessContent = () => {
                       <Currency amount={orderDetails.shippingCost.toString()} />
                     )}
                   </div>
-                  {/* COD Charge - Only for COD orders */}
-                  {orderDetails.paymentMethod === 'COD' && orderDetails.codAmount && (
+                  {/* Derived COD fee, only for COD orders. */}
+                  {orderDetails.paymentMethod === 'COD' &&
+                    orderDetails.codAmount &&
                     (() => {
-                      // Calculate COD charge: codAmount - subtotal - shippingCost - tax
-                      const codCharge = orderDetails.codAmount - orderDetails.subtotal - orderDetails.shippingCost - orderDetails.tax;
-                      return codCharge > 0 ? (
+                      const derivedCodFee =
+                        orderDetails.codAmount -
+                        orderDetails.subtotal -
+                        orderDetails.shippingCost -
+                        orderDetails.tax;
+                      return derivedCodFee > 0 ? (
                         <div className="flex justify-between text-gray-600">
                           <span>COD Handling Charge</span>
-                          <Currency amount={codCharge.toString()} />
+                          <Currency amount={derivedCodFee.toString()} />
                         </div>
                       ) : null;
-                    })()
-                  )}
+                    })()}
                   <div className="flex justify-between text-xl font-bold text-gray-900 pt-2 border-t border-gray-200">
                     <span>Total</span>
                     <Currency amount={orderDetails.totalAmount.toString()} />
                   </div>
-                  {orderDetails.paymentMethod === 'COD' && !orderDetails.isPaid && (
-                    <p className="text-sm text-amber-600 text-right">
-                      Pay on Delivery
-                    </p>
-                  )}
+                  {orderDetails.paymentMethod === 'COD' &&
+                    !orderDetails.isPaid && (
+                      <p className="text-sm text-amber-600 text-right">
+                        Pay on Delivery
+                      </p>
+                    )}
                 </div>
               </div>
             </div>
@@ -300,15 +384,22 @@ const OrderSuccessContent = () => {
             {/* Customer & Delivery Information */}
             <div className="grid md:grid-cols-2 gap-6">
               {/* Contact Information */}
-              <div className="bg-white rounded-lg border border-gray-200 p-6 animate-fade-in-up" style={{ animationDelay: '500ms' }}>
-                <h3 className="text-xl font-bold text-gray-900 mb-4">Contact Information</h3>
+              <div
+                className="bg-white rounded-lg border border-gray-200 p-6 animate-fade-in-up"
+                style={{ animationDelay: '500ms' }}
+              >
+                <h3 className="text-xl font-bold text-gray-900 mb-4">
+                  Contact Information
+                </h3>
 
                 <div className="space-y-4">
                   <div className="flex items-start gap-3">
                     <Mail className="h-5 w-5 text-gray-400 mt-0.5 flex-shrink-0" />
                     <div>
                       <p className="text-sm text-gray-600 mb-1">Email</p>
-                      <p className="text-gray-900 font-medium break-all">{orderDetails.email}</p>
+                      <p className="text-gray-900 font-medium break-all">
+                        {orderDetails.email}
+                      </p>
                     </div>
                   </div>
 
@@ -316,9 +407,12 @@ const OrderSuccessContent = () => {
                     <Phone className="h-5 w-5 text-gray-400 mt-0.5 flex-shrink-0" />
                     <div>
                       <p className="text-sm text-gray-600 mb-1">Phone Number</p>
-                      <p className="text-gray-900 font-medium">{orderDetails.phone}</p>
+                      <p className="text-gray-900 font-medium">
+                        {orderDetails.phone}
+                      </p>
                       <p className="text-xs text-gray-500 mt-1">
-                        You will be contacted and messaged regarding your order updates on this number.
+                        You will be contacted and messaged regarding your order
+                        updates on this number.
                       </p>
                     </div>
                   </div>
@@ -326,8 +420,13 @@ const OrderSuccessContent = () => {
               </div>
 
               {/* Delivery Address */}
-              <div className="bg-white rounded-lg border border-gray-200 p-6 animate-fade-in-up" style={{ animationDelay: '550ms' }}>
-                <h3 className="text-xl font-bold text-gray-900 mb-4">Delivery Address</h3>
+              <div
+                className="bg-white rounded-lg border border-gray-200 p-6 animate-fade-in-up"
+                style={{ animationDelay: '550ms' }}
+              >
+                <h3 className="text-xl font-bold text-gray-900 mb-4">
+                  Delivery Address
+                </h3>
 
                 <div className="flex items-start gap-3">
                   <MapPin className="h-5 w-5 text-gray-400 mt-0.5 flex-shrink-0" />
@@ -340,14 +439,20 @@ const OrderSuccessContent = () => {
                         {orderDetails.shippingAddress.line2 && (
                           <p>{orderDetails.shippingAddress.line2}</p>
                         )}
-                        <p>{orderDetails.shippingAddress.city}, {orderDetails.shippingAddress.state}</p>
+                        <p>
+                          {orderDetails.shippingAddress.city},{' '}
+                          {orderDetails.shippingAddress.state}
+                        </p>
                         <p>{orderDetails.shippingAddress.pincode}</p>
-                        {orderDetails.shippingAddress.country && orderDetails.shippingAddress.country !== 'India' && (
-                          <p>{orderDetails.shippingAddress.country}</p>
-                        )}
+                        {orderDetails.shippingAddress.country &&
+                          orderDetails.shippingAddress.country !== 'India' && (
+                            <p>{orderDetails.shippingAddress.country}</p>
+                          )}
                       </div>
                     ) : orderDetails.address ? (
-                      <p className="text-gray-900 leading-relaxed">{orderDetails.address}</p>
+                      <p className="text-gray-900 leading-relaxed">
+                        {orderDetails.address}
+                      </p>
                     ) : (
                       <p className="text-gray-500">Address not available</p>
                     )}
@@ -362,7 +467,10 @@ const OrderSuccessContent = () => {
             {/* Order Timeline & Payment Info */}
             <div className="grid md:grid-cols-2 gap-6">
               {/* Order Timeline */}
-              <div className="bg-white rounded-lg border border-gray-200 p-6 animate-fade-in-up" style={{ animationDelay: '600ms' }}>
+              <div
+                className="bg-white rounded-lg border border-gray-200 p-6 animate-fade-in-up"
+                style={{ animationDelay: '600ms' }}
+              >
                 <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
                   <Calendar className="h-5 w-5" />
                   Order Timeline
@@ -371,8 +479,12 @@ const OrderSuccessContent = () => {
                 <div className="space-y-3">
                   <div>
                     <p className="text-sm text-gray-600">Order Placed</p>
-                    <p className="text-gray-900 font-medium">{orderDateTime.date}</p>
-                    <p className="text-sm text-gray-500">{orderDateTime.time}</p>
+                    <p className="text-gray-900 font-medium">
+                      {orderDateTime.date}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      {orderDateTime.time}
+                    </p>
                   </div>
 
                   {orderDetails.paidAt && (
@@ -390,7 +502,10 @@ const OrderSuccessContent = () => {
               </div>
 
               {/* Payment Information */}
-              <div className="bg-white rounded-lg border border-gray-200 p-6 animate-fade-in-up" style={{ animationDelay: '650ms' }}>
+              <div
+                className="bg-white rounded-lg border border-gray-200 p-6 animate-fade-in-up"
+                style={{ animationDelay: '650ms' }}
+              >
                 <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
                   {orderDetails.paymentMethod === 'COD' ? (
                     <Banknote className="h-5 w-5" />
@@ -424,10 +539,16 @@ const OrderSuccessContent = () => {
                     <div className="pt-3 border-t border-gray-100">
                       <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
                         <p className="text-sm text-amber-800 font-medium">
-                          Pay <Currency amount={orderDetails.totalAmount.toString()} className="inline font-bold" /> on delivery
+                          Pay{' '}
+                          <Currency
+                            amount={orderDetails.totalAmount.toString()}
+                            className="inline font-bold"
+                          />{' '}
+                          on delivery
                         </p>
                         <p className="text-xs text-amber-700 mt-1">
-                          Please keep the exact amount ready when your order arrives.
+                          Please keep the exact amount ready when your order
+                          arrives.
                         </p>
                       </div>
                     </div>
@@ -436,60 +557,77 @@ const OrderSuccessContent = () => {
                   {/* Payment Status */}
                   <div className="pt-3 border-t border-gray-100">
                     <p className="text-sm text-gray-600">Payment Status</p>
-                    <p className={`font-semibold ${
-                      orderDetails.isPaid 
-                        ? 'text-green-600' 
-                        : orderDetails.paymentMethod === 'COD' 
-                          ? 'text-amber-600' 
-                          : 'text-yellow-600'
-                    }`}>
-                      {orderDetails.isPaid 
-                        ? 'Paid' 
-                        : orderDetails.paymentMethod === 'COD' 
-                          ? 'Pay on Delivery' 
+                    <p
+                      className={`font-semibold ${
+                        orderDetails.isPaid
+                          ? 'text-green-600'
+                          : orderDetails.paymentMethod === 'COD'
+                            ? 'text-amber-600'
+                            : 'text-yellow-600'
+                      }`}
+                    >
+                      {orderDetails.isPaid
+                        ? 'Paid'
+                        : orderDetails.paymentMethod === 'COD'
+                          ? 'Pay on Delivery'
                           : 'Pending'}
                     </p>
                   </div>
 
                   {/* Razorpay IDs - only for online payments */}
-                  {orderDetails.paymentMethod !== 'COD' && orderDetails.razorpayOrderId && (
-                    <div className="pt-3 border-t border-gray-100">
-                      <p className="text-sm text-gray-600">Razorpay Order ID</p>
-                      <p className="text-gray-900 font-mono text-sm break-all">
-                        {orderDetails.razorpayOrderId}
-                      </p>
-                    </div>
-                  )}
+                  {orderDetails.paymentMethod !== 'COD' &&
+                    orderDetails.razorpayOrderId && (
+                      <div className="pt-3 border-t border-gray-100">
+                        <p className="text-sm text-gray-600">
+                          Razorpay Order ID
+                        </p>
+                        <p className="text-gray-900 font-mono text-sm break-all">
+                          {orderDetails.razorpayOrderId}
+                        </p>
+                      </div>
+                    )}
 
-                  {orderDetails.paymentMethod !== 'COD' && orderDetails.razorpayPaymentId && (
-                    <div className="pt-3 border-t border-gray-100">
-                      <p className="text-sm text-gray-600">Razorpay Payment ID</p>
-                      <p className="text-gray-900 font-mono text-sm break-all">
-                        {orderDetails.razorpayPaymentId}
-                      </p>
-                    </div>
-                  )}
+                  {orderDetails.paymentMethod !== 'COD' &&
+                    orderDetails.razorpayPaymentId && (
+                      <div className="pt-3 border-t border-gray-100">
+                        <p className="text-sm text-gray-600">
+                          Razorpay Payment ID
+                        </p>
+                        <p className="text-gray-900 font-mono text-sm break-all">
+                          {orderDetails.razorpayPaymentId}
+                        </p>
+                      </div>
+                    )}
                 </div>
               </div>
             </div>
 
             {/* Email Confirmation Notice */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 animate-fade-in-up" style={{ animationDelay: '700ms' }}>
+            <div
+              className="bg-blue-50 border border-blue-200 rounded-lg p-6 animate-fade-in-up"
+              style={{ animationDelay: '700ms' }}
+            >
               <div className="flex gap-3">
                 <Mail className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
                 <div>
-                  <p className="font-semibold text-blue-900 mb-1">Confirmation Email Sent</p>
+                  <p className="font-semibold text-blue-900 mb-1">
+                    Confirmation Email Sent
+                  </p>
                   <p className="text-sm text-blue-800">
-                    A confirmation email with your order details has been sent to{' '}
-                    <span className="font-semibold">{orderDetails.email}</span>. Please check your inbox
-                    and spam folder.
+                    A confirmation email with your order details has been sent
+                    to{' '}
+                    <span className="font-semibold">{orderDetails.email}</span>.
+                    Please check your inbox and spam folder.
                   </p>
                 </div>
               </div>
             </div>
 
             {/* Action Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-center pt-6 animate-fade-in-up" style={{ animationDelay: '800ms' }}>
+            <div
+              className="flex flex-col sm:flex-row gap-4 justify-center pt-6 animate-fade-in-up"
+              style={{ animationDelay: '800ms' }}
+            >
               <Link
                 href="/"
                 className="bg-black text-white px-8 py-3 rounded-lg font-semibold hover:bg-gray-800 transition-colors text-center btn-press"
@@ -506,22 +644,25 @@ const OrderSuccessContent = () => {
 
 const OrderSuccessPage = () => {
   return (
-    <Suspense fallback={
-      <Container>
-        <div className="px-4 py-16 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-4xl">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900 mx-auto"></div>
-              <p className="mt-4 text-lg text-gray-600">Loading order details...</p>
+    <Suspense
+      fallback={
+        <Container>
+          <div className="px-4 py-16 sm:px-6 lg:px-8">
+            <div className="mx-auto max-w-4xl">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900 mx-auto"></div>
+                <p className="mt-4 text-lg text-gray-600">
+                  Loading order details...
+                </p>
+              </div>
             </div>
           </div>
-        </div>
-      </Container>
-    }>
+        </Container>
+      }
+    >
       <OrderSuccessContent />
     </Suspense>
   );
 };
 
 export default OrderSuccessPage;
-
