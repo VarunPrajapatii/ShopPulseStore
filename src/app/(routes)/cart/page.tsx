@@ -3,7 +3,7 @@
 import Container from '@/components/ui/container';
 import useCart from '@/hooks/use-cart';
 import CartItem from './components/cart-item';
-import Summary from './components/summary';
+import Summary from './components/checkout-summary';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AlertTriangle, ShoppingBag, ArrowLeft, Shield, Truck, RotateCcw } from 'lucide-react';

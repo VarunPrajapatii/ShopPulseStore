@@ -1,23 +1,23 @@
-"use client";
+'use client';
 
-import Button from "@/components/ui/button";
-import Currency from "@/components/ui/currency";
-import TrustBadges from "@/components/ui/trust-badges";
-import PincodeChecker from "@/components/pincode-checker";
-import useShipping from "@/hooks/use-shipping";
-import { Lock, Truck, Shield, CreditCard, Banknote } from "lucide-react";
-import { cn } from "@/lib/utils";
+import Button from '@/components/ui/button';
+import Currency from '@/components/ui/currency';
+import TrustBadges from '@/components/ui/trust-badges';
+import PincodeChecker from '@/components/pincode-checker';
+import useShipping from '@/hooks/use-shipping';
+import { Lock, Truck, Shield, CreditCard, Banknote } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
-export type PaymentMethod = "PREPAID" | "COD";
+export type PaymentMethod = 'PREPAID' | 'COD';
 
 interface CheckoutItem {
   productId: string;
-  variantId?: string | null;     // For variant tracking
+  variantId?: string | null; // For variant tracking
   name: string;
   quantity: number | undefined;
   priceAtPurchase: string | number;
-  sizeName?: string | null;      // Size name for display
-  sizeValue?: string | null;     // Size value for display
+  sizeName?: string | null; // Size name for display
+  sizeValue?: string | null; // Size value for display
 }
 
 interface OrderSummaryProps {
@@ -54,30 +54,35 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   onVerifyAndPlaceCODOrder,
 }) => {
   const { shippingData } = useShipping();
-  
+
   // Has pincode been checked?
   const hasPincodeChecked = !!shippingData?.pincode;
   const isServiceable = shippingData?.serviceable ?? false;
-  
+
   // Use shipping cost from pincode check
-  const shippingCost = (hasPincodeChecked && isServiceable && shippingData?.deliveryCharge) 
-    ? shippingData.deliveryCharge 
-    : 0;
-  
-  // COD charge - only applicable when COD is selected
-  const codCharge = (hasPincodeChecked && isServiceable && shippingData?.codChargeAmount) 
-    ? shippingData.codChargeAmount 
-    : 0;
-  const isCODSelected = paymentMethod === "COD";
-  const appliedCODCharge = isCODSelected ? codCharge : 0;
-  
+  const shippingCost =
+    hasPincodeChecked && isServiceable
+      ? (shippingData?.deliveryCharge ?? 0)
+      : 0;
+
+  // COD fee from delivery charges, only applied when COD is selected.
+  const codFee =
+    hasPincodeChecked && isServiceable
+      ? (shippingData?.codChargeAmount ?? 0)
+      : 0;
+  const isCODSelected = paymentMethod === 'COD';
+  const appliedCodFee = isCODSelected ? codFee : 0;
+
   // Calculate order total
-  const orderTotal = totalPrice + shippingCost + appliedCODCharge;
-  
+  const orderTotal = totalPrice + shippingCost + appliedCodFee;
+
   // Check if COD is available - must be enabled for store AND available for this pincode
-  const isCODAvailable = hasPincodeChecked && isServiceable && 
-    shippingData?.codAvailable && shippingData?.codEnabledForStore;
-  
+  const isCODAvailable =
+    hasPincodeChecked &&
+    isServiceable &&
+    shippingData?.codAvailable &&
+    shippingData?.codEnabledForStore;
+
   // Delivery is available if pincode is checked and serviceable
   const isDeliveryAvailable = hasPincodeChecked && isServiceable;
 
@@ -93,14 +98,19 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       {/* Items List */}
       <div className="space-y-3 max-h-[200px] overflow-y-auto pr-2">
         {items.map((item, index) => {
-          const itemKey = item.variantId 
-            ? `${item.productId}-${item.variantId}` 
+          const itemKey = item.variantId
+            ? `${item.productId}-${item.variantId}`
             : `${item.productId}-${index}`;
-          
+
           return (
-            <div key={itemKey} className="flex items-center gap-3 pb-3 border-b border-border last:border-b-0">
+            <div
+              key={itemKey}
+              className="flex items-center gap-3 pb-3 border-b border-border last:border-b-0"
+            >
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground truncate">{item.name}</p>
+                <p className="text-sm font-medium text-foreground truncate">
+                  {item.name}
+                </p>
                 <div className="flex items-center gap-2 mt-0.5">
                   {item.sizeName && (
                     <span className="text-xs text-muted-foreground">
@@ -141,7 +151,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           </div>
           {!hasPincodeChecked ? (
             <span className="text-muted-foreground text-xs">Enter pincode</span>
-          ) : !isServiceable ? (
+          ) : !isServiceable || shippingData?.deliveryCharge === null ? (
             <span className="text-red-600 text-xs">Not available</span>
           ) : shippingCost === 0 ? (
             <span className="text-green-600 font-medium text-sm">FREE</span>
@@ -149,14 +159,14 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
             <Currency amount={shippingCost.toString()} />
           )}
         </div>
-        {/* COD Charge - Only show when COD is selected and there's a charge */}
-        {isCODSelected && codCharge > 0 && (
+        {/* COD fee - only show when COD is selected and there is a fee. */}
+        {isCODSelected && codFee > 0 && (
           <div className="flex items-center justify-between text-sm">
             <div className="flex items-center gap-1.5 text-muted-foreground">
               <Banknote className="h-3.5 w-3.5" />
               <span>COD Charge</span>
             </div>
-            <Currency amount={codCharge.toString()} />
+            <Currency amount={codFee.toString()} />
           </div>
         )}
       </div>
@@ -180,65 +190,75 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       {/* Payment Method Selection - Only show when delivery is available and not in OTP flow */}
       {isDeliveryAvailable && !showOtpField && (
         <div className="mt-4 pt-4 border-t border-border">
-          <h3 className="text-sm font-semibold text-foreground mb-3">Payment Method</h3>
+          <h3 className="text-sm font-semibold text-foreground mb-3">
+            Payment Method
+          </h3>
           <div className="space-y-2">
             {/* Online Payment Option */}
-            <label 
+            <label
               className={cn(
-                "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all",
-                paymentMethod === "PREPAID" 
-                  ? "border-primary bg-primary/5" 
-                  : "border-border hover:border-gray-300"
+                'flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all',
+                paymentMethod === 'PREPAID'
+                  ? 'border-primary bg-primary/5'
+                  : 'border-border hover:border-gray-300'
               )}
             >
               <input
                 type="radio"
                 name="paymentMethod"
                 value="PREPAID"
-                checked={paymentMethod === "PREPAID"}
-                onChange={() => onPaymentMethodChange("PREPAID")}
+                checked={paymentMethod === 'PREPAID'}
+                onChange={() => onPaymentMethodChange('PREPAID')}
                 className="sr-only"
               />
-              <div className={cn(
-                "w-4 h-4 rounded-full border-2 flex items-center justify-center",
-                paymentMethod === "PREPAID" ? "border-primary" : "border-gray-300"
-              )}>
-                {paymentMethod === "PREPAID" && (
+              <div
+                className={cn(
+                  'w-4 h-4 rounded-full border-2 flex items-center justify-center',
+                  paymentMethod === 'PREPAID'
+                    ? 'border-primary'
+                    : 'border-gray-300'
+                )}
+              >
+                {paymentMethod === 'PREPAID' && (
                   <div className="w-2 h-2 rounded-full bg-primary" />
                 )}
               </div>
               <CreditCard className="h-4 w-4 text-muted-foreground" />
               <div className="flex-1">
                 <p className="text-sm font-medium">Pay Online</p>
-                <p className="text-xs text-muted-foreground">UPI, Cards, Net Banking</p>
+                <p className="text-xs text-muted-foreground">
+                  UPI, Cards, Net Banking
+                </p>
               </div>
             </label>
 
             {/* COD Option */}
-            <label 
+            <label
               className={cn(
-                "flex items-center gap-3 p-3 rounded-lg border transition-all",
-                !isCODAvailable 
-                  ? "border-border bg-muted/50 cursor-not-allowed opacity-60" 
-                  : paymentMethod === "COD"
-                    ? "border-primary bg-primary/5 cursor-pointer" 
-                    : "border-border hover:border-gray-300 cursor-pointer"
+                'flex items-center gap-3 p-3 rounded-lg border transition-all',
+                !isCODAvailable
+                  ? 'border-border bg-muted/50 cursor-not-allowed opacity-60'
+                  : paymentMethod === 'COD'
+                    ? 'border-primary bg-primary/5 cursor-pointer'
+                    : 'border-border hover:border-gray-300 cursor-pointer'
               )}
             >
               <input
                 type="radio"
                 name="paymentMethod"
                 value="COD"
-                checked={paymentMethod === "COD"}
-                onChange={() => isCODAvailable && onPaymentMethodChange("COD")}
+                checked={paymentMethod === 'COD'}
+                onChange={() => isCODAvailable && onPaymentMethodChange('COD')}
                 disabled={!isCODAvailable}
                 className="sr-only"
               />
-              <div className={cn(
-                "w-4 h-4 rounded-full border-2 flex items-center justify-center",
-                paymentMethod === "COD" ? "border-primary" : "border-gray-300"
-              )}>
-                {paymentMethod === "COD" && (
+              <div
+                className={cn(
+                  'w-4 h-4 rounded-full border-2 flex items-center justify-center',
+                  paymentMethod === 'COD' ? 'border-primary' : 'border-gray-300'
+                )}
+              >
+                {paymentMethod === 'COD' && (
                   <div className="w-2 h-2 rounded-full bg-primary" />
                 )}
               </div>
@@ -246,7 +266,9 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
               <div className="flex-1">
                 <p className="text-sm font-medium">Cash on Delivery</p>
                 <p className="text-xs text-muted-foreground">
-                  {isCODAvailable ? "Pay when you receive" : "Not available for this pincode"}
+                  {isCODAvailable
+                    ? 'Pay when you receive'
+                    : 'Not available for this pincode'}
                 </p>
               </div>
             </label>
@@ -257,31 +279,39 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       {/* OTP Field - Shows after clicking Proceed to Pay or Place COD Order */}
       {showOtpField && (
         <div className="mt-6 space-y-3">
-          <div className={cn(
-            "rounded-lg p-3",
-            paymentMethod === "COD" ? "bg-green-50" : "bg-blue-50"
-          )}>
-            <label className={cn(
-              "block text-sm font-medium mb-2",
-              paymentMethod === "COD" ? "text-green-900" : "text-blue-900"
-            )}>
+          <div
+            className={cn(
+              'rounded-lg p-3',
+              paymentMethod === 'COD' ? 'bg-green-50' : 'bg-blue-50'
+            )}
+          >
+            <label
+              className={cn(
+                'block text-sm font-medium mb-2',
+                paymentMethod === 'COD' ? 'text-green-900' : 'text-blue-900'
+              )}
+            >
               Enter OTP sent to {phoneNumber}
             </label>
             <input
               type="text"
               value={otp}
-              onChange={(e) => onSetOtp(e.target.value.replace(/\D/g, ""))}
+              onChange={(e) => onSetOtp(e.target.value.replace(/\D/g, ''))}
               placeholder="Enter 6-digit OTP"
               maxLength={6}
               disabled={otpLoading}
               className={cn(
-                "w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent disabled:bg-muted disabled:cursor-not-allowed bg-white text-foreground text-center text-lg tracking-widest font-mono",
-                paymentMethod === "COD" ? "border-green-200" : "border-blue-200"
+                'w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent disabled:bg-muted disabled:cursor-not-allowed bg-white text-foreground text-center text-lg tracking-widest font-mono',
+                paymentMethod === 'COD' ? 'border-green-200' : 'border-blue-200'
               )}
             />
           </div>
           <Button
-            onClick={paymentMethod === "COD" ? onVerifyAndPlaceCODOrder : onVerifyAndPay}
+            onClick={
+              paymentMethod === 'COD'
+                ? onVerifyAndPlaceCODOrder
+                : onVerifyAndPay
+            }
             disabled={otpLoading || otp.length !== 6}
             className="w-full bg-primary text-primary-foreground px-6 py-3.5 rounded-lg font-semibold hover:bg-primary/90 transition-colors disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
@@ -290,7 +320,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                 <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
                 <span>Verifying...</span>
               </>
-            ) : paymentMethod === "COD" ? (
+            ) : paymentMethod === 'COD' ? (
               <>
                 <Banknote className="h-4 w-4" />
                 <span>VERIFY & PLACE ORDER</span>
@@ -308,7 +338,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       {/* Action Buttons */}
       {!showOtpField && (
         <>
-          {paymentMethod === "COD" ? (
+          {paymentMethod === 'COD' ? (
             <Button
               onClick={onPlaceCODOrder}
               disabled={loading || !isDeliveryAvailable}
@@ -366,9 +396,13 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
             <span>SSL Encrypted</span>
           </div>
         </div>
-        
-        <TrustBadges variant="compact" showPaymentMethods className="justify-center" />
-        
+
+        <TrustBadges
+          variant="compact"
+          showPaymentMethods
+          className="justify-center"
+        />
+
         <div className="mt-3 flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
           <Lock className="h-3 w-3" />
           <span>Secured by Razorpay</span>

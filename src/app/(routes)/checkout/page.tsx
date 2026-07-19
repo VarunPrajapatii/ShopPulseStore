@@ -9,6 +9,8 @@ import useShipping from '@/hooks/use-shipping';
 import toast from 'react-hot-toast';
 import { formSchema, CheckoutFormValues } from '@/lib/zodSchema';
 import { AddressForm, OrderSummary, type PaymentMethod } from './components';
+import B2bForm from './components/b2b-form';
+import type { BuyerBlock } from '@/lib/returns-types';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, ShoppingBag } from 'lucide-react';
@@ -55,7 +57,7 @@ interface RazorpayInstance {
   open: () => void;
 }
 
-type CheckoutStep = "address" | "verification" | "payment" | "done";
+type CheckoutStep = 'address' | 'verification' | 'payment' | 'done';
 
 const CheckoutPage = () => {
   const cart = useCart();
@@ -80,10 +82,17 @@ const CheckoutPage = () => {
     name: item.name,
     quantity: item.quantity || 1,
     // Use effectivePrice (variant price) from cart, with fallbacks
-    priceAtPurchase: item.effectivePrice ?? item.sellingPrice ?? Number(item.price),
+    priceAtPurchase:
+      item.effectivePrice ?? item.sellingPrice ?? Number(item.price),
     // Only include size info for variant products (not "Default")
-    sizeName: item.selectedVariant.size.name !== 'Default' ? item.selectedVariant.size.name : null,
-    sizeValue: item.selectedVariant.size.name !== 'Default' ? item.selectedVariant.size.value : null,
+    sizeName:
+      item.selectedVariant.size.name !== 'Default'
+        ? item.selectedVariant.size.name
+        : null,
+    sizeValue:
+      item.selectedVariant.size.name !== 'Default'
+        ? item.selectedVariant.size.value
+        : null,
   }));
 
   // Items for backend API (with variantId for variant tracking)
@@ -91,15 +100,26 @@ const CheckoutPage = () => {
   const checkoutItems = items.map((item) => ({
     productId: item.id,
     // Only send variantId for actual variant products
-    variantId: item.selectedVariant.size.name !== 'Default' ? item.variantId : null,
+    variantId:
+      item.selectedVariant.size.name !== 'Default' ? item.variantId : null,
     name: item.name,
     quantity: item.quantity || 1,
     // Use effectivePrice (variant price) from cart, with fallbacks
-    priceAtPurchase: String(item.effectivePrice ?? item.sellingPrice ?? Number(item.price)),
+    priceAtPurchase: String(
+      item.effectivePrice ?? item.sellingPrice ?? Number(item.price)
+    ),
     // Only send size for variant products
-    size: item.selectedVariant.size.name !== 'Default' ? item.selectedVariant.sizeId : null,
+    size:
+      item.selectedVariant.size.name !== 'Default'
+        ? item.selectedVariant.sizeId
+        : null,
   }));
 
+  const [b2bEnabled, setB2bEnabled] = useState(false);
+  const [buyer, setBuyer] = useState<BuyerBlock | null>(null);
+  const [b2bServerError, setB2bServerError] = useState<
+    'INVALID_GSTIN' | 'MISSING_LEGAL_NAME' | 'MISSING_B2B_ADDRESS' | null
+  >(null);
 
   const [loading, setLoading] = useState(false);
   const [showOtpField, setShowOtpField] = useState(false);
@@ -158,24 +178,30 @@ const CheckoutPage = () => {
 
   const totalPrice = items.reduce((total, item) => {
     // Use effectivePrice (variant-specific price) from cart, with fallbacks
-    const itemPrice = item.effectivePrice ?? item.sellingPrice ?? Number(item.price);
+    const itemPrice =
+      item.effectivePrice ?? item.sellingPrice ?? Number(item.price);
     return total + itemPrice * (item.quantity || 1);
   }, 0);
 
   // Check if pincode has been checked
   const hasPincodeChecked = !!shippingData?.pincode;
   const isServiceable = shippingData?.serviceable ?? false;
+  const allowB2BInvoices = shippingData?.allowB2BInvoices === true;
+
+  useEffect(() => {
+    if (!allowB2BInvoices) {
+      setB2bEnabled(false);
+      setBuyer(null);
+      setB2bServerError(null);
+    }
+  }, [allowB2BInvoices]);
 
   // Calculate shipping cost from pincode check
-  const shippingCost = (hasPincodeChecked && isServiceable && shippingData?.deliveryCharge) 
-    ? shippingData.deliveryCharge 
-    : 0;
-  
-  // COD charge from pincode check
-  const codCharge = (hasPincodeChecked && isServiceable && shippingData?.codChargeAmount) 
-    ? shippingData.codChargeAmount 
-    : 0;
-  
+  const shippingCost =
+    hasPincodeChecked && isServiceable
+      ? (shippingData?.deliveryCharge ?? 0)
+      : 0;
+
   // Calculate order total (COD charge is added in order summary based on selected payment method)
   const orderTotal = totalPrice + shippingCost;
 
@@ -201,7 +227,7 @@ const CheckoutPage = () => {
 
       // TODO: Uncomment above API call when OTP backend is ready
       // For now, showing OTP field for testing
-      
+
       // if (response.data) {
       setShowOtpField(true);
       toast.success('OTP sent to your phone number');
@@ -271,7 +297,7 @@ const CheckoutPage = () => {
         notes?: string;
         items: typeof checkoutItems;
         paymentMethod: 'PREPAID';
-        shippingCost: number;
+        buyer?: BuyerBlock;
       } = {
         name: `${formData.firstName} ${formData.lastName}`,
         phone: formData.phone,
@@ -287,7 +313,7 @@ const CheckoutPage = () => {
         isShippingSameAsBilling,
         items: checkoutItems,
         paymentMethod: 'PREPAID',
-        shippingCost: shippingCost,
+        buyer: b2bEnabled && buyer ? buyer : undefined,
       };
 
       // Add order notes if provided
@@ -319,7 +345,6 @@ const CheckoutPage = () => {
         }
       );
 
-
       const { razorpayOrderId, amount, email, phone } = response.data;
 
       const options: RazorpayOptions = {
@@ -344,7 +369,7 @@ const CheckoutPage = () => {
               }
             );
 
-            if (verifyResponse.data.success) {
+            if (verifyResponse.data.ok) {
               cart.removeAll();
               toast.success('Payment successful!');
               router.push(`/order-success?orderId=${response.data.orderId}`);
@@ -384,11 +409,16 @@ const CheckoutPage = () => {
       if (axios.isAxiosError(error) && error.response) {
         console.error('Error response data:', error.response.data);
         const errorData = error.response.data;
-        
+
         // Handle insufficient stock error
-        if (typeof errorData === 'string' && errorData.includes('Insufficient stock')) {
+        if (
+          typeof errorData === 'string' &&
+          errorData.includes('Insufficient stock')
+        ) {
           // Extract product name and stock info from error message
-          const stockMatch = errorData.match(/Insufficient stock for (.+)\. Available: (\d+), Requested: (\d+)/);
+          const stockMatch = errorData.match(
+            /Insufficient stock for (.+)\. Available: (\d+), Requested: (\d+)/
+          );
           if (stockMatch) {
             const [, productName, available, requested] = stockMatch;
             toast.error(
@@ -399,9 +429,12 @@ const CheckoutPage = () => {
             toast.error(errorData, { duration: 5000 });
           }
         } else if (errorData.error === 'Some products are not available') {
-          toast.error('Some products in your cart are no longer available. Please refresh and try again.');
+          toast.error(
+            'Some products in your cart are no longer available. Please refresh and try again.'
+          );
         } else {
-          const errorMessage = errorData.error || errorData || 'Failed to process checkout';
+          const errorMessage =
+            errorData.error || errorData || 'Failed to process checkout';
           toast.error(errorMessage);
         }
       } else {
@@ -445,7 +478,7 @@ const CheckoutPage = () => {
       //     fullName: `${form.getValues('firstName')} ${form.getValues('lastName')}`,
       //   }
       // );
-      
+
       // For now, showing OTP field for testing
       setShowOtpField(true);
       toast.success('OTP sent to your phone number');
@@ -513,8 +546,7 @@ const CheckoutPage = () => {
         notes?: string;
         items: typeof checkoutItems;
         paymentMethod: 'COD';
-        shippingCost: number;
-        codCharge?: number;
+        buyer?: BuyerBlock;
       } = {
         name: `${formData.firstName} ${formData.lastName}`,
         phone: formData.phone,
@@ -530,8 +562,7 @@ const CheckoutPage = () => {
         isShippingSameAsBilling,
         items: checkoutItems,
         paymentMethod: 'COD',
-        shippingCost: shippingCost,
-        codCharge: codCharge > 0 ? codCharge : undefined,
+        buyer: b2bEnabled && buyer ? buyer : undefined,
       };
 
       // Add order notes if provided
@@ -580,10 +611,27 @@ const CheckoutPage = () => {
       console.error('Error placing COD order:', error);
       if (axios.isAxiosError(error) && error.response) {
         const errorData = error.response.data;
-        
-        // Handle insufficient stock error
-        if (typeof errorData === 'string' && errorData.includes('Insufficient stock')) {
-          const stockMatch = errorData.match(/Insufficient stock for (.+)\. Available: (\d+), Requested: (\d+)/);
+
+        // Handle B2B errors
+        if (errorData.error === 'B2B_NOT_ALLOWED') {
+          setB2bEnabled(false);
+          toast.error('GST invoicing is not available for this store.');
+        } else if (errorData.error === 'INVALID_GSTIN') {
+          setB2bServerError('INVALID_GSTIN');
+          toast.error('Invalid GSTIN. Please check and try again.');
+        } else if (errorData.error === 'MISSING_LEGAL_NAME') {
+          setB2bServerError('MISSING_LEGAL_NAME');
+          toast.error('Legal name is required for GST invoice.');
+        } else if (errorData.error === 'MISSING_B2B_ADDRESS') {
+          setB2bServerError('MISSING_B2B_ADDRESS');
+          toast.error('Complete the billing address for GST invoice.');
+        } else if (
+          typeof errorData === 'string' &&
+          errorData.includes('Insufficient stock')
+        ) {
+          const stockMatch = errorData.match(
+            /Insufficient stock for (.+)\. Available: (\d+), Requested: (\d+)/
+          );
           if (stockMatch) {
             const [, productName, available, requested] = stockMatch;
             toast.error(
@@ -594,9 +642,12 @@ const CheckoutPage = () => {
             toast.error(errorData, { duration: 5000 });
           }
         } else if (errorData.error === 'Some products are not available') {
-          toast.error('Some products in your cart are no longer available. Please refresh and try again.');
+          toast.error(
+            'Some products in your cart are no longer available. Please refresh and try again.'
+          );
         } else {
-          const errorMessage = errorData.error || errorData || 'Failed to place order';
+          const errorMessage =
+            errorData.error || errorData || 'Failed to place order';
           toast.error(errorMessage);
         }
       } else {
@@ -619,9 +670,13 @@ const CheckoutPage = () => {
           <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
             <ShoppingBag className="h-8 w-8 text-gray-400" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Your cart is empty</h1>
-          <p className="text-gray-600 mb-6">Add items to your cart to checkout.</p>
-          <Link 
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            Your cart is empty
+          </h1>
+          <p className="text-gray-600 mb-6">
+            Add items to your cart to checkout.
+          </p>
+          <Link
             href="/"
             className="inline-flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-lg font-medium"
           >
@@ -633,13 +688,15 @@ const CheckoutPage = () => {
   }
 
   // Check if all items have valid IDs
-  const invalidItems = items.filter(item => !item.id);
+  const invalidItems = items.filter((item) => !item.id);
   if (invalidItems.length > 0) {
     return (
       <Container>
         <div className="px-4 py-16 sm:px-6 lg:px-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-4">Checkout</h1>
-          <p className="text-red-600">Some items in your cart are invalid. Please refresh and try again.</p>
+          <p className="text-red-600">
+            Some items in your cart are invalid. Please refresh and try again.
+          </p>
         </div>
       </Container>
     );
@@ -650,8 +707,8 @@ const CheckoutPage = () => {
       <Container>
         <div className="px-4 py-8 sm:px-6 lg:px-8">
           {/* Back to Cart Link */}
-          <Link 
-            href="/cart" 
+          <Link
+            href="/cart"
             className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition-colors mb-6"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -660,8 +717,12 @@ const CheckoutPage = () => {
 
           {/* Page Header */}
           <div className="text-center mb-6">
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Secure Checkout</h1>
-            <p className="text-sm text-gray-500 mt-1">Complete your purchase securely</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+              Secure Checkout
+            </h1>
+            <p className="text-sm text-gray-500 mt-1">
+              Complete your purchase securely
+            </p>
           </div>
 
           {/* Progress Indicator */}
@@ -672,7 +733,9 @@ const CheckoutPage = () => {
             <div className="lg:col-span-7">
               <div className="bg-white rounded-xl border border-gray-200 p-6">
                 <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <span className="w-8 h-8 bg-primary text-white rounded-full flex items-center justify-center text-sm font-bold">1</span>
+                  <span className="w-8 h-8 bg-primary text-white rounded-full flex items-center justify-center text-sm font-bold">
+                    1
+                  </span>
                   Delivery Address
                 </h2>
 
@@ -683,9 +746,46 @@ const CheckoutPage = () => {
                 </FormProvider>
               </div>
 
+              {/* B2B / GST Invoice Section */}
+              {allowB2BInvoices && (
+                <div className="mt-6 bg-white rounded-xl border border-gray-200 p-6">
+                  <label className="flex items-center gap-3 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={b2bEnabled}
+                      className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                      onChange={(e) => {
+                        setB2bEnabled(e.target.checked);
+                        if (!e.target.checked) {
+                          setBuyer(null);
+                          setB2bServerError(null);
+                        }
+                      }}
+                    />
+                    <span className="text-sm font-medium text-gray-900">
+                      Use GST invoice (B2B)
+                    </span>
+                  </label>
+                  {b2bEnabled && (
+                    <div className="mt-4">
+                      <B2bForm
+                        disabled={loading || otpLoading}
+                        onChange={(val) => {
+                          setBuyer(val);
+                          setB2bServerError(null);
+                        }}
+                        serverError={b2bServerError}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Order Notes Section */}
               <div className="mt-6 bg-white rounded-xl border border-gray-200 p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Order Notes (Optional)</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                  Order Notes (Optional)
+                </h3>
                 <textarea
                   value={orderNotes}
                   onChange={(e) => setOrderNotes(e.target.value)}
@@ -694,12 +794,18 @@ const CheckoutPage = () => {
                   rows={3}
                   maxLength={500}
                 />
-                <p className="text-xs text-gray-400 mt-1 text-right">{orderNotes.length}/500 characters</p>
+                <p className="text-xs text-gray-400 mt-1 text-right">
+                  {orderNotes.length}/500 characters
+                </p>
               </div>
 
               {/* Trust Badges - Desktop */}
               <div className="mt-6 hidden lg:block">
-                <TrustBadges variant="horizontal" showPaymentMethods showDeliveryPartners />
+                <TrustBadges
+                  variant="horizontal"
+                  showPaymentMethods
+                  showDeliveryPartners
+                />
               </div>
             </div>
 
@@ -730,21 +836,27 @@ const CheckoutPage = () => {
       <MobileStickyCheckout
         total={orderTotal}
         onAction={
-          showOtpField 
-            ? (paymentMethod === 'COD' ? handleVerifyAndPlaceCODOrder : handleVerifyAndPay)
-            : paymentMethod === 'COD' 
-              ? handlePlaceCODOrder 
+          showOtpField
+            ? paymentMethod === 'COD'
+              ? handleVerifyAndPlaceCODOrder
+              : handleVerifyAndPay
+            : paymentMethod === 'COD'
+              ? handlePlaceCODOrder
               : form.handleSubmit(onSubmit)
         }
         actionLabel={
-          showOtpField 
-            ? (paymentMethod === 'COD' ? "Verify & Place Order" : "Verify & Pay")
-            : paymentMethod === 'COD' 
-              ? `Place Order (₹${orderTotal} COD)` 
-              : "Continue"
+          showOtpField
+            ? paymentMethod === 'COD'
+              ? 'Verify & Place Order'
+              : 'Verify & Pay'
+            : paymentMethod === 'COD'
+              ? `Place Order (₹${orderTotal} COD)`
+              : 'Continue'
         }
         isLoading={loading || otpLoading}
-        disabled={(showOtpField && otp.length !== 6) || !shippingData?.serviceable}
+        disabled={
+          (showOtpField && otp.length !== 6) || !shippingData?.serviceable
+        }
       />
     </div>
   );

@@ -9,18 +9,18 @@ import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { ArrowRight, Lock, Tag, Truck, AlertCircle } from 'lucide-react';
 
-interface SummaryProps { 
+interface SummaryProps {
   onCheckout: () => void;
   itemsLength: number;
   totalPrice: number;
   hasStockIssues?: boolean;
 }
 
-const Summary: React.FC<SummaryProps> = ({ 
-  onCheckout, 
-  itemsLength, 
+const Summary: React.FC<SummaryProps> = ({
+  onCheckout,
+  itemsLength,
   totalPrice,
-  hasStockIssues = false
+  hasStockIssues = false,
 }) => {
   const [isMounted, setIsMounted] = useState(false);
   const { shippingData } = useShipping();
@@ -43,7 +43,9 @@ const Summary: React.FC<SummaryProps> = ({
     }
     // If pincode has been checked and is not serviceable, block checkout
     if (isPincodeBlocking) {
-      toast.error('Delivery is not available to the entered pincode. Please try a different pincode.');
+      toast.error(
+        'Delivery is not available to the entered pincode. Please try a different pincode.'
+      );
       return;
     }
     onCheckout();
@@ -52,9 +54,10 @@ const Summary: React.FC<SummaryProps> = ({
   // Calculate breakdown
   const subtotal = totalPrice;
   // Use shipping cost from pincode check
-  const shippingCost = (hasPincodeChecked && isServiceable && shippingData?.deliveryCharge) 
-    ? shippingData.deliveryCharge 
-    : 0;
+  const shippingCost =
+    hasPincodeChecked && isServiceable
+      ? (shippingData?.deliveryCharge ?? 0)
+      : 0;
   const tax = 0; // Tax included in price
   const orderTotal = subtotal + shippingCost + tax;
 
@@ -70,9 +73,7 @@ const Summary: React.FC<SummaryProps> = ({
 
   return (
     <div className="mt-16 rounded-xl bg-gray-50 px-4 py-6 sm:p-6 lg:col-span-5 lg:mt-0 lg:p-8 lg:sticky lg:top-20">
-      <h2 className="text-lg font-semibold text-gray-900">
-        Order Summary
-      </h2>
+      <h2 className="text-lg font-semibold text-gray-900">Order Summary</h2>
 
       {/* Pincode Checker */}
       <div className="mt-4">
@@ -82,10 +83,12 @@ const Summary: React.FC<SummaryProps> = ({
       {/* Price Breakdown */}
       <div className="mt-6 space-y-3">
         <div className="flex items-center justify-between text-sm">
-          <span className="text-gray-600">Subtotal ({itemsLength} {itemsLength === 1 ? 'item' : 'items'})</span>
+          <span className="text-gray-600">
+            Subtotal ({itemsLength} {itemsLength === 1 ? 'item' : 'items'})
+          </span>
           <Currency amount={subtotal} />
         </div>
-        
+
         <div className="flex items-center justify-between text-sm">
           <div className="flex items-center gap-2 text-gray-600">
             <Truck className="h-4 w-4" />
@@ -93,7 +96,7 @@ const Summary: React.FC<SummaryProps> = ({
           </div>
           {!hasPincodeChecked ? (
             <span className="text-muted-foreground text-xs">Enter pincode</span>
-          ) : !isServiceable ? (
+          ) : !isServiceable || shippingData?.deliveryCharge === null ? (
             <span className="text-red-600 text-xs">Not available</span>
           ) : shippingCost === 0 ? (
             <span className="text-green-600 font-medium">FREE</span>
@@ -134,10 +137,10 @@ const Summary: React.FC<SummaryProps> = ({
       </div>
 
       {/* Checkout Button */}
-      <Button 
-        disabled={!canCheckout} 
-        onClick={handleCheckout} 
-        className='w-full mt-6 gap-2 h-12 text-base'
+      <Button
+        disabled={!canCheckout}
+        onClick={handleCheckout}
+        className="w-full mt-6 gap-2 h-12 text-base"
       >
         {hasStockIssues ? (
           'Resolve Stock Issues'
@@ -169,7 +172,11 @@ const Summary: React.FC<SummaryProps> = ({
 
       {/* Trust Badges */}
       <div className="mt-6 pt-6 border-t border-gray-200">
-        <TrustBadges variant="compact" showPaymentMethods className="justify-center" />
+        <TrustBadges
+          variant="compact"
+          showPaymentMethods
+          className="justify-center"
+        />
       </div>
 
       {/* Secured by Razorpay */}

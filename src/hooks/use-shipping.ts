@@ -1,6 +1,9 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
+export type ShippingChargeMode = 'FIXED' | 'VARIABLE';
+export type ShippingChargeSource = 'DISABLED' | 'FIXED' | 'VARIABLE';
+
 export interface ShippingData {
   pincode: string;
   serviceable: boolean;
@@ -9,6 +12,12 @@ export interface ShippingData {
   codAvailable: boolean;
   codEnabledForStore: boolean;
   codChargeAmount: number | null;
+  allowB2BInvoices: boolean;
+  shippingChargeEnabled: boolean;
+  shippingChargeMode: ShippingChargeMode;
+  variableShippingChargeAllowed: boolean;
+  fixedShippingCharge: number | null;
+  shippingChargeSource: ShippingChargeSource | null;
   errorMessage?: string;
 }
 
@@ -26,19 +35,19 @@ const useShipping = create(
     (set, get) => ({
       shippingData: null,
       isLoading: false,
-      
+
       setShippingData: (data: ShippingData) => {
         set({ shippingData: data });
       },
-      
+
       setLoading: (loading: boolean) => {
         set({ isLoading: loading });
       },
-      
+
       clearShippingData: () => {
         set({ shippingData: null });
       },
-      
+
       getPincode: () => {
         return get().shippingData?.pincode || null;
       },

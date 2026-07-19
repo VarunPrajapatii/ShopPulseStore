@@ -1,30 +1,39 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
+export type ShippingChargeMode = 'FIXED' | 'VARIABLE';
+export type ShippingChargeSource = 'DISABLED' | 'FIXED' | 'VARIABLE';
+
 // Response interface matching backend's /shipping/delivery-charges endpoint
 export interface DeliveryChargesResponse {
   // Core serviceability
   serviceable: boolean;
   deliveryPincode: string;
-  pickupPincode: string;
-  
+  pickupPincode: string | null;
+
   // Shipping cost (use deliveryCharge for display!)
-  deliveryCharge: number | null;     // Tiered charge: ₹50, ₹75, ₹100, etc.
-  averageRate: number | null;        // Raw average (for reference only)
+  deliveryCharge: number | null; // Tiered charge: ₹50, ₹75, ₹100, etc.
+  averageRate: number | null; // Raw average (for reference only)
   couriersConsidered: number;
   totalCouriersAvailable: number;
-  
+  shippingChargeEnabled: boolean;
+  shippingChargeMode: ShippingChargeMode;
+  variableShippingChargeAllowed: boolean;
+  fixedShippingCharge: number | null;
+  shippingChargeSource: ShippingChargeSource | null;
+
   // Delivery timeline
   estimatedDeliveryDays: {
     min: number;
     max: number;
   } | null;
-  
+
   // COD information
-  codAvailable: boolean;             // Can customer pay COD for this pincode?
-  codEnabledForStore: boolean;       // Is COD enabled at store level?
-  codCouriersCount: number;          // Number of COD-supporting couriers
-  codChargeAmount: number | null;    // Extra COD handling charge (e.g., ₹30)
-  
+  codAvailable: boolean; // Can customer pay COD for this pincode?
+  codEnabledForStore: boolean; // Is COD enabled at store level?
+  codCouriersCount: number; // Number of COD-supporting couriers
+  codChargeAmount: number | null; // Extra COD handling charge (e.g., ₹30)
+  allowB2BInvoices: boolean;
+
   // Errors (only present on error responses)
   error?: string;
 }
@@ -46,7 +55,7 @@ const getDeliveryCharges = async (
     }
 
     const res = await fetch(
-      `${API_URL}/shipping/delivery-charges?deliveryPincode=${deliveryPincode}`,
+      `${API_URL}/shipping/delivery-charges?pincode=${deliveryPincode}`,
       {
         method: 'GET',
         cache: 'no-store',
