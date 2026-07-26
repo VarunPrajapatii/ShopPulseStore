@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import type { DeliveryAvailabilityErrorCode } from '@/actions/get-delivery-charges';
 
 export type ShippingChargeMode = 'FIXED' | 'VARIABLE';
 export type ShippingChargeSource = 'DISABLED' | 'FIXED' | 'VARIABLE';
@@ -19,6 +20,8 @@ export interface ShippingData {
   fixedShippingCharge: number | null;
   shippingChargeSource: ShippingChargeSource | null;
   errorMessage?: string;
+  errorCode?: DeliveryAvailabilityErrorCode;
+  retryable?: boolean;
 }
 
 interface ShippingStore {

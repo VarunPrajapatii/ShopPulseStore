@@ -2,6 +2,13 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export type ShippingChargeMode = 'FIXED' | 'VARIABLE';
 export type ShippingChargeSource = 'DISABLED' | 'FIXED' | 'VARIABLE';
+export type DeliveryAvailabilityErrorCode =
+  | 'INVALID_PINCODE'
+  | 'PINCODE_NOT_SERVICEABLE'
+  | 'STORE_CONFIGURATION_ERROR'
+  | 'PROVIDER_AUTHENTICATION_ERROR'
+  | 'PROVIDER_UNAVAILABLE'
+  | 'UNKNOWN';
 
 // Response interface matching backend's /shipping/delivery-charges endpoint
 export interface DeliveryChargesResponse {
@@ -36,11 +43,15 @@ export interface DeliveryChargesResponse {
 
   // Errors (only present on error responses)
   error?: string;
+  errorCode?: DeliveryAvailabilityErrorCode;
+  retryable?: boolean;
 }
 
 export interface DeliveryChargesError {
   serviceable: false;
   error: string;
+  errorCode: DeliveryAvailabilityErrorCode;
+  retryable: boolean;
 }
 
 const getDeliveryCharges = async (
@@ -51,6 +62,8 @@ const getDeliveryCharges = async (
       return {
         serviceable: false,
         error: 'Invalid pincode. Please enter a 6-digit pincode.',
+        errorCode: 'INVALID_PINCODE',
+        retryable: false,
       };
     }
 
@@ -67,6 +80,10 @@ const getDeliveryCharges = async (
       return {
         serviceable: false,
         error: errorData.error || `Failed to check delivery: ${res.status}`,
+        errorCode:
+          errorData.errorCode ||
+          (res.status >= 500 ? 'PROVIDER_UNAVAILABLE' : 'UNKNOWN'),
+        retryable: errorData.retryable ?? res.status >= 500,
       };
     }
 
@@ -76,6 +93,8 @@ const getDeliveryCharges = async (
     return {
       serviceable: false,
       error: 'Unable to check delivery availability. Please try again.',
+      errorCode: 'PROVIDER_UNAVAILABLE',
+      retryable: true,
     };
   }
 };

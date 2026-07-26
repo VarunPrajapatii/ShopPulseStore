@@ -9,6 +9,7 @@ import {
   Loader2,
   AlertCircle,
   Banknote,
+  RefreshCw,
 } from 'lucide-react';
 import getDeliveryCharges from '@/actions/get-delivery-charges';
 import useShipping, { ShippingData } from '@/hooks/use-shipping';
@@ -95,6 +96,8 @@ const PincodeChecker: React.FC<PincodeCheckerProps> = ({
           ...shippingChargeMetadata,
           errorMessage:
             response.error || 'Delivery not available to this pincode',
+          errorCode: response.errorCode || 'PINCODE_NOT_SERVICEABLE',
+          retryable: response.retryable ?? false,
         };
         setShippingData(shippingInfo);
         setError(response.error || 'Delivery not available to this pincode');
@@ -133,6 +136,8 @@ const PincodeChecker: React.FC<PincodeCheckerProps> = ({
         fixedShippingCharge: null,
         shippingChargeSource: null,
         errorMessage: errorMsg,
+        errorCode: 'PROVIDER_UNAVAILABLE',
+        retryable: true,
       };
       setShippingData(shippingInfo);
       onCheckComplete?.(shippingInfo);
@@ -161,6 +166,11 @@ const PincodeChecker: React.FC<PincodeCheckerProps> = ({
     shippingData?.shippingChargeSource === 'VARIABLE'
       ? 'Shipping charge for this pincode'
       : 'Shipping charge';
+  const hasCurrentFailure =
+    shippingData?.pincode === pincode &&
+    !shippingData.serviceable &&
+    !isLoading;
+  const isTemporaryFailure = hasCurrentFailure && shippingData.retryable;
 
   // Compact display when pincode is already set and verified
   if (!isEditing && shippingData?.pincode && shippingData.serviceable) {
@@ -293,7 +303,7 @@ const PincodeChecker: React.FC<PincodeCheckerProps> = ({
       </div>
 
       {/* Error Message */}
-      {error && (
+      {error && !hasCurrentFailure && (
         <div className="flex items-center gap-2 text-sm text-destructive">
           <AlertCircle className="h-4 w-4" />
           <span>{error}</span>
@@ -301,9 +311,29 @@ const PincodeChecker: React.FC<PincodeCheckerProps> = ({
       )}
 
       {/* Not Serviceable Message */}
-      {shippingData?.pincode === pincode &&
-        !shippingData?.serviceable &&
-        !isLoading && (
+      {hasCurrentFailure &&
+        (isTemporaryFailure ? (
+          <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 space-y-3 text-amber-950">
+            <div className="flex items-center gap-2 text-sm">
+              <AlertCircle className="h-4 w-4" />
+              <span className="font-medium">
+                Delivery check temporarily unavailable
+              </span>
+            </div>
+            <p className="text-xs text-amber-900/80">
+              The courier service did not respond, so we cannot confirm this
+              pincode yet.
+            </p>
+            <button
+              type="button"
+              onClick={handleCheckDelivery}
+              className="inline-flex items-center gap-2 rounded-md border border-amber-400 bg-background px-3 py-1.5 text-xs font-medium hover:bg-amber-100"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              Retry check
+            </button>
+          </div>
+        ) : (
           <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3 space-y-2">
             <div className="flex items-center gap-2 text-sm text-destructive">
               <X className="h-4 w-4" />
@@ -320,7 +350,7 @@ const PincodeChecker: React.FC<PincodeCheckerProps> = ({
               for special delivery requests.
             </p>
           </div>
-        )}
+        ))}
     </div>
   );
 };
