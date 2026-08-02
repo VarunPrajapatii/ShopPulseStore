@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Container from '@/components/ui/container';
@@ -125,6 +125,7 @@ const CheckoutPage = () => {
   const [showOtpField, setShowOtpField] = useState(false);
   const [otp, setOtp] = useState('');
   const [otpLoading, setOtpLoading] = useState(false);
+  const checkoutInFlightRef = useRef(false);
 
   // Load Razorpay script
   useEffect(() => {
@@ -245,7 +246,9 @@ const CheckoutPage = () => {
       toast.error('Please enter a valid 6-digit OTP');
       return;
     }
+    if (checkoutInFlightRef.current) return;
 
+    checkoutInFlightRef.current = true;
     setOtpLoading(true);
     try {
       // TODO: Add OTP verification API call
@@ -335,20 +338,34 @@ const CheckoutPage = () => {
         };
       }
 
+      const checkoutCartId = cart.cartId;
+      const checkoutCartRevision = cart.cartRevision;
+      const idempotencyKey = `${checkoutCartId}:${checkoutCartRevision}`;
+
       const response = await axios.post(
         `${process.env.NEXT_PUBLIC_API_URL}/checkout`,
         payload,
         {
           headers: {
             'Content-Type': 'application/json',
+            'X-Idempotency-Key': idempotencyKey,
           },
         }
       );
 
-      const { razorpayOrderId, amount, email, phone } = response.data;
+      if (response.status === 202) {
+        toast('This checkout is already being processed in another tab.');
+        return;
+      }
+
+      const { razorpayOrderId, razorpayKeyId, amount, email, phone } =
+        response.data;
+      if (!razorpayKeyId) {
+        throw new Error('Payment gateway key was not returned by checkout.');
+      }
 
       const options: RazorpayOptions = {
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || '',
+        key: razorpayKeyId,
         amount: amount * 100,
         currency: 'INR',
         name: 'varuntd',
@@ -369,14 +386,23 @@ const CheckoutPage = () => {
               }
             );
 
-            if (verifyResponse.data.ok) {
-              cart.removeAll();
+            if (verifyResponse.data.success) {
+              cart.completeOrder(
+                response.data.orderId,
+                checkoutCartId,
+                checkoutCartRevision
+              );
+              clearShippingData();
               toast.success('Payment successful!');
+              console.log('Payment successful, orderId:', verifyResponse);
               router.push(`/order-success?orderId=${response.data.orderId}`);
             } else {
+              console.log('line 378 ran:', verifyResponse);
               toast.error('Payment verification failed!');
             }
           } catch (error) {
+            console.log('line 382 ran:', error);
+
             console.error('Payment verification error:', error);
             toast.error('Payment verification failed!');
           }
@@ -441,6 +467,7 @@ const CheckoutPage = () => {
         toast.error('Failed to verify OTP. Please try again.');
       }
     } finally {
+      checkoutInFlightRef.current = false;
       setOtpLoading(false);
     }
   };
@@ -496,7 +523,9 @@ const CheckoutPage = () => {
       toast.error('Please enter a valid 6-digit OTP');
       return;
     }
+    if (checkoutInFlightRef.current) return;
 
+    checkoutInFlightRef.current = true;
     setOtpLoading(true);
     try {
       // TODO: Add OTP verification API call
@@ -584,6 +613,10 @@ const CheckoutPage = () => {
         };
       }
 
+      const checkoutCartId = cart.cartId;
+      const checkoutCartRevision = cart.cartRevision;
+      const idempotencyKey = `${checkoutCartId}:${checkoutCartRevision}`;
+
       // Call the checkout endpoint with paymentMethod: 'COD'
       const response = await axios.post(
         `${process.env.NEXT_PUBLIC_API_URL}/checkout`,
@@ -591,14 +624,24 @@ const CheckoutPage = () => {
         {
           headers: {
             'Content-Type': 'application/json',
+            'X-Idempotency-Key': idempotencyKey,
           },
         }
       );
 
+      if (response.status === 202) {
+        toast('This checkout is already being processed in another tab.');
+        return;
+      }
+
       // For COD, backend should return success with orderId directly (no Razorpay)
       if (response.data.orderId) {
         // Clear cart and shipping data
-        cart.removeAll();
+        cart.completeOrder(
+          response.data.orderId,
+          checkoutCartId,
+          checkoutCartRevision
+        );
         clearShippingData();
         toast.success('OTP verified! Order placed successfully!');
         setShowOtpField(false);
@@ -654,6 +697,7 @@ const CheckoutPage = () => {
         toast.error('Failed to place order. Please try again.');
       }
     } finally {
+      checkoutInFlightRef.current = false;
       setOtpLoading(false);
     }
   };
