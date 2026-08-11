@@ -26,7 +26,7 @@ const ACCEPTED_TYPES = [
   'image/heic',
   'image/heif',
 ];
-const MAX_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB client guard; server caps too.
+const MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB — must match server cap in return-photo-upload.ts
 
 interface PhotoUploaderProps {
   orderId: string;
@@ -68,7 +68,7 @@ const PhotoUploader: React.FC<PhotoUploaderProps> = ({
       return 'Please upload a JPEG, PNG, WEBP, or HEIC image.';
     }
     if (file.size > MAX_SIZE_BYTES) {
-      return 'That image is too large (max 10 MB).';
+      return 'That image is too large (max 5 MB).';
     }
     return null;
   };
