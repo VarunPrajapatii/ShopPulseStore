@@ -23,7 +23,10 @@ interface ReturnDetailSlideOverProps {
   onClose: () => void;
 }
 
-function humanize(kind: string): string {
+function humanize(kind: string | undefined | null): string {
+  if (!kind) {
+    return 'Unknown';
+  }
   return kind
     .toLowerCase()
     .split('_')
@@ -154,29 +157,34 @@ const ReturnDetailSlideOver: React.FC<ReturnDetailSlideOverProps> = ({
                       </div>
 
                       {/* Customer photos */}
-                      {detail.customerImages.length > 0 && (
-                        <div>
-                          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                            Photos
-                          </h3>
-                          <div className="mt-2 flex flex-wrap gap-2">
-                            {detail.customerImages.map((url, i) => (
-                              <div
-                                key={i}
-                                className="relative h-20 w-20 overflow-hidden rounded-lg bg-muted"
-                              >
-                                <Image
-                                  src={url}
-                                  alt={`Return photo ${i + 1}`}
-                                  fill
-                                  sizes="80px"
-                                  className="object-cover"
-                                />
-                              </div>
-                            ))}
+                      {detail.customerImages &&
+                        detail.customerImages.filter(
+                          (url) => url && typeof url === 'string'
+                        ).length > 0 && (
+                          <div>
+                            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                              Photos
+                            </h3>
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {detail.customerImages
+                                .filter((url) => url && typeof url === 'string')
+                                .map((url, i) => (
+                                  <div
+                                    key={i}
+                                    className="relative h-20 w-20 overflow-hidden rounded-lg bg-muted"
+                                  >
+                                    <Image
+                                      src={url}
+                                      alt={`Return photo ${i + 1}`}
+                                      fill
+                                      sizes="80px"
+                                      className="object-cover"
+                                    />
+                                  </div>
+                                ))}
+                            </div>
                           </div>
-                        </div>
-                      )}
+                        )}
 
                       {/* Notes */}
                       {detail.customerNotes && (

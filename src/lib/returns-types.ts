@@ -349,10 +349,9 @@ export interface EligibilityResponse {
 /* ------------------------------------------------------------------ */
 
 export interface DetailedReason {
-  reasonDetailedId: string;
+  id: string;
   code: string;
   label: string;
-  isActive: boolean;
   variantFilterHint: VariantFilterHint;
 }
 

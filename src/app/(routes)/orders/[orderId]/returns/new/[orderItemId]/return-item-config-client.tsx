@@ -144,9 +144,8 @@ const ReturnItemConfigClient = ({
 
   const handleReasonChange = (reason: ReasonConfig) => {
     setReasonConfigId(reason.reasonConfigId);
-    const firstDetailed =
-      reason.detailedReasons?.find((d) => d.isActive) ?? null;
-    setReasonDetailedId(firstDetailed?.reasonDetailedId ?? null);
+    const firstDetailed = reason.detailedReasons?.[0] ?? null;
+    setReasonDetailedId(firstDetailed?.id ?? null);
     const seeded =
       reason.defaultResolution ?? reason.availableResolutions[0] ?? 'REFUND';
     setResolution(seeded);
@@ -164,9 +163,7 @@ const ReturnItemConfigClient = ({
 
   const validationError = useMemo<string | null>(() => {
     if (!selectedReason) return 'Please pick a reason.';
-    const hasDetailed =
-      (selectedReason.detailedReasons?.filter((d) => d.isActive).length ?? 0) >
-      0;
+    const hasDetailed = (selectedReason.detailedReasons?.length ?? 0) > 0;
     if (hasDetailed && !reasonDetailedId)
       return 'Please pick a specific sub-reason.';
     if (

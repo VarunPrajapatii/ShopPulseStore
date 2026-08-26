@@ -48,7 +48,8 @@ const ReasonPicker: React.FC<ReasonPickerProps> = ({
   onResolutionChange,
   onReasonTextChange,
 }) => {
-  const selected = reasons.find((r) => r.reasonConfigId === reasonConfigId) ?? null;
+  const selected =
+    reasons.find((r) => r.reasonConfigId === reasonConfigId) ?? null;
   const sorted = [...reasons].sort((a, b) => a.sortOrder - b.sortOrder);
 
   return (
@@ -60,7 +61,7 @@ const ReasonPicker: React.FC<ReasonPickerProps> = ({
             key={reason.reasonConfigId}
             className={cn(
               'rounded-xl border transition',
-              isSelected ? 'border-primary bg-primary/5' : 'border-border',
+              isSelected ? 'border-primary bg-primary/5' : 'border-border'
             )}
           >
             <label className="flex cursor-pointer items-start gap-3 p-4">
@@ -93,27 +94,29 @@ const ReasonPicker: React.FC<ReasonPickerProps> = ({
             </label>
 
             {/* Second-level detailed reasons */}
-            {isSelected && reason.detailedReasons && reason.detailedReasons.length > 0 && (
-              <div className="space-y-1.5 border-t border-border px-4 py-3 pl-11">
-                {reason.detailedReasons
-                  .filter((d) => d.isActive)
-                  .map((detailed) => (
+            {isSelected &&
+              reason.detailedReasons &&
+              reason.detailedReasons.length > 0 && (
+                <div className="space-y-1.5 border-t border-border px-4 py-3 pl-11">
+                  {reason.detailedReasons.map((detailed) => (
                     <label
-                      key={detailed.reasonDetailedId}
+                      key={detailed.id}
                       className="flex cursor-pointer items-center gap-2.5 text-sm"
                     >
                       <input
                         type="radio"
                         name="detailed-reason"
-                        checked={reasonDetailedId === detailed.reasonDetailedId}
-                        onChange={() => onDetailedChange(detailed.reasonDetailedId)}
+                        checked={reasonDetailedId === detailed.id}
+                        onChange={() => onDetailedChange(detailed.id)}
                         className="h-3.5 w-3.5 accent-primary"
                       />
-                      <span className="text-muted-foreground">{detailed.label}</span>
+                      <span className="text-muted-foreground">
+                        {detailed.label}
+                      </span>
                     </label>
                   ))}
-              </div>
-            )}
+                </div>
+              )}
           </div>
         );
       })}
@@ -121,27 +124,31 @@ const ReasonPicker: React.FC<ReasonPickerProps> = ({
       {/* Resolution chips — only when more than one is available */}
       {selected && selected.availableResolutions.length > 1 && (
         <div>
-          <p className="mb-2 text-xs font-medium text-muted-foreground">How would you like to resolve this?</p>
+          <p className="mb-2 text-xs font-medium text-muted-foreground">
+            How would you like to resolve this?
+          </p>
           <div className="flex flex-wrap gap-2">
-            {(['REFUND', 'EXCHANGE', 'REPLACEMENT'] as Resolution[]).map((res) => {
-              const available = selected.availableResolutions.includes(res);
-              if (!available) return null;
-              return (
-                <button
-                  key={res}
-                  type="button"
-                  onClick={() => onResolutionChange(res)}
-                  className={cn(
-                    'rounded-full border px-4 py-1.5 text-sm font-medium transition',
-                    resolution === res
-                      ? 'border-primary bg-primary text-primary-foreground'
-                      : 'border-border text-foreground hover:border-primary',
-                  )}
-                >
-                  {RESOLUTION_LABEL[res]}
-                </button>
-              );
-            })}
+            {(['REFUND', 'EXCHANGE', 'REPLACEMENT'] as Resolution[]).map(
+              (res) => {
+                const available = selected.availableResolutions.includes(res);
+                if (!available) return null;
+                return (
+                  <button
+                    key={res}
+                    type="button"
+                    onClick={() => onResolutionChange(res)}
+                    className={cn(
+                      'rounded-full border px-4 py-1.5 text-sm font-medium transition',
+                      resolution === res
+                        ? 'border-primary bg-primary text-primary-foreground'
+                        : 'border-border text-foreground hover:border-primary'
+                    )}
+                  >
+                    {RESOLUTION_LABEL[res]}
+                  </button>
+                );
+              }
+            )}
           </div>
         </div>
       )}
