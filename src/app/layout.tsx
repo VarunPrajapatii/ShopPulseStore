@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Urbanist } from 'next/font/google';
+// @ts-expect-error Next.js supports global CSS side-effect imports in app/layout
 import './globals.css';
 import Footer from '@/components/footer';
 import Navbar from '@/components/navbar';
