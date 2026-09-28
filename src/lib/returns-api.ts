@@ -28,8 +28,8 @@ import type {
   PayExchangeDiffResponse,
   PayExchangeDiffVerifyResponse,
   ProductVariantsResponse,
+  ProvideReturnEvidenceResponse,
   ReasonsResponse,
-  RefundTargetInput,
   RefundTargetResponse,
   RequestOtpResponse,
   ReturnByNumberResponse,
@@ -295,13 +295,6 @@ export function getRefundTarget(orderId: string, signal?: AbortSignal) {
   });
 }
 
-export function saveRefundTarget(orderId: string, target: RefundTargetInput) {
-  return request<RefundTargetResponse>(`/order/${orderId}/refund-target`, {
-    method: 'POST',
-    body: target,
-  });
-}
-
 export function getCancelPreview(orderId: string, signal?: AbortSignal) {
   return request<CancelPreviewResponse>(`/order/${orderId}/cancel-preview`, {
     signal,
@@ -330,6 +323,17 @@ export function getReturnByNumber(
   return request<ReturnByNumberResponse>(`/returns/by-number/${returnNumber}`, {
     signal,
   });
+}
+
+export function provideReturnEvidence(
+  orderId: string,
+  returnId: string,
+  body: { responseText?: string | null; images?: string[] }
+) {
+  return request<ProvideReturnEvidenceResponse>(
+    `/order/${orderId}/returns/${returnId}/evidence`,
+    { method: 'POST', body }
+  );
 }
 
 export function getReturnCancelPreview(

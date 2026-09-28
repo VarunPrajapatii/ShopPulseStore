@@ -31,6 +31,7 @@ export type OrderStatus =
 export type ReturnStatus =
   | 'PENDING_PAYMENT'
   | 'REQUESTED'
+  | 'AWAITING_CUSTOMER_EVIDENCE'
   | 'APPROVED'
   | 'REJECTED'
   | 'PICKUP_SCHEDULED'
@@ -62,6 +63,15 @@ export type VariantFilterHint =
   | 'ANY_DIFFERENT_VARIANT'
   | 'NO_VARIANT_PREFERENCE'
   | null;
+
+export type ReturnReasonProtectionCategory =
+  | 'COMMERCIAL'
+  | 'DEFECTIVE_OR_DAMAGED'
+  | 'SPURIOUS_OR_COUNTERFEIT'
+  | 'NOT_AS_ADVERTISED_OR_AGREED'
+  | 'LATE_DELIVERY';
+
+export type ReturnReasonOrigin = 'PLATFORM_STANDARD' | 'CUSTOM';
 
 export type AppliedFilter =
   | 'LARGER_SIZES'
@@ -280,6 +290,15 @@ export interface EligibilityItem {
   };
   reasonsAllowed: string[];
   requiresPhotoForReasons: string[];
+  /**
+   * Store × product photo requirement for this item, resolved per remedy and
+   * independent of the chosen reason. Submission enforces exactly this.
+   */
+  photoRequiredByResolution: Record<Resolution, boolean>;
+  /** Store × product free-text requirement, independent of the chosen reason. */
+  freeTextRequired: boolean;
+  protectedReasonsAllowed: string[];
+  protectedProblemReportAllowed: boolean;
   nonReturnable: boolean;
   nonReturnableReason: string | null;
 }
@@ -363,13 +382,30 @@ export interface ReasonConfig {
   defaultResolution: Resolution | null;
   appliesToResolutions: Resolution[];
   availableResolutions: Resolution[]; // already limited by item eligibility
-  bypassesNonReturnable: boolean;
-  isSystemProtected: boolean;
+  origin: ReturnReasonOrigin;
+  protectionCategory: ReturnReasonProtectionCategory;
+  isProtected: boolean;
   allowFallbackToRefund: boolean;
+  /** True when at least one pickable remedy needs a photo. */
   requiresPhoto: boolean;
-  requiresDetail: boolean;
+  /** Effective (store × product × reason) photo requirement per remedy. */
+  requiresPhotoByResolution: Record<Resolution, boolean>;
+  /** The reason's own photo flag, without store/product policy folded in. */
+  reasonRequiresPhoto: boolean;
+  requiresSubReason: boolean;
+  requiresFreeText: boolean;
   customerEducationHint: string | null;
-  detailedReasons: DetailedReason[] | null;
+  policyEffects: {
+    shippingPayerOnReturn: 'STORE' | 'CUSTOMER' | 'CONDITIONAL';
+    restockingFeePercent: number;
+    refundForwardShipping: boolean;
+  };
+  detailedReasons: DetailedReason[];
+}
+
+export interface ReasonLane {
+  blockCode: string | null;
+  reasons: ReasonConfig[];
 }
 
 export interface ReasonsResponse {
@@ -379,6 +415,10 @@ export interface ReasonsResponse {
   nonReturnable: boolean;
   nonReturnableReason: string | null;
   reasons: ReasonConfig[];
+  lanes: {
+    commercial: ReasonLane;
+    protected: ReasonLane;
+  };
   globalBlock?: string;
 }
 
@@ -522,9 +562,9 @@ export interface UploadPhotoResponse {
 export interface SavedRefundTarget {
   type: RefundTargetType;
   masked: string;
-  setAtIso: string;
+  setAtIso: string | null;
   isStale: boolean;
-  staleReason?: string;
+  staleReason?: string | null;
 }
 
 export interface RefundTargetResponse {
@@ -533,6 +573,8 @@ export interface RefundTargetResponse {
   refundTargetPolicy: {
     codRefundMethod: CodRefundMethod;
     allowedTypes: RefundTargetType[];
+    /** True for prepaid orders: the payout reverses onto the original instrument. */
+    refundsToOriginal: boolean;
   };
 }
 
@@ -560,7 +602,10 @@ export interface CancelByCustomerResponse {
 export interface ReturnByNumberResponse {
   ok: true;
   return: {
+    id: string;
     returnNumber: string;
+    orderItemId: string;
+    maxImagesPerUnit: number;
     status: ReturnStatus;
     resolution: Resolution;
     quantity: number;
@@ -573,8 +618,20 @@ export interface ReturnByNumberResponse {
     };
     customerImages: string[];
     customerNotes: string | null;
+    evidenceRequest: {
+      message: string;
+      requestedAt: string | null;
+      responseText: string | null;
+      responseImages: string[];
+      providedAt: string | null;
+    } | null;
     timestamps: Record<string, string | null>;
     rejectedReason: string | null;
+    rejection: {
+      category: string;
+      explanation: string | null;
+      evidenceImages: string[];
+    } | null;
     events: TimelineEntry[];
   };
   meta: { cookieCapabilities: Capability[] };
@@ -595,6 +652,15 @@ export interface RrCancelResponse {
   ok: true;
   returnNumber: string;
   newStatus: ReturnStatus;
+}
+
+export interface ProvideReturnEvidenceResponse {
+  ok: true;
+  returnRequest: {
+    id: string;
+    status: ReturnStatus;
+    evidenceProvidedAt: string | null;
+  };
 }
 
 export interface PayExchangeDiffResponse {
