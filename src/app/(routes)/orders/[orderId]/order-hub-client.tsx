@@ -238,6 +238,21 @@ function OrderHubInner({ orderId }: OrderHubClientProps) {
     [guard]
   );
 
+  const handleViewReturn = useCallback(
+    (returnNumber: string) => {
+      guard('RETURN', () => setDetailReturnNumber(returnNumber));
+    },
+    [guard]
+  );
+
+  const handleReturnDetailAuthRequired = useCallback(
+    (resume: () => void) => {
+      pendingResume.current = resume;
+      requestStepUp({ type: 'START_RETURN' }, 'RETURN');
+    },
+    [requestStepUp]
+  );
+
   const handleDownloadInvoice = useCallback(
     (invoice: HubInvoice) => {
       if (!invoice.url) return;
@@ -404,7 +419,7 @@ function OrderHubInner({ orderId }: OrderHubClientProps) {
                 <HubReturnCard
                   key={ret.returnNumber}
                   item={ret}
-                  onViewDetail={setDetailReturnNumber}
+                  onViewDetail={handleViewReturn}
                   onCancel={handleCancelReturn}
                   onPayDifference={handlePayDifference}
                 />
@@ -446,6 +461,10 @@ function OrderHubInner({ orderId }: OrderHubClientProps) {
         orderId={orderId}
         returnNumber={detailReturnNumber}
         onClose={() => setDetailReturnNumber(null)}
+        onAuthRequired={handleReturnDetailAuthRequired}
+        onUpdated={() => void loadHub()}
+        supportEmail={hub.meta.supportEmail}
+        grievanceEmail={hub.meta.grievanceOfficer?.email ?? null}
       />
       <OrderDetailSlideOver
         order={hub.order}

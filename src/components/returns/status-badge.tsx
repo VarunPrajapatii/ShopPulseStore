@@ -32,6 +32,7 @@ const STATUS_TONE: Record<string, Tone> = {
   // return
   PENDING_PAYMENT: 'warning',
   REQUESTED: 'info',
+  AWAITING_CUSTOMER_EVIDENCE: 'warning',
   APPROVED: 'info',
   REJECTED: 'danger',
   PICKUP_SCHEDULED: 'progress',

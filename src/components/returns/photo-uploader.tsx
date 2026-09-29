@@ -36,6 +36,7 @@ interface PhotoUploaderProps {
   /** Flat list of already-uploaded secure_urls. */
   photos: string[];
   onChange: (photos: string[]) => void;
+  onAuthRequired?: () => void;
 }
 
 interface UploadingTile {
@@ -51,6 +52,7 @@ const PhotoUploader: React.FC<PhotoUploaderProps> = ({
   maxImagesPerUnit,
   photos,
   onChange,
+  onAuthRequired,
 }) => {
   const [uploading, setUploading] = useState<UploadingTile[]>([]);
   const inputRefs = useRef<Record<number, HTMLInputElement | null>>({});
@@ -84,6 +86,14 @@ const PhotoUploader: React.FC<PhotoUploaderProps> = ({
       onChange([...photos, url]);
       setUploading((u) => u.filter((t) => t.tempId !== tempId));
     } catch (err) {
+      if (err instanceof ReturnsApiError && err.isAuthError) {
+        setUploading((current) =>
+          current.filter((tile) => tile.tempId !== tempId)
+        );
+        onAuthRequired?.();
+        toast.error('Verify your order, then select the photo again.');
+        return;
+      }
       setUploading((u) =>
         u.map((t) => (t.tempId === tempId ? { ...t, failed: true } : t))
       );
