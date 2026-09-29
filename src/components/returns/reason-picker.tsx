@@ -3,13 +3,13 @@
 /**
  * ReasonPicker — Step 1 of the per-item configurator (reason-first).
  *
- * Renders `reasons[]` in `sortOrder`. Protected reasons (`isSystemProtected`)
- * get a 🔒 badge. Selecting a reason sets `reasonConfigId` and seeds the
+ * Renders `reasons[]` in `sortOrder`. Buyer-protection reasons get a badge.
+ * Selecting a reason sets `reasonConfigId` and seeds the
  * resolution from `defaultResolution ?? availableResolutions[0]`. Nested
  * `detailedReasons[]` render as a second-level radio (the active one's
  * `variantFilterHint` drives the variant picker). Resolution chips render only
- * when more than one resolution is available. Free-text shows when the reason
- * requires detail.
+ * when more than one resolution is available. Free-text and sub-reason
+ * requirements are independent.
  *
  * This is a controlled component: it reads the current slice fields and reports
  * changes upward; it never computes eligibility.
@@ -35,6 +35,12 @@ interface ReasonPickerProps {
   onDetailedChange: (detailedId: string) => void;
   onResolutionChange: (resolution: Resolution) => void;
   onReasonTextChange: (text: string) => void;
+  errors?: {
+    reason?: string;
+    detailedReason?: string;
+    resolution?: string;
+    reasonText?: string;
+  };
 }
 
 const ReasonPicker: React.FC<ReasonPickerProps> = ({
@@ -47,13 +53,17 @@ const ReasonPicker: React.FC<ReasonPickerProps> = ({
   onDetailedChange,
   onResolutionChange,
   onReasonTextChange,
+  errors,
 }) => {
   const selected =
     reasons.find((r) => r.reasonConfigId === reasonConfigId) ?? null;
   const sorted = [...reasons].sort((a, b) => a.sortOrder - b.sortOrder);
 
   return (
-    <div className="space-y-3">
+    <div
+      className="space-y-3"
+      aria-describedby={errors?.reason ? 'reason-error' : undefined}
+    >
       {sorted.map((reason) => {
         const isSelected = reason.reasonConfigId === reasonConfigId;
         return (
@@ -75,9 +85,9 @@ const ReasonPicker: React.FC<ReasonPickerProps> = ({
               <span className="flex-1">
                 <span className="flex items-center gap-1.5 text-sm font-medium text-foreground">
                   {reason.label}
-                  {reason.isSystemProtected && (
+                  {reason.isProtected && (
                     <span
-                      title="Required by law to display."
+                      title="Buyer-protection issue"
                       className="inline-flex items-center"
                     >
                       <Lock size={12} className="text-muted-foreground" />
@@ -98,6 +108,12 @@ const ReasonPicker: React.FC<ReasonPickerProps> = ({
               reason.detailedReasons &&
               reason.detailedReasons.length > 0 && (
                 <div className="space-y-1.5 border-t border-border px-4 py-3 pl-11">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Which one describes it best?
+                    {reason.requiresSubReason && (
+                      <span className="ml-1 text-red-600">*</span>
+                    )}
+                  </p>
                   {reason.detailedReasons.map((detailed) => (
                     <label
                       key={detailed.id}
@@ -115,11 +131,22 @@ const ReasonPicker: React.FC<ReasonPickerProps> = ({
                       </span>
                     </label>
                   ))}
+                  {errors?.detailedReason && (
+                    <p role="alert" className="pt-1 text-xs text-red-600">
+                      {errors.detailedReason}
+                    </p>
+                  )}
                 </div>
               )}
           </div>
         );
       })}
+
+      {errors?.reason && (
+        <p id="reason-error" role="alert" className="text-xs text-red-600">
+          {errors.reason}
+        </p>
+      )}
 
       {/* Resolution chips — only when more than one is available */}
       {selected && selected.availableResolutions.length > 1 && (
@@ -150,14 +177,20 @@ const ReasonPicker: React.FC<ReasonPickerProps> = ({
               }
             )}
           </div>
+          {errors?.resolution && (
+            <p role="alert" className="mt-2 text-xs text-red-600">
+              {errors.resolution}
+            </p>
+          )}
         </div>
       )}
 
-      {/* Free-text — when the reason requires detail */}
-      {selected?.requiresDetail && (
+      {/* Free-text — when the reason requires an explanation */}
+      {selected?.requiresFreeText && (
         <div>
           <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
             Tell us a bit more
+            <span className="ml-1 text-red-600">*</span>
           </label>
           <textarea
             value={reasonText ?? ''}
@@ -165,8 +198,21 @@ const ReasonPicker: React.FC<ReasonPickerProps> = ({
             rows={3}
             maxLength={2000}
             placeholder="Describe the issue…"
-            className="w-full rounded-xl border border-border px-3 py-2 text-sm outline-none focus:border-primary"
+            aria-invalid={Boolean(errors?.reasonText)}
+            aria-describedby={
+              errors?.reasonText ? 'reason-text-error' : undefined
+            }
+            className="w-full rounded-xl border border-border px-3 py-2 text-sm outline-none focus:border-primary aria-[invalid=true]:border-red-500"
           />
+          {errors?.reasonText && (
+            <p
+              id="reason-text-error"
+              role="alert"
+              className="mt-1 text-xs text-red-600"
+            >
+              {errors.reasonText}
+            </p>
+          )}
         </div>
       )}
     </div>

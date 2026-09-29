@@ -3,7 +3,9 @@
 /**
  * RefundTargetSelector - refund destination editor for the review screen.
  * Driven entirely by the backend refund-target policy:
- *   - ORIGINAL renders a no-input original payment method option.
+ *   - ORIGINAL renders a no-input original payment method option. Prepaid
+ *     orders always land here: the payout reverses onto the card/UPI/wallet
+ *     that paid, so there is nothing to collect.
  *   - UPI renders a UPI VPA input.
  *   - BANK renders account number, IFSC, and holder-name inputs.
  *
@@ -108,7 +110,7 @@ const RefundTargetSelector: React.FC<RefundTargetSelectorProps> = ({
 
   return (
     <div className="space-y-3 rounded-xl border border-border p-4">
-      {savedMasked && (
+      {savedMasked && mode !== 'ORIGINAL' && (
         <p className="text-xs text-muted-foreground">
           Saved: {savedMasked}
           {savedIsStale && (
@@ -138,8 +140,15 @@ const RefundTargetSelector: React.FC<RefundTargetSelectorProps> = ({
       )}
 
       {mode === 'ORIGINAL' ? (
-        <div className="rounded-lg bg-muted/40 p-3 text-sm text-muted-foreground">
-          Refund to original payment method.
+        <div className="rounded-lg bg-muted/40 p-3 text-sm">
+          <p className="font-medium text-foreground">
+            Back to your original payment method
+          </p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            We reverse the payment onto the card, UPI app, or wallet you paid
+            with. Nothing to enter — your bank posts it once the refund is
+            approved.
+          </p>
         </div>
       ) : mode === 'UPI' ? (
         <div className="space-y-2">

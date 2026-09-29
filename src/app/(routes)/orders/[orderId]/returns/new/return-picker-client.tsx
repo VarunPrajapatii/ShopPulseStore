@@ -170,11 +170,14 @@ const ReturnPickerClient = ({ orderId }: ReturnPickerClientProps) => {
                   `/orders/${orderId}/returns/new/${item.orderItemId}`
                 )
               }
-              onEditSlice={(draftId) =>
+              onEditSlice={(draftId) => {
+                const slice = slices.find((entry) => entry.draftId === draftId);
+                const query = new URLSearchParams({ slice: draftId });
+                if (slice?.lane === 'PROTECTED') query.set('complaint', '1');
                 router.push(
-                  `/orders/${orderId}/returns/new/${item.orderItemId}?slice=${draftId}`
-                )
-              }
+                  `/orders/${orderId}/returns/new/${item.orderItemId}?${query.toString()}`
+                );
+              }}
               onRemoveSlice={(draftId) => removeSlice(orderId, draftId)}
               onFileComplaint={() =>
                 router.push(
@@ -228,6 +231,14 @@ const ItemPickerCard: React.FC<ItemPickerCardProps> = ({
 
   const configuredCount = slicesForItem.filter((s) => s.configured).length;
   const qtyExhausted = configuredCount >= item.qtyAvailable;
+
+  // Set expectations before the customer commits to the flow: when every remedy
+  // they can pick needs photo evidence, say so on the card.
+  const photosAlwaysNeeded =
+    anyAllowed &&
+    (['REFUND', 'EXCHANGE', 'REPLACEMENT'] as Resolution[])
+      .filter((res) => actionsAllowed[res].allowed)
+      .every((res) => item.photoRequiredByResolution[res]);
 
   // Reason the item is not actionable (when applicable).
   const blockedReason = (() => {
@@ -321,14 +332,15 @@ const ItemPickerCard: React.FC<ItemPickerCardProps> = ({
         {blockedReason ? (
           <>
             <p className="text-xs text-muted-foreground">{blockedReason}</p>
-            {item.nonReturnable && (
+            {item.protectedProblemReportAllowed && (
               <button
                 type="button"
                 onClick={onFileComplaint}
                 className="mt-1.5 inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
               >
                 <ShieldAlert size={13} />
-                Damaged or not as described? File a complaint
+                Received a damaged, incorrect, or materially different item?
+                Report a problem
               </button>
             )}
           </>
@@ -337,21 +349,40 @@ const ItemPickerCard: React.FC<ItemPickerCardProps> = ({
             All available units selected.
           </p>
         ) : (
-          <button
-            type="button"
-            onClick={onConfigure}
-            disabled={basketFull}
-            className="inline-flex items-center gap-1.5 rounded-full border border-border px-4 py-1.5 text-sm font-medium text-foreground transition hover:border-primary disabled:opacity-50"
-          >
-            {configuredCount > 0
-              ? 'Add another'
-              : 'Return / Exchange / Replace'}
-            <ArrowRight size={14} />
-          </button>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={onConfigure}
+              disabled={basketFull}
+              className="inline-flex items-center gap-1.5 rounded-full border border-border px-4 py-1.5 text-sm font-medium text-foreground transition hover:border-primary disabled:opacity-50"
+            >
+              {configuredCount > 0
+                ? 'Add another'
+                : 'Return / Exchange / Replace'}
+              <ArrowRight size={14} />
+            </button>
+            {item.protectedProblemReportAllowed && (
+              <button
+                type="button"
+                onClick={onFileComplaint}
+                disabled={basketFull}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline disabled:opacity-50"
+              >
+                <ShieldAlert size={13} />
+                Report a product problem
+              </button>
+            )}
+          </div>
         )}
         {basketFull && !blockedReason && !qtyExhausted && (
           <p className="mt-1 text-xs text-muted-foreground">
             Basket limit reached.
+          </p>
+        )}
+        {photosAlwaysNeeded && !blockedReason && !qtyExhausted && (
+          <p className="mt-1.5 inline-flex items-center gap-1 text-xs text-muted-foreground">
+            <Camera size={12} />
+            This store needs a photo of the item for any request.
           </p>
         )}
       </div>

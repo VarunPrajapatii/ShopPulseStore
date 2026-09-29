@@ -31,9 +31,14 @@ export interface BasketSlice {
     unitPriceInr: string;
   };
   quantity: number;
+  /** Client navigation context only; the backend derives the lane from the reason. */
+  lane: 'COMMERCIAL' | 'PROTECTED';
   resolution: Resolution;
   reasonConfigId: string | null;
   reasonDetailedId: string | null;
+  /** Display-only copy of the picked reason, for the review screen. */
+  reasonLabel: string | null;
+  detailedReasonLabel: string | null;
   reasonText: string | null;
   /** Cloudinary secure_urls already uploaded for this slice. */
   photos: string[];
@@ -133,9 +138,12 @@ const useReturnBasket = create(
           orderItemId: item.orderItemId,
           snapshot: item.snapshot,
           quantity: 1,
+          lane: 'COMMERCIAL',
           resolution: item.resolution ?? 'REFUND',
           reasonConfigId: null,
           reasonDetailedId: null,
+          reasonLabel: null,
+          detailedReasonLabel: null,
           reasonText: null,
           photos: [],
           exchangeChoice: null,
