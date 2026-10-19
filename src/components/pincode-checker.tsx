@@ -223,7 +223,7 @@ const PincodeChecker: React.FC<PincodeCheckerProps> = ({
         </div>
 
         {/* COD Availability - only show when codEnabledForStore is true */}
-        {shippingData.codEnabledForStore &&
+        {/* {shippingData.codEnabledForStore &&
           (isCODAvailable ? (
             <div className="flex items-center justify-between text-sm">
               <div className="flex items-center gap-2 text-muted-foreground">
@@ -242,7 +242,7 @@ const PincodeChecker: React.FC<PincodeCheckerProps> = ({
               <X className="h-4 w-4 text-amber-500" />
               <span>Cash on Delivery not available for this pincode</span>
             </div>
-          ))}
+          ))} */}
 
         {/* Estimated Delivery */}
         {shippingData.estimatedDays && (

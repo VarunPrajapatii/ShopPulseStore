@@ -72,6 +72,9 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       : 0;
   const isCODSelected = paymentMethod === 'COD';
   const appliedCodFee = isCODSelected ? codFee : 0;
+  const formattedCodFee = new Intl.NumberFormat('en-IN', {
+    maximumFractionDigits: 2,
+  }).format(codFee);
 
   // Calculate order total
   const orderTotal = totalPrice + shippingCost + appliedCodFee;
@@ -265,10 +268,25 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
               <Banknote className="h-4 w-4 text-muted-foreground" />
               <div className="flex-1">
                 <p className="text-sm font-medium">Cash on Delivery</p>
-                <p className="text-xs text-muted-foreground">
-                  {isCODAvailable
-                    ? 'Pay when you receive'
-                    : 'Not available for this pincode'}
+
+                <p
+                  className={cn(
+                    'text-xs',
+                    isCODAvailable ? 'text-muted-foreground' : 'text-red-600'
+                  )}
+                >
+                  {isCODAvailable ? (
+                    <>
+                      Cash on Delivery available
+                      {codFee > 0 && (
+                        <span className="ml-1 font-semibold text-foreground">
+                          +₹{formattedCodFee}
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    'Cash on Delivery is not available for this pincode'
+                  )}
                 </p>
               </div>
             </label>
