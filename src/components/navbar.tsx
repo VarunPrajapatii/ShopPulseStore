@@ -1,4 +1,4 @@
-'use client'
+'use client';
 
 import Container from '@/components/ui/container';
 import Link from 'next/link';
@@ -29,23 +29,23 @@ const Navbar = () => {
   }, []);
 
   return (
-    <header 
+    <header
       className={`fixed left-0 right-0 w-full z-50 transition-all duration-500 ease-out ${
-        isScrolled 
-          ? 'bg-background/80 backdrop-blur-xl shadow-[0_2px_20px_-2px_rgba(0,0,0,0.1)] border-b border-border/40' 
+        isScrolled
+          ? 'bg-background/80 backdrop-blur-xl shadow-[0_2px_20px_-2px_rgba(0,0,0,0.1)] border-b border-border/40'
           : 'bg-background/95 backdrop-blur-sm border-b border-transparent'
       }`}
       style={{ top: 'var(--announcement-bar-height, 0px)' }}
     >
       <Container>
-        <nav className="relative flex h-16 items-center justify-between" aria-label="Main navigation">
+        <nav
+          className="relative flex h-16 items-center justify-between"
+          aria-label="Main navigation"
+        >
           {/* Logo Section */}
-          <Link 
-            href="/" 
-            className="flex items-center gap-x-2.5 group"
-          >
+          <Link href="/" className="flex shrink-0 items-center gap-x-2.5 group">
             <div className="relative overflow-hidden">
-              <Image 
+              <Image
                 src="/shoppulselogo.png"
                 alt="ShopPulse Logo"
                 width={32}
@@ -62,7 +62,7 @@ const Navbar = () => {
           <MainNav data={categories} />
 
           {/* Actions - Right */}
-          <NavbarAction /> 
+          <NavbarAction />
         </nav>
       </Container>
     </header>
