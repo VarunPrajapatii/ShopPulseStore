@@ -1,11 +1,11 @@
-import getCategoryProducts from "@/actions/get-category-products";
-import getCategories from "@/actions/get-categories";
-import getSEOConfig from "@/actions/get-seo-config";
-import CategoryBillboardsClient from "@/components/category-billboards-client";
-import { CategoryProductsEnhanced } from "@/components/category";
-import Breadcrumb from "@/components/ui/breadcrumb";
-import Container from "@/components/ui/container";
-import { Metadata } from "next";
+import getCategoryProducts from '@/actions/get-category-products';
+import getCategories from '@/actions/get-categories';
+import getSEOConfig from '@/actions/get-seo-config';
+import CategoryBillboardsClient from '@/components/category-billboards-client';
+import { CategoryProductsEnhanced } from '@/components/category';
+import Breadcrumb from '@/components/ui/breadcrumb';
+import Container from '@/components/ui/container';
+import { Metadata } from 'next';
 
 export const revalidate = 0;
 
@@ -15,10 +15,12 @@ interface CategoryPageProps {
   }>;
 }
 
-export async function generateMetadata({ params }: CategoryPageProps): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: CategoryPageProps): Promise<Metadata> {
   const { categoryId } = await params;
   const categories = await getCategories();
-  const category = categories.find(cat => cat.id === categoryId);
+  const category = categories.find((cat) => cat.id === categoryId);
   const seoConfig = await getSEOConfig();
 
   if (!category) {
@@ -30,7 +32,14 @@ export async function generateMetadata({ params }: CategoryPageProps): Promise<M
 
   const storeName = seoConfig?.storeName || 'Shop';
   const storeUrl = seoConfig?.storeUrl;
-  const categoryUrl = storeUrl ? `${storeUrl}/category/${category.id}` : undefined;
+  const categoryUrl = storeUrl
+    ? `${storeUrl}/category/${category.id}`
+    : undefined;
+  const heroBillboard = category.billboard?.[0]?.billboard;
+  const ogImageUrl = heroBillboard?.imageUrl || category.imageUrl;
+  const ogImageAlt = heroBillboard?.imageUrl
+    ? heroBillboard.imageAltText || heroBillboard.label || category.name
+    : category.imageAltText || category.name;
 
   return {
     title: `${category.name} | ${storeName}`,
@@ -46,17 +55,14 @@ export async function generateMetadata({ params }: CategoryPageProps): Promise<M
       description: `Browse our collection of ${category.name.toLowerCase()}`,
       ...(categoryUrl && { url: categoryUrl }),
       siteName: storeName,
-      images: category.billboard?.[0]?.billboard?.imageUrl ? [{
-        url: category.billboard[0].billboard.imageUrl,
-        alt: category.name,
-      }] : [],
+      images: ogImageUrl ? [{ url: ogImageUrl, alt: ogImageAlt }] : [],
       type: 'website',
     },
     twitter: {
       card: 'summary_large_image',
       title: `${category.name} | ${storeName}`,
       description: `Browse our collection of ${category.name.toLowerCase()}`,
-      images: category.billboard?.[0]?.billboard?.imageUrl ? [category.billboard[0].billboard.imageUrl] : [],
+      images: ogImageUrl ? [{ url: ogImageUrl, alt: ogImageAlt }] : [],
     },
     ...(categoryUrl && {
       alternates: {
@@ -71,7 +77,7 @@ const CategoryPage = async ({ params }: CategoryPageProps) => {
   const products = await getCategoryProducts(categoryId);
   // Reuse categories from metadata generation (Next.js deduplicates this call)
   const categories = await getCategories();
-  const category = categories.find(cat => cat.id === categoryId);
+  const category = categories.find((cat) => cat.id === categoryId);
   // Reuse SEO config from metadata generation (Next.js deduplicates this call)
   const seoConfig = await getSEOConfig();
 
@@ -86,6 +92,12 @@ const CategoryPage = async ({ params }: CategoryPageProps) => {
   }
 
   const storeUrl = seoConfig?.storeUrl || '';
+  const categoryBillboards = (category.billboard ?? []).map((item) => ({
+    id: item.billboard.id,
+    label: item.billboard.label,
+    imageUrl: item.billboard.imageUrl,
+    imageAltText: item.billboard.imageAltText,
+  }));
 
   // CollectionPage Schema (for category pages)
   const collectionSchema = {
@@ -94,12 +106,20 @@ const CategoryPage = async ({ params }: CategoryPageProps) => {
     name: category.name,
     description: `Browse our collection of ${category.name.toLowerCase()}`,
     url: `${storeUrl}/category/${category.id}`,
+    ...(category.imageUrl && {
+      primaryImageOfPage: {
+        '@type': 'ImageObject',
+        url: category.imageUrl,
+        caption: category.imageAltText || category.name,
+      },
+    }),
     mainEntity: {
       '@type': 'ItemList',
       numberOfItems: products.length,
       itemListElement: products.slice(0, 10).map((product, index) => {
         // Calculate total stock from variants
-        const totalStock = product.variants?.reduce((sum, v) => sum + v.stockQuantity, 0) ?? 0;
+        const totalStock =
+          product.variants?.reduce((sum, v) => sum + v.stockQuantity, 0) ?? 0;
         return {
           '@type': 'ListItem',
           position: index + 1,
@@ -112,9 +132,10 @@ const CategoryPage = async ({ params }: CategoryPageProps) => {
               '@type': 'Offer',
               price: product.price,
               priceCurrency: 'INR',
-              availability: totalStock > 0 
-                ? 'https://schema.org/InStock' 
-                : 'https://schema.org/OutOfStock',
+              availability:
+                totalStock > 0
+                  ? 'https://schema.org/InStock'
+                  : 'https://schema.org/OutOfStock',
             },
           },
         };
@@ -153,24 +174,24 @@ const CategoryPage = async ({ params }: CategoryPageProps) => {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
       />
-      
+
       <Container>
         <article className="space-y-6 pb-10">
           {/* Breadcrumb Navigation */}
           <div className="px-4 sm:px-6 lg:px-8 pt-2 animate-fade-in">
             <Breadcrumb
-              items={[
-                { label: 'Home', href: '/' },
-                { label: category.name },
-              ]}
+              items={[{ label: 'Home', href: '/' }, { label: category.name }]}
             />
           </div>
 
           {/* Category Billboards */}
-          <CategoryBillboardsClient categoryId={categoryId} />
+          <CategoryBillboardsClient billboards={categoryBillboards} />
 
           {/* Category Header */}
-          <header className="px-4 sm:px-6 lg:px-8 animate-fade-in-up" style={{ animationDelay: '100ms' }}>
+          <header
+            className="px-4 sm:px-6 lg:px-8 animate-fade-in-up"
+            style={{ animationDelay: '100ms' }}
+          >
             <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
               {category.name}
             </h1>
@@ -180,11 +201,8 @@ const CategoryPage = async ({ params }: CategoryPageProps) => {
           </header>
 
           {/* Products Section with Sorting, Filtering & Pagination */}
-          <section className="px-4 sm:px-6 lg:px-8 animate-fade-in-up" >
-            <CategoryProductsEnhanced 
-              products={products} 
-              category={category}
-            />
+          <section className="px-4 sm:px-6 lg:px-8 animate-fade-in-up">
+            <CategoryProductsEnhanced products={products} category={category} />
           </section>
         </article>
       </Container>

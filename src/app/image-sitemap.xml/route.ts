@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
-const SITE_URL = process.env.NEXT_PUBLIC_STORE_URL || 'https://store.example.com';
+const SITE_URL =
+  process.env.NEXT_PUBLIC_STORE_URL || 'https://store.example.com';
 
 interface SitemapImage {
   url: string;
@@ -39,6 +40,10 @@ interface SitemapUpcomingProduct {
   imageUrl: string;
 }
 
+interface SitemapStoreBillboard {
+  billboard: SitemapBillboard;
+}
+
 async function fetchProducts(): Promise<SitemapProduct[]> {
   try {
     const res = await fetch(`${API_URL}/products`, {
@@ -54,18 +59,6 @@ async function fetchProducts(): Promise<SitemapProduct[]> {
 async function fetchCategories(): Promise<SitemapCategory[]> {
   try {
     const res = await fetch(`${API_URL}/categories`, {
-      next: { revalidate: 3600 },
-    });
-    if (!res.ok) return [];
-    return res.json();
-  } catch {
-    return [];
-  }
-}
-
-async function fetchBillboards(): Promise<SitemapBillboard[]> {
-  try {
-    const res = await fetch(`${API_URL}/billboards`, {
       next: { revalidate: 3600 },
     });
     if (!res.ok) return [];
@@ -99,6 +92,28 @@ async function fetchUpcomingProducts(): Promise<SitemapUpcomingProduct[]> {
   }
 }
 
+async function fetchStoreBillboards(): Promise<SitemapStoreBillboard[]> {
+  try {
+    const res = await fetch(`${API_URL}/store-billboards`, {
+      next: { revalidate: 3600 },
+    });
+    if (!res.ok) return [];
+    return res.json();
+  } catch {
+    return [];
+  }
+}
+
+function imageTag(url: string, title: string): string {
+  const t = escapeXml(title);
+  return `    <image:image>
+      <image:loc>${escapeXml(url)}</image:loc>
+      <image:title>${t}</image:title>
+      <image:caption>${t}</image:caption>
+    </image:image>
+`;
+}
+
 function escapeXml(str: string): string {
   return str
     .replace(/&/g, '&amp;')
@@ -109,13 +124,14 @@ function escapeXml(str: string): string {
 }
 
 export async function GET() {
-  const [products, categories, billboards, storeInfo, upcomingProducts] = await Promise.all([
-    fetchProducts(),
-    fetchCategories(),
-    fetchBillboards(),
-    fetchStoreInfo(),
-    fetchUpcomingProducts(),
-  ]);
+  const [products, categories, storeBillboards, storeInfo, upcomingProducts] =
+    await Promise.all([
+      fetchProducts(),
+      fetchCategories(),
+      fetchStoreBillboards(),
+      fetchStoreInfo(),
+      fetchUpcomingProducts(),
+    ]);
 
   let xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
@@ -132,7 +148,9 @@ export async function GET() {
     for (let i = 0; i < product.images.length; i++) {
       const img = product.images[i];
       if (!img.url) continue;
-      const title = escapeXml(img.altText || `${product.name} - Image ${i + 1}`);
+      const title = escapeXml(
+        img.altText || `${product.name} - Image ${i + 1}`
+      );
       xml += `    <image:image>
       <image:loc>${escapeXml(img.url)}</image:loc>
       <image:title>${title}</image:title>
@@ -160,51 +178,29 @@ export async function GET() {
   }
 
   // Homepage with billboard images
-  if (billboards.length > 0) {
-    xml += `  <url>
-    <loc>${escapeXml(SITE_URL)}</loc>
-`;
-    for (const billboard of billboards) {
-      if (!billboard.imageUrl) continue;
-      const title = escapeXml(billboard.imageAltText || billboard.label);
-      xml += `    <image:image>
-      <image:loc>${escapeXml(billboard.imageUrl)}</image:loc>
-      <image:title>${title}</image:title>
-      <image:caption>${title}</image:caption>
-    </image:image>
-`;
-    }
-    xml += `  </url>
-`;
+  // Homepage: saari images ek hi <url> block me
+  let homepageImages = '';
+  for (const { billboard } of storeBillboards) {
+    if (!billboard?.imageUrl) continue;
+    homepageImages += imageTag(
+      billboard.imageUrl,
+      billboard.imageAltText || billboard.label
+    );
   }
-
-  // Homepage promotional banner image
   if (storeInfo?.promotionalBanner) {
-    const bannerTitle = escapeXml(storeInfo.promotionalBannerAltText || 'Promotional Banner');
-    // Append to existing homepage <url> or create new one
-    xml += `  <url>
-    <loc>${escapeXml(SITE_URL)}</loc>
-    <image:image>
-      <image:loc>${escapeXml(storeInfo.promotionalBanner)}</image:loc>
-      <image:title>${bannerTitle}</image:title>
-      <image:caption>${bannerTitle}</image:caption>
-    </image:image>
-  </url>
-`;
+    homepageImages += imageTag(
+      storeInfo.promotionalBanner,
+      storeInfo.promotionalBannerAltText || 'Promotional Banner'
+    );
   }
-
-  // Upcoming product images (shown on homepage)
   for (const upcoming of upcomingProducts) {
     if (!upcoming.imageUrl) continue;
-    const title = escapeXml(upcoming.name);
+    homepageImages += imageTag(upcoming.imageUrl, upcoming.name);
+  }
+  if (homepageImages) {
     xml += `  <url>
     <loc>${escapeXml(SITE_URL)}</loc>
-    <image:image>
-      <image:loc>${escapeXml(upcoming.imageUrl)}</image:loc>
-      <image:title>${title}</image:title>
-      <image:caption>${title}</image:caption>
-    </image:image>
-  </url>
+${homepageImages}  </url>
 `;
   }
 
