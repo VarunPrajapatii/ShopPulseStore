@@ -12,7 +12,7 @@ interface Query {
 
 /**
  * Unified products fetching function
- * 
+ *
  * Usage:
  * - All products: getProducts({})
  * - Featured products: getProducts({ featured: true })
@@ -24,28 +24,28 @@ const getProducts = async (query: Query = {}): Promise<Product[]> => {
   try {
     const url = qs.stringifyUrl({
       url: URL,
-      query: { 
+      query: {
         categoryId: query.categoryId,
         featured: query.featured,
         filter: query.filter,
       },
     });
-    
+
     const res = await fetch(url, {
-      next: { revalidate: 60 }, // Cache for 1 minute
+      cache: 'no-store',
     });
-    
+
     if (!res.ok) {
       throw new Error(`HTTP error! status: ${res.status}`);
     }
-    
+
     const contentType = res.headers.get('content-type');
     if (!contentType || !contentType.includes('application/json')) {
       throw new Error('Response is not JSON');
     }
-    
+
     const data = await res.json();
-    
+
     return data;
   } catch (error) {
     console.error('Error fetching products:', error);

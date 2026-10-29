@@ -4,24 +4,24 @@ const URL = `${process.env.NEXT_PUBLIC_API_URL}/billboards`;
 
 const getBillboard = async (id: string): Promise<Billboard> => {
   try {
-    const res = await fetch(`${URL}/${id}`);
-    
+    const res = await fetch(`${URL}/${id}`, { cache: 'no-store' });
+
     if (!res.ok) {
       throw new Error(`HTTP error! status: ${res.status}`);
     }
-    
+
     const contentType = res.headers.get('content-type');
     if (!contentType || !contentType.includes('application/json')) {
       throw new Error('Response is not JSON');
     }
-    
+
     return res.json();
   } catch (error) {
     console.error('Error fetching billboard:', error);
     return {
       id: '',
       label: 'Error loading billboard',
-      imageUrl: ''
+      imageUrl: '',
     };
   }
 };

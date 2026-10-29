@@ -6,18 +6,18 @@ const URL = `${API_URL}/store-billboards`;
 const getStoreBillboards = async (): Promise<StoreBillboard[]> => {
   try {
     const res = await fetch(URL, {
-      next: { revalidate: 600 }, // Cache for 10 minutes
+      cache: 'no-store',
     });
-    
+
     if (!res.ok) {
       throw new Error(`HTTP error! status: ${res.status}`);
     }
-    
+
     const contentType = res.headers.get('content-type');
     if (!contentType || !contentType.includes('application/json')) {
       throw new Error('Response is not JSON');
     }
-    
+
     return res.json();
   } catch (error) {
     console.error('Error fetching store billboards:', error);

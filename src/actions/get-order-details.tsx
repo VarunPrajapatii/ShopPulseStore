@@ -84,7 +84,9 @@ export interface OrderDetails {
     | 'SHIPPED'
     | 'DELIVERED'
     | 'CANCELLED'
-    | 'REFUNDED';
+    | 'PAYMENT_INITIATED'
+    | 'REFUNDED'
+    | 'EXPIRED';
 
   // Customer Info
   name: string;
@@ -182,6 +184,8 @@ interface RawOrderItem extends Omit<
     archiveReason: string;
   };
 }
+
+export type PaymentView = 'confirmed' | 'pending' | 'failed';
 
 interface RawOrderDetails extends Omit<
   OrderDetails,

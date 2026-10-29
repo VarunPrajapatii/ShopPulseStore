@@ -1,5 +1,5 @@
-import { UpcomingProduct } from "@/types";
-import qs from "query-string";
+import { UpcomingProduct } from '@/types';
+import qs from 'query-string';
 
 const URL = `${process.env.NEXT_PUBLIC_API_URL}/upcoming-products`;
 
@@ -7,7 +7,9 @@ interface Query {
   categoryId?: string;
 }
 
-const getUpcomingProducts = async (query: Query): Promise<UpcomingProduct[]> => {
+const getUpcomingProducts = async (
+  query: Query
+): Promise<UpcomingProduct[]> => {
   const url = qs.stringifyUrl({
     url: URL,
     query: {
@@ -16,7 +18,7 @@ const getUpcomingProducts = async (query: Query): Promise<UpcomingProduct[]> => 
   });
 
   const res = await fetch(url, {
-    next: { revalidate: 300 }, // Cache for 5 minutes
+    cache: 'no-store',
   });
 
   return res.json();
