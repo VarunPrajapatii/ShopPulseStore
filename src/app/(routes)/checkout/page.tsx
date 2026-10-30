@@ -19,6 +19,7 @@ import CheckoutProgress from '@/components/ui/checkout-progress';
 import TrustBadges from '@/components/ui/trust-badges';
 import MobileStickyCheckout from '@/components/ui/mobile-sticky-checkout';
 import { CheckoutSkeleton } from '@/components/ui/skeleton';
+import CheckoutProcessingOverlay from '@/components/ui/checkout-processing-overlay';
 
 // Declare Razorpay type for TypeScript
 declare global {
@@ -55,9 +56,42 @@ interface RazorpayResponse {
 
 interface RazorpayInstance {
   open: () => void;
+  on: (
+    event: 'payment.failed',
+    callback: (response: { error?: { description?: string } }) => void
+  ) => void;
 }
 
 type CheckoutStep = 'address' | 'verification' | 'payment' | 'done';
+
+type CheckoutPhase = 'idle' | 'paying' | 'verifying' | 'redirecting';
+
+// Verify call ko network blips se bachane ke liye retry.
+// 4xx (server ne explicitly reject kiya) pe retry nahi hota.
+// NOTE: backend /checkout/verify idempotent hona chahiye (settlement atomic hai to ok).
+const verifyWithRetry = async (razorpayResponse: RazorpayResponse) => {
+  const maxAttempts = 3;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await axios.post(
+        `${process.env.NEXT_PUBLIC_API_URL}/checkout/verify`,
+        {
+          razorpay_order_id: razorpayResponse.razorpay_order_id,
+          razorpay_payment_id: razorpayResponse.razorpay_payment_id,
+          razorpay_signature: razorpayResponse.razorpay_signature,
+        }
+      );
+    } catch (error) {
+      const isClientRejection =
+        axios.isAxiosError(error) &&
+        !!error.response &&
+        error.response.status < 500;
+      if (isClientRejection || attempt === maxAttempts) throw error;
+      await new Promise((resolve) => setTimeout(resolve, attempt * 1000));
+    }
+  }
+  throw new Error('Verification failed');
+};
 
 const CheckoutPage = () => {
   const cart = useCart();
@@ -65,7 +99,6 @@ const CheckoutPage = () => {
   const router = useRouter();
   const { shippingData, clearShippingData } = useShipping();
   const [orderNotes, setOrderNotes] = useState('');
-  const [currentStep, setCurrentStep] = useState<CheckoutStep>('address');
   const [isMounted, setIsMounted] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('PREPAID');
 
@@ -127,6 +160,42 @@ const CheckoutPage = () => {
   const [otpLoading, setOtpLoading] = useState(false);
   const checkoutInFlightRef = useRef(false);
 
+  const [phase, setPhase] = useState<CheckoutPhase>('idle');
+  // Ref isliye: cart clear hone wale render mein bhi overlay guaranteed rahe,
+  // state update ke batching pe depend na karna pade.
+  const finalizingRef = useRef(false);
+  const isFinalizing =
+    phase === 'verifying' || phase === 'redirecting' || finalizingRef.current;
+
+  // Step ab derived hai, extra render wala effect nahi chahiye
+  const currentStep: CheckoutStep =
+    phase === 'redirecting'
+      ? 'done'
+      : phase === 'paying' || phase === 'verifying'
+        ? 'payment'
+        : showOtpField
+          ? 'verification'
+          : 'address';
+
+  // Success page ka JS pehle se load rakho, navigation instant lagega
+  useEffect(() => {
+    router.prefetch('/order-success');
+  }, [router]);
+
+  // Order complete: pehle overlay ON, phir cart clear, phir navigate
+  const finalizeOrder = (
+    orderId: string,
+    cartId: string,
+    cartRevision: number
+  ) => {
+    finalizingRef.current = true;
+    setPhase('redirecting');
+    cart.completeOrder(orderId, cartId, cartRevision);
+    clearShippingData();
+    // replace => Back dabane pe user checkout pe wapas nahi aayega
+    router.replace(`/order-success?orderId=${encodeURIComponent(orderId)}`);
+  };
+
   // Load Razorpay script
   useEffect(() => {
     const script = document.createElement('script');
@@ -138,15 +207,6 @@ const CheckoutPage = () => {
       document.body.removeChild(script);
     };
   }, []);
-
-  // Update step based on flow
-  useEffect(() => {
-    if (showOtpField) {
-      setCurrentStep('verification');
-    } else {
-      setCurrentStep('address');
-    }
-  }, [showOtpField]);
 
   const form = useForm<CheckoutFormValues>({
     resolver: zodResolver(formSchema),
@@ -269,6 +329,11 @@ const CheckoutPage = () => {
         return;
       }
 
+      if (typeof window.Razorpay === 'undefined') {
+        toast.error('Payment gateway not loaded. Please refresh the page.');
+        return;
+      }
+
       // Get form values
       const formData = form.getValues();
       const isShippingSameAsBilling = formData.isShippingSameAsBilling;
@@ -357,18 +422,20 @@ const CheckoutPage = () => {
         toast('This checkout is already being processed in another tab.');
         return;
       }
-
-      const { razorpayOrderId, razorpayKeyId, amount, email, phone } =
+      const { razorpayOrderId, razorpayKeyId, amount, email, phone, orderId } =
         response.data;
       if (!razorpayKeyId) {
         throw new Error('Payment gateway key was not returned by checkout.');
       }
 
+      // Handler fire hone ke baad ondismiss ko ignore karne ke liye
+      let paymentStarted = false;
+
       const options: RazorpayOptions = {
         key: razorpayKeyId,
-        amount: amount * 100,
+        amount: Math.round(amount * 100), // float errors se bachao
         currency: 'INR',
-        name: 'varuntd',
+        name: 'varuntd', // TODO: store ka real name
         description: 'Order Payment',
         order_id: razorpayOrderId,
         prefill: {
@@ -376,61 +443,66 @@ const CheckoutPage = () => {
           contact: phone,
         },
         handler: async function (razorpayResponse: RazorpayResponse) {
+          paymentStarted = true;
+          setPhase('verifying'); // overlay turant ON
+
           try {
-            const verifyResponse = await axios.post(
-              `${process.env.NEXT_PUBLIC_API_URL}/checkout/verify`,
-              {
-                razorpay_order_id: razorpayResponse.razorpay_order_id,
-                razorpay_payment_id: razorpayResponse.razorpay_payment_id,
-                razorpay_signature: razorpayResponse.razorpay_signature,
-              }
-            );
-
+            const verifyResponse = await verifyWithRetry(razorpayResponse);
             if (verifyResponse.data.success) {
-              cart.completeOrder(
-                response.data.orderId,
-                checkoutCartId,
-                checkoutCartRevision
-              );
-              clearShippingData();
-              toast.success('Payment successful!');
-              console.log('Payment successful, orderId:', verifyResponse);
-              router.push(`/order-success?orderId=${response.data.orderId}`);
-            } else {
-              console.log('line 378 ran:', verifyResponse);
-              toast.error('Payment verification failed!');
+              finalizeOrder(orderId, checkoutCartId, checkoutCartRevision);
+              return;
             }
+            throw new Error('Verification not confirmed');
           } catch (error) {
-            console.log('line 382 ran:', error);
+            const rejectedByServer =
+              axios.isAxiosError(error) &&
+              !!error.response &&
+              error.response.status < 500;
 
-            console.error('Payment verification error:', error);
-            toast.error('Payment verification failed!');
+            if (rejectedByServer) {
+              toast.error(
+                'Payment could not be verified. If money was deducted, please contact support with your Order ID.'
+              );
+              setPhase('idle');
+              return;
+            }
+
+            // Network/5xx: paisa kat chuka ho sakta hai. Error mat dikhao,
+            // order-success page status poll karega (webhook safety net hai).
+            toast('We are confirming your payment. Please wait…');
+            finalizingRef.current = true;
+            setPhase('redirecting');
+            router.replace(
+              `/order-success?orderId=${encodeURIComponent(orderId)}`
+            );
           }
         },
         modal: {
           ondismiss: function () {
-            toast.error('Payment cancelled');
-            console.log('Payment cancelled');
+            if (paymentStarted) return;
+            setPhase('idle');
+            toast(
+              'Payment cancelled. You can try again whenever you are ready.'
+            );
           },
         },
         theme: {
-          color: '#000000', // Your brand color
+          color: '#000000',
         },
       };
 
-      // Check if Razorpay script is loaded
-      if (typeof window.Razorpay === 'undefined') {
-        toast.error('Payment gateway not loaded. Please refresh the page.');
-        return;
-      }
-
       const razorpay = new window.Razorpay(options);
+      razorpay.on('payment.failed', (failure) => {
+        toast.error(
+          failure.error?.description || 'Payment failed. Please try again.'
+        );
+      });
+      setPhase('paying');
       razorpay.open();
-
-      toast.success('OTP verified! Opening payment gateway...');
-      setShowOtpField(false);
-      setOtp('');
+      // NOTE: yahan setShowOtpField(false) / setOtp('') jaan-boojh ke nahi hai.
+      // Cancel karne par user OTP step pe hi rahega aur "Verify & Pay" dobara dabake retry karega.
     } catch (error) {
+      setPhase('idle');
       console.error('Error verifying OTP:', error);
       if (axios.isAxiosError(error) && error.response) {
         console.error('Error response data:', error.response.data);
@@ -636,17 +708,11 @@ const CheckoutPage = () => {
 
       // For COD, backend should return success with orderId directly (no Razorpay)
       if (response.data.orderId) {
-        // Clear cart and shipping data
-        cart.completeOrder(
+        finalizeOrder(
           response.data.orderId,
           checkoutCartId,
           checkoutCartRevision
         );
-        clearShippingData();
-        toast.success('OTP verified! Order placed successfully!');
-        setShowOtpField(false);
-        setOtp('');
-        router.push(`/order-success?orderId=${response.data.orderId}`);
       } else {
         toast.error(response.data.error || 'Failed to place order');
       }
@@ -707,7 +773,7 @@ const CheckoutPage = () => {
     return <CheckoutSkeleton />;
   }
 
-  if (items.length === 0) {
+  if (items.length === 0 && !isFinalizing) {
     return (
       <Container>
         <div className="px-4 py-16 sm:px-6 lg:px-8 text-center">
@@ -897,11 +963,25 @@ const CheckoutPage = () => {
               ? `Place Order (₹${orderTotal} COD)`
               : 'Continue'
         }
-        isLoading={loading || otpLoading}
+        isLoading={loading || otpLoading || phase !== 'idle'}
         disabled={
           (showOtpField && otp.length !== 6) || !shippingData?.serviceable
         }
       />
+      {isFinalizing && (
+        <CheckoutProcessingOverlay
+          title={
+            phase === 'redirecting'
+              ? 'Order confirmed'
+              : 'Confirming your payment'
+          }
+          description={
+            phase === 'redirecting'
+              ? 'Taking you to your order confirmation…'
+              : 'Please don’t close or refresh this page.'
+          }
+        />
+      )}
     </div>
   );
 };

@@ -57,14 +57,18 @@ const PincodeChecker: React.FC<PincodeCheckerProps> = ({
     return true;
   };
 
-  const handleCheckDelivery = async () => {
-    if (!validatePincode(pincode)) return;
+  const checkDelivery = async (pincode: string, silent = false) => {
+    if (!silent && !validatePincode(pincode)) return;
 
-    setLoading(true);
-    setError(null);
+    if (!silent) {
+      setLoading(true);
+      setError(null);
+    }
 
     try {
       const response = await getDeliveryCharges(pincode);
+      // Background refresh keeps the saved result when the provider is temporarily down.
+      if (silent && !response.serviceable && response.retryable) return;
       const shippingChargeMetadata =
         'shippingChargeEnabled' in response
           ? {
@@ -119,6 +123,7 @@ const PincodeChecker: React.FC<PincodeCheckerProps> = ({
         onCheckComplete?.(shippingInfo);
       }
     } catch {
+      if (silent) return;
       const errorMsg = 'Failed to check delivery. Please try again.';
       setError(errorMsg);
       const shippingInfo: ShippingData = {
@@ -142,9 +147,18 @@ const PincodeChecker: React.FC<PincodeCheckerProps> = ({
       setShippingData(shippingInfo);
       onCheckComplete?.(shippingInfo);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
+
+  const handleCheckDelivery = () => checkDelivery(pincode);
+
+  // Saved result lives in sessionStorage; re-check once per mount so courier/COD changes show up.
+  useEffect(() => {
+    const savedPincode = useShipping.getState().shippingData?.pincode;
+    if (savedPincode) void checkDelivery(savedPincode, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleChangePincode = () => {
     if (editable) {

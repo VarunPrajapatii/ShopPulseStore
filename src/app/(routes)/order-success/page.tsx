@@ -14,13 +14,82 @@ import {
   AlertCircle,
   Banknote,
   Wallet,
+  Loader2,
 } from 'lucide-react';
 import Link from 'next/link';
 import confetti from 'canvas-confetti';
-import getOrderDetails, { OrderDetails } from '@/actions/get-order-details';
+import getOrderDetails, {
+  OrderDetails,
+  PaymentView,
+} from '@/actions/get-order-details';
 import Currency from '@/components/ui/currency';
 import Image from 'next/image';
 import { getOptimizedUrl, getBlurUrl } from '@/lib/cloudinary-utils';
+
+const getPaymentView = (d: OrderDetails): PaymentView => {
+  // Unpaid order jo expire ya cancel ho chuka hai
+  if (
+    !d.isPaid &&
+    (d.orderStatus === 'EXPIRED' || d.orderStatus === 'CANCELLED')
+  ) {
+    return 'failed';
+  }
+  // Paid ya COD => confirmed
+  if (d.isPaid || d.paymentMethod === 'COD') return 'confirmed';
+  // Baaki: prepaid + unpaid => abhi pending
+  return 'pending';
+};
+
+// Trigger confetti animation only after successful order fetch
+const triggerConfetti = () => {
+  const duration = 3 * 1000;
+  const animationEnd = Date.now() + duration;
+  const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
+
+  function randomInRange(min: number, max: number) {
+    return Math.random() * (max - min) + min;
+  }
+
+  const interval: NodeJS.Timeout = setInterval(function () {
+    const timeLeft = animationEnd - Date.now();
+
+    if (timeLeft <= 0) {
+      return clearInterval(interval);
+    }
+
+    const particleCount = 50 * (timeLeft / duration);
+    confetti({
+      ...defaults,
+      particleCount,
+      origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 },
+    });
+    confetti({
+      ...defaults,
+      particleCount,
+      origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 },
+    });
+  }, 250);
+
+  return () => clearInterval(interval);
+};
+
+const OrderSuccessSkeleton = () => (
+  <Container>
+    <div className="px-4 py-16 sm:px-6 lg:px-8" aria-busy="true">
+      <div className="mx-auto max-w-4xl animate-pulse">
+        <div className="mx-auto h-28 w-28 rounded-full bg-gray-100" />
+        <div className="mx-auto mt-6 h-9 w-2/3 rounded bg-gray-100" />
+        <div className="mx-auto mt-4 h-5 w-1/2 rounded bg-gray-100" />
+        <div className="mt-8 h-28 rounded-lg bg-gray-100" />
+        <div className="mt-8 h-64 rounded-lg bg-gray-100" />
+        <div className="mt-6 grid gap-6 md:grid-cols-2">
+          <div className="h-40 rounded-lg bg-gray-100" />
+          <div className="h-40 rounded-lg bg-gray-100" />
+        </div>
+      </div>
+    </div>
+  </Container>
+);
 
 const OrderSuccessContent = () => {
   const searchParams = useSearchParams();
@@ -29,67 +98,71 @@ const OrderSuccessContent = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
-  // Trigger confetti animation only after successful order fetch
-  const triggerConfetti = () => {
-    const duration = 3 * 1000;
-    const animationEnd = Date.now() + duration;
-    const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
-
-    function randomInRange(min: number, max: number) {
-      return Math.random() * (max - min) + min;
+  useEffect(() => {
+    if (!orderId) {
+      setError(true);
+      setLoading(false);
+      return;
     }
 
-    const interval: NodeJS.Timeout = setInterval(function () {
-      const timeLeft = animationEnd - Date.now();
+    let cancelled = false;
+    let attempts = 0;
+    let timer: ReturnType<typeof setTimeout> | undefined;
 
-      if (timeLeft <= 0) {
-        return clearInterval(interval);
-      }
+    const load = async () => {
+      const data = await getOrderDetails(orderId).catch(() => null);
+      if (cancelled) return;
 
-      const particleCount = 50 * (timeLeft / duration);
-      confetti({
-        ...defaults,
-        particleCount,
-        origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 },
-      });
-      confetti({
-        ...defaults,
-        particleCount,
-        origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 },
-      });
-    }, 250);
-
-    return () => clearInterval(interval);
-  };
-
-  useEffect(() => {
-    const fetchOrderDetails = async () => {
-      if (!orderId) {
+      if (!data) {
+        // Fresh order pe replica lag ho sakta hai, thoda retry
+        if (attempts < 3) {
+          attempts++;
+          timer = setTimeout(load, 1500);
+          return;
+        }
         setError(true);
         setLoading(false);
         return;
       }
 
-      try {
-        const data = await getOrderDetails(orderId);
-        if (data) {
-          setOrderDetails(data);
-          // Only trigger confetti on successful order fetch
-          triggerConfetti();
-        } else {
-          setError(true);
-        }
-      } catch (err) {
-        console.error('Error fetching order details:', err);
-        setError(true);
-      } finally {
-        setLoading(false);
+      setOrderDetails(data);
+      // console.log(data);
+      setLoading(false);
+
+      // Online payment abhi settle nahi hui (webhook pending) => poll
+      const stillPending = getPaymentView(data) === 'pending';
+
+      if (stillPending && attempts < 15) {
+        attempts++;
+        timer = setTimeout(load, 3000);
       }
     };
 
-    fetchOrderDetails();
+    void load();
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
   }, [orderId]);
 
+  // Confetti: sirf confirmed order pe, ek baar per order, reduced-motion respect karke
+  const isConfirmed =
+    !!orderDetails && getPaymentView(orderDetails) === 'confirmed';
+
+  const confirmedOrderId = orderDetails?.orderId;
+
+  useEffect(() => {
+    if (!isConfirmed || !confirmedOrderId) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    try {
+      const key = `confetti-${confirmedOrderId}`;
+      if (sessionStorage.getItem(key)) return;
+      sessionStorage.setItem(key, '1');
+    } catch {
+      return;
+    }
+    return triggerConfetti();
+  }, [isConfirmed, confirmedOrderId]);
   // Format date and time
   const formatDateTime = (dateString: string) => {
     const date = new Date(dateString);
@@ -156,6 +229,38 @@ const OrderSuccessContent = () => {
         label: 'Delivered',
       },
       CANCELLED: { bg: 'bg-red-100', text: 'text-red-800', label: 'Cancelled' },
+      READY_TO_SHIP: {
+        bg: 'bg-blue-100',
+        text: 'text-blue-800',
+        label: 'Ready to Ship',
+      },
+      IN_TRANSIT: {
+        bg: 'bg-purple-100',
+        text: 'text-purple-800',
+        label: 'In Transit',
+      },
+      CANCELLATION_PENDING: {
+        bg: 'bg-amber-100',
+        text: 'text-amber-800',
+        label: 'Cancellation Requested',
+      },
+      EXPIRED: { bg: 'bg-red-100', text: 'text-red-800', label: 'Expired' },
+      REFUNDED: { bg: 'bg-gray-100', text: 'text-gray-800', label: 'Refunded' },
+      RETURN_REQUESTED: {
+        bg: 'bg-amber-100',
+        text: 'text-amber-800',
+        label: 'Return Requested',
+      },
+      RETURN_IN_TRANSIT: {
+        bg: 'bg-purple-100',
+        text: 'text-purple-800',
+        label: 'Return in Transit',
+      },
+      RETURNED: {
+        bg: 'bg-gray-100',
+        text: 'text-gray-800',
+        label: 'Returned',
+      },
     };
 
     const config = statusConfig[status] || {
@@ -172,18 +277,7 @@ const OrderSuccessContent = () => {
     );
   };
 
-  if (loading) {
-    return (
-      <Container>
-        <div className="min-h-[calc(100vh-8rem)] flex items-center justify-center px-4 py-16 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading order details...</p>
-          </div>
-        </div>
-      </Container>
-    );
-  }
+  if (loading) return <OrderSuccessSkeleton />;
 
   if (error || !orderDetails) {
     return (
@@ -219,6 +313,15 @@ const OrderSuccessContent = () => {
 
   const orderDateTime = formatDateTime(orderDetails.createdAt);
 
+  const paymentView = getPaymentView(orderDetails);
+  const isPendingPayment = paymentView === 'pending';
+  const isFailed = paymentView === 'failed';
+  const headerBg = isFailed
+    ? 'bg-red-100'
+    : isPendingPayment
+      ? 'bg-amber-100'
+      : 'bg-green-100';
+
   return (
     <Container>
       <div className="px-4 py-16 sm:px-6 lg:px-8">
@@ -226,18 +329,30 @@ const OrderSuccessContent = () => {
           {/* Success Header */}
           <div className="text-center mb-12 animate-fade-in">
             <div className="flex justify-center mb-6">
-              <div className="rounded-full bg-green-100 p-6 animate-bounce-in">
-                <CheckCircle className="h-16 w-16 text-green-600" />
+              <div className={`${headerBg} rounded-full p-6 animate-bounce-in`}>
+                {isPendingPayment ? (
+                  <Loader2 className="h-16 w-16 animate-spin text-amber-600" />
+                ) : isFailed ? (
+                  <AlertCircle className="h-16 w-16 text-red-600" />
+                ) : (
+                  <CheckCircle className="h-16 w-16 text-green-600" />
+                )}
               </div>
             </div>
 
             <h1 className="text-4xl font-bold text-gray-900 mb-4">
-              Order Placed Successfully!
+              {isPendingPayment
+                ? 'Confirming your payment…'
+                : isFailed
+                  ? 'Order not completed'
+                  : 'Order Placed Successfully!'}
             </h1>
-
             <p className="text-lg text-gray-600 mb-6">
-              Thank you for your purchase, {orderDetails.name}! Your order has
-              been confirmed.
+              {isPendingPayment
+                ? 'We have your order. This page will update automatically once the payment is confirmed.'
+                : isFailed
+                  ? 'This order was cancelled or expired because payment was not completed. If money was deducted, please contact support with your Order ID.'
+                  : `Thank you for your purchase, ${orderDetails.name}! Your order has been confirmed.`}
             </p>
 
             {/* Order ID Card */}
@@ -256,7 +371,11 @@ const OrderSuccessContent = () => {
 
             {/* Order Status Badge */}
             <div className="mb-4 animate-fade-in-up">
-              {getStatusBadge(orderDetails.orderStatus)}
+              {getStatusBadge(
+                isPendingPayment
+                  ? 'PAYMENT_INITIATED'
+                  : orderDetails.orderStatus
+              )}
             </div>
           </div>
 
@@ -603,25 +722,29 @@ const OrderSuccessContent = () => {
             </div>
 
             {/* Email Confirmation Notice */}
-            <div
-              className="bg-blue-50 border border-blue-200 rounded-lg p-6 animate-fade-in-up"
-              style={{ animationDelay: '700ms' }}
-            >
-              <div className="flex gap-3">
-                <Mail className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-semibold text-blue-900 mb-1">
-                    Confirmation Email Sent
-                  </p>
-                  <p className="text-sm text-blue-800">
-                    A confirmation email with your order details has been sent
-                    to{' '}
-                    <span className="font-semibold">{orderDetails.email}</span>.
-                    Please check your inbox and spam folder.
-                  </p>
+            {paymentView === 'confirmed' && (
+              <div
+                className="bg-blue-50 border border-blue-200 rounded-lg p-6 animate-fade-in-up"
+                style={{ animationDelay: '700ms' }}
+              >
+                <div className="flex gap-3">
+                  <Mail className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-semibold text-blue-900 mb-1">
+                      Confirmation Email Sent
+                    </p>
+                    <p className="text-sm text-blue-800">
+                      A confirmation email with your order details has been sent
+                      to{' '}
+                      <span className="font-semibold">
+                        {orderDetails.email}
+                      </span>
+                      . Please check your inbox and spam folder.
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Action Buttons */}
             <div
@@ -644,22 +767,7 @@ const OrderSuccessContent = () => {
 
 const OrderSuccessPage = () => {
   return (
-    <Suspense
-      fallback={
-        <Container>
-          <div className="px-4 py-16 sm:px-6 lg:px-8">
-            <div className="mx-auto max-w-4xl">
-              <div className="text-center">
-                <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900 mx-auto"></div>
-                <p className="mt-4 text-lg text-gray-600">
-                  Loading order details...
-                </p>
-              </div>
-            </div>
-          </div>
-        </Container>
-      }
-    >
+    <Suspense fallback={<OrderSuccessSkeleton />}>
       <OrderSuccessContent />
     </Suspense>
   );

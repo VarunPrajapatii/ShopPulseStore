@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import { Urbanist } from 'next/font/google';
-// @ts-expect-error Next.js supports global CSS side-effect imports in app/layout
 import './globals.css';
 import Footer from '@/components/footer';
 import Navbar from '@/components/navbar';
@@ -92,6 +91,9 @@ export async function generateMetadata(): Promise<Metadata> {
     },
   };
 }
+
+// Storefront never caches rendered pages; every request reads fresh data from the dashboard API.
+export const dynamic = 'force-dynamic';
 
 export default async function RootLayout({
   children,

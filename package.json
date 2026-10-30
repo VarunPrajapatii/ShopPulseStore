@@ -3,9 +3,10 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --port 3001",
+    "dev": "cross-env NODE_OPTIONS='--max-old-space-size=4096' next dev --turbopack --port 3001",
     "build": "next build",
     "start": "next start --port 3001",
+    "test:prod": "npm run build && npm run start",
     "lint": "eslint",
     "tree": "node scripts/generate-tree.mjs"
   },
@@ -37,6 +38,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "cross-env": "^10.1.0",
     "eslint": "^9",
     "eslint-config-next": "15.5.4",
     "tailwindcss": "^4",
