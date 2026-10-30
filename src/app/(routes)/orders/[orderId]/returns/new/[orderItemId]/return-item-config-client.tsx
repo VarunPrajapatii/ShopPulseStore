@@ -8,7 +8,8 @@
  *   1. Why?      → <ReasonPicker /> (reason + detailed + resolution + free-text)
  *   2. How many? → quantity stepper (capped at qtyAvailable)
  *   3. Photos    → <PhotoUploader /> (when the store, product, or reason asks
- *                  for photo evidence on the selected remedy)
+ *                  for photo evidence on the selected remedy). Photos are only
+ *                  picked here; they upload when the whole return is submitted.
  *   4. Variant   → <VariantPicker /> (only for EXCHANGE / REPLACEMENT)
  *
  * "Add to return" validates the slice, persists it to the basket, and returns
@@ -37,6 +38,10 @@ import type {
 } from '@/lib/returns-types';
 import useReturnBasket from '@/hooks/use-return-basket';
 import useOrderSession from '@/hooks/use-order-session';
+import {
+  hasPickedPhoto,
+  releasePickedPhotos,
+} from '@/lib/uploads/return-photo-files';
 
 interface ReturnItemConfigClientProps {
   orderId: string;
@@ -51,8 +56,6 @@ const RECOVERY_ISSUE_COPY: Record<string, string> = {
     'The reason you picked needs at least one photo. Add a photo below and continue.',
   PHOTO_QUOTA_EXCEEDED:
     'You added more photos than this store allows for this item. Remove a few and continue.',
-  UNTRUSTED_EVIDENCE_IMAGE:
-    'One of your photos couldn’t be verified. Please remove it and upload again from this page.',
   REASON_DETAIL_REQUIRED:
     'Please pick a more specific sub-reason so we can route your request correctly.',
   REASON_FREE_TEXT_REQUIRED:
@@ -105,7 +108,8 @@ const ReturnItemConfigClient = ({
   const [resolution, setResolution] = useState<Resolution>('REFUND');
   const [quantity, setQuantity] = useState(1);
   const [reasonText, setReasonText] = useState<string | null>(null);
-  const [photos, setPhotos] = useState<string[]>([]);
+  const [photoKeys, setPhotoKeys] = useState<string[]>([]);
+  const [photosLost, setPhotosLost] = useState(false);
   const [exchangeChoice, setExchangeChoice] = useState<{
     newProductId: string;
     newVariantId: string;
@@ -116,6 +120,28 @@ const ReturnItemConfigClient = ({
   const requestStepUp = useOrderSession((s) => s.requestStepUp);
   const draftIdRef = useRef<string | null>(editDraftId);
   const seededRef = useRef(false);
+  const photoKeysRef = useRef<string[]>([]);
+
+  useEffect(() => {
+    photoKeysRef.current = photoKeys;
+  }, [photoKeys]);
+
+  // Leaving without "Add to return" forgets photos picked on this visit.
+  useEffect(
+    () => () => {
+      const draftId = draftIdRef.current;
+      const saved = new Set(
+        draftId
+          ? (useReturnBasket.getState().getSlice(orderId, draftId)?.photoKeys ??
+              [])
+          : []
+      );
+      releasePickedPhotos(
+        photoKeysRef.current.filter((key) => !saved.has(key))
+      );
+    },
+    [orderId]
+  );
 
   const load = useCallback(
     async (signal?: AbortSignal) => {
@@ -161,7 +187,9 @@ const ReturnItemConfigClient = ({
       setResolution(slice.resolution);
       setQuantity(slice.quantity);
       setReasonText(slice.reasonText);
-      setPhotos(slice.photos);
+      const available = slice.photoKeys.filter(hasPickedPhoto);
+      setPhotoKeys(available);
+      setPhotosLost(available.length < slice.photoKeys.length);
       setExchangeChoice(slice.exchangeChoice);
     }
     seededRef.current = true;
@@ -224,6 +252,7 @@ const ReturnItemConfigClient = ({
   );
   const needsVariant =
     resolution === 'EXCHANGE' || resolution === 'REPLACEMENT';
+  const maxPhotos = maxImagesPerUnit * quantity;
 
   const validationErrors = useMemo(() => {
     const errors: {
@@ -249,10 +278,12 @@ const ReturnItemConfigClient = ({
     ) {
       errors.reasonText = 'Please tell us a bit more.';
     }
-    if (needsPhotos && photos.length === 0) {
+    if (needsPhotos && photoKeys.length === 0) {
       errors.photos = photosRequiredByStorePolicy
         ? 'This store needs at least one photo of the item before it can accept this request.'
         : 'Add at least one clear photo for this reason.';
+    } else if (needsPhotos && photoKeys.length > maxPhotos) {
+      errors.photos = `Up to ${maxPhotos} photo${maxPhotos === 1 ? '' : 's'} for this quantity. Please remove ${photoKeys.length - maxPhotos}.`;
     }
     if (needsVariant && !exchangeChoice) {
       errors.exchangeChoice = 'Please pick a variant.';
@@ -265,7 +296,8 @@ const ReturnItemConfigClient = ({
     resolution,
     needsPhotos,
     photosRequiredByStorePolicy,
-    photos,
+    photoKeys,
+    maxPhotos,
     needsVariant,
     exchangeChoice,
   ]);
@@ -302,7 +334,8 @@ const ReturnItemConfigClient = ({
         selectedReason?.detailedReasons.find((d) => d.id === reasonDetailedId)
           ?.label ?? null,
       reasonText,
-      photos,
+      // Photos only travel with the request when this remedy asks for them.
+      photoKeys: needsPhotos ? photoKeys : [],
       exchangeChoice,
       lane: complaintMode ? 'PROTECTED' : 'COMMERCIAL',
       configured: true,
@@ -509,13 +542,22 @@ const ReturnItemConfigClient = ({
                 ? 'This store asks for photos of the item on every request of this kind. Clear, well-lit photos speed up approval.'
                 : 'Show us the issue clearly — this helps us approve your request faster.'}
             </p>
+            {photosLost && (
+              <p
+                role="status"
+                className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900"
+              >
+                Your earlier photos were cleared when the page reloaded. Please
+                add them again.
+              </p>
+            )}
             <PhotoUploader
-              orderId={orderId}
-              orderItemId={orderItemId}
-              quantity={quantity}
-              maxImagesPerUnit={maxImagesPerUnit}
-              photos={photos}
-              onChange={setPhotos}
+              photoKeys={photoKeys}
+              maxPhotos={maxPhotos}
+              onChange={(keys) => {
+                setPhotoKeys(keys);
+                setPhotosLost(false);
+              }}
             />
             {validationErrors.photos && (
               <p role="alert" className="mt-2 text-xs text-red-600">

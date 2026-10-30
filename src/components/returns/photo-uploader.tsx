@@ -1,236 +1,157 @@
 'use client';
 
 /**
- * PhotoUploader — per-unit photo grid for reasons that require photos.
+ * PhotoUploader — picks return photos; uploads nothing by itself.
  *
- * One grid per unit when qty > 1 (each unit capped at `maxImagesPerUnit`).
- * Upload flow: client validates type/size, then `uploadReturnPhoto`
- * (signature → direct Cloudinary POST) → stores the returned `secure_url`.
- * Each tile shows its own spinner; failures show a red border + retry.
+ * Selecting files only validates them (type, size, count) and keeps them in
+ * the in-memory picked-photo store; the parent receives the new list of
+ * `clientKey`s. Removing a tile just drops its key. Bytes travel to the
+ * server only when the parent submits through the upload session controller,
+ * and while that happens the parent passes `progress` so each tile shows its
+ * own upload state.
  *
- * Photos are kept as a FLAT `string[]` on the slice (per the submit contract);
- * this component maps the flat array onto N per-unit buckets for display.
+ * The cap is one total for the item (`maxPhotos`), because the server stores
+ * the photos of a request as one group.
  */
 
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
 import Image from 'next/image';
-import { ImagePlus, Loader2, RotateCw, X } from 'lucide-react';
+import { AlertCircle, Check, ImagePlus, X } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { ReturnsApiError, uploadReturnPhoto } from '@/lib/returns-api';
+import type { UploadProgressEntry } from '@/lib/uploads/client/upload-session-controller';
+import {
+  RETURN_PHOTO_ACCEPT,
+  addPickedPhotos,
+  getPickedPhoto,
+  validateReturnPhoto,
+} from '@/lib/uploads/return-photo-files';
 import { cn } from '@/lib/utils';
 
-const ACCEPTED_TYPES = [
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-  'image/heic',
-  'image/heif',
-];
-const MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB — must match server cap in return-photo-upload.ts
-
 interface PhotoUploaderProps {
-  orderId: string;
-  orderItemId: string;
-  quantity: number;
-  maxImagesPerUnit: number;
-  /** Flat list of already-uploaded secure_urls. */
-  photos: string[];
-  onChange: (photos: string[]) => void;
-  onAuthRequired?: () => void;
-}
-
-interface UploadingTile {
-  unitIndex: number;
-  tempId: string;
-  failed: boolean;
+  /** Keys of the picked photos, in display order. */
+  photoKeys: string[];
+  onChange: (photoKeys: string[]) => void;
+  maxPhotos: number;
+  /** Per-key upload state while the parent is submitting. */
+  progress?: Record<string, UploadProgressEntry>;
+  /** Locks picking and removing (e.g. while submitting). */
+  disabled?: boolean;
 }
 
 const PhotoUploader: React.FC<PhotoUploaderProps> = ({
-  orderId,
-  orderItemId,
-  quantity,
-  maxImagesPerUnit,
-  photos,
+  photoKeys,
   onChange,
-  onAuthRequired,
+  maxPhotos,
+  progress,
+  disabled = false,
 }) => {
-  const [uploading, setUploading] = useState<UploadingTile[]>([]);
-  const inputRefs = useRef<Record<number, HTMLInputElement | null>>({});
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const visibleKeys = photoKeys.filter((key) => getPickedPhoto(key));
+  const full = visibleKeys.length >= maxPhotos;
 
-  // Distribute the flat photos array across units round-robin-by-fill: simplest
-  // stable mapping is sequential buckets of size maxImagesPerUnit.
-  const bucketFor = (unitIndex: number): string[] =>
-    photos.slice(
-      unitIndex * maxImagesPerUnit,
-      unitIndex * maxImagesPerUnit + maxImagesPerUnit
-    );
-
-  const validate = (file: File): string | null => {
-    if (!ACCEPTED_TYPES.includes(file.type)) {
-      return 'Please upload a JPEG, PNG, WEBP, or HEIC image.';
-    }
-    if (file.size > MAX_SIZE_BYTES) {
-      return 'That image is too large (max 5 MB).';
-    }
-    return null;
-  };
-
-  const runUpload = async (unitIndex: number, file: File, tempId: string) => {
-    setUploading((u) => [...u, { unitIndex, tempId, failed: false }]);
-    try {
-      const url = await uploadReturnPhoto(orderId, {
-        orderItemId,
-        unitIndex,
-        file,
-      });
-      onChange([...photos, url]);
-      setUploading((u) => u.filter((t) => t.tempId !== tempId));
-    } catch (err) {
-      if (err instanceof ReturnsApiError && err.isAuthError) {
-        setUploading((current) =>
-          current.filter((tile) => tile.tempId !== tempId)
-        );
-        onAuthRequired?.();
-        toast.error('Verify your order, then select the photo again.');
-        return;
-      }
-      setUploading((u) =>
-        u.map((t) => (t.tempId === tempId ? { ...t, failed: true } : t))
-      );
-      const code = err instanceof ReturnsApiError ? err.code : 'UNKNOWN';
-      toast.error(
-        code === 'UPLOAD_FAILED' || code === 'UPLOAD_NETWORK_ERROR'
-          ? 'Upload failed. Tap retry to try again.'
-          : 'Couldn’t upload that photo.'
-      );
-    }
-  };
-
-  const handleFiles = (unitIndex: number, files: FileList | null) => {
-    if (!files) return;
-    const current = bucketFor(unitIndex).length;
-    const remaining = maxImagesPerUnit - current;
-    const toUpload = Array.from(files).slice(0, Math.max(0, remaining));
-    if (Array.from(files).length > toUpload.length) {
-      toast.error(
-        `Up to ${maxImagesPerUnit} photo${maxImagesPerUnit === 1 ? '' : 's'} per item.`
-      );
-    }
-    for (const file of toUpload) {
-      const error = validate(file);
+  const handleFiles = (list: FileList | null) => {
+    if (!list || list.length === 0) return;
+    const accepted: File[] = [];
+    for (const file of Array.from(list)) {
+      const error = validateReturnPhoto(file);
       if (error) {
         toast.error(error);
         continue;
       }
-      void runUpload(
-        unitIndex,
-        file,
-        `${unitIndex}-${file.name}-${Date.now()}-${Math.random()}`
-      );
+      accepted.push(file);
     }
-  };
 
-  const removePhoto = (url: string) => {
-    onChange(photos.filter((p) => p !== url));
-  };
-
-  const retryTile = (tempId: string) => {
-    setUploading((u) => u.filter((t) => t.tempId !== tempId));
-    // The original File isn't retained; prompt the user to re-pick. Simpler &
-    // avoids holding File refs in state. Open the unit's picker again.
-    const tile = uploading.find((t) => t.tempId === tempId);
-    if (tile) inputRefs.current[tile.unitIndex]?.click();
+    const room = Math.max(0, maxPhotos - visibleKeys.length);
+    if (accepted.length > room) {
+      toast.error(`Up to ${maxPhotos} photo${maxPhotos === 1 ? '' : 's'}.`);
+    }
+    const toAdd = accepted.slice(0, room);
+    if (toAdd.length === 0) return;
+    // One onChange per selection, so a multi-select never loses files.
+    onChange([...visibleKeys, ...addPickedPhotos(toAdd)]);
   };
 
   return (
-    <div className="space-y-4">
-      {Array.from({ length: quantity }).map((_, unitIndex) => {
-        const bucket = bucketFor(unitIndex);
-        const tiles = uploading.filter((t) => t.unitIndex === unitIndex);
-        const full = bucket.length >= maxImagesPerUnit;
-
-        return (
-          <div key={unitIndex}>
-            {quantity > 1 && (
-              <p className="mb-1.5 text-xs font-medium text-muted-foreground">
-                Unit {unitIndex + 1}
-              </p>
-            )}
-            <div className="flex flex-wrap gap-2">
-              {bucket.map((url) => (
-                <div
-                  key={url}
-                  className="relative h-20 w-20 overflow-hidden rounded-lg border border-border bg-muted"
-                >
-                  <Image
-                    src={url}
-                    alt="Return photo"
-                    fill
-                    sizes="80px"
-                    className="object-cover"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removePhoto(url)}
-                    className="absolute right-1 top-1 rounded-full bg-black/60 p-0.5 text-white"
-                    aria-label="Remove photo"
-                  >
-                    <X size={12} />
-                  </button>
-                </div>
-              ))}
-
-              {tiles.map((tile) => (
-                <div
-                  key={tile.tempId}
-                  className={cn(
-                    'flex h-20 w-20 items-center justify-center rounded-lg border bg-muted',
-                    tile.failed ? 'border-red-400' : 'border-border'
-                  )}
-                >
-                  {tile.failed ? (
-                    <button
-                      type="button"
-                      onClick={() => retryTile(tile.tempId)}
-                      className="flex flex-col items-center gap-1 text-xs text-red-500"
-                    >
-                      <RotateCw size={16} />
-                      Retry
-                    </button>
-                  ) : (
-                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                  )}
-                </div>
-              ))}
-
-              {!full && (
+    <div>
+      <div className="flex flex-wrap gap-2">
+        {visibleKeys.map((key, index) => {
+          const photo = getPickedPhoto(key)!;
+          const state = progress?.[key];
+          return (
+            <div
+              key={key}
+              className={cn(
+                'relative h-20 w-20 overflow-hidden rounded-lg border bg-muted',
+                state?.state === 'failed' ? 'border-red-400' : 'border-border'
+              )}
+            >
+              <Image
+                src={photo.previewUrl}
+                alt={`Selected photo ${index + 1}`}
+                fill
+                sizes="80px"
+                unoptimized
+                className="object-cover"
+              />
+              {state &&
+                (state.state === 'queued' || state.state === 'uploading') && (
+                  <div className="absolute inset-0 flex items-end bg-black/40">
+                    <div
+                      className="h-1 bg-white transition-all"
+                      style={{ width: `${state.percent}%` }}
+                    />
+                  </div>
+                )}
+              {state?.state === 'done' && (
+                <span className="absolute bottom-1 right-1 rounded-full bg-emerald-600 p-0.5 text-white">
+                  <Check size={10} />
+                </span>
+              )}
+              {state?.state === 'failed' && (
+                <span className="absolute bottom-1 right-1 rounded-full bg-red-600 p-0.5 text-white">
+                  <AlertCircle size={10} />
+                </span>
+              )}
+              {!disabled && (
                 <button
                   type="button"
-                  onClick={() => inputRefs.current[unitIndex]?.click()}
-                  className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-border text-xs text-muted-foreground transition hover:border-primary hover:text-foreground"
+                  onClick={() => onChange(visibleKeys.filter((k) => k !== key))}
+                  className="absolute right-1 top-1 rounded-full bg-black/60 p-0.5 text-white"
+                  aria-label="Remove photo"
                 >
-                  <ImagePlus size={18} />
-                  Add
+                  <X size={12} />
                 </button>
               )}
-
-              <input
-                ref={(el) => {
-                  inputRefs.current[unitIndex] = el;
-                }}
-                type="file"
-                accept={ACCEPTED_TYPES.join(',')}
-                multiple={maxImagesPerUnit > 1}
-                className="hidden"
-                onChange={(e) => {
-                  handleFiles(unitIndex, e.target.files);
-                  e.target.value = '';
-                }}
-              />
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
+
+        {!full && !disabled && (
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-border text-xs text-muted-foreground transition hover:border-primary hover:text-foreground"
+          >
+            <ImagePlus size={18} />
+            Add
+          </button>
+        )}
+
+        <input
+          ref={inputRef}
+          type="file"
+          accept={RETURN_PHOTO_ACCEPT}
+          multiple={maxPhotos > 1}
+          className="hidden"
+          onChange={(e) => {
+            handleFiles(e.target.files);
+            e.target.value = '';
+          }}
+        />
+      </div>
+      <p className="mt-1.5 text-xs text-muted-foreground">
+        {visibleKeys.length}/{maxPhotos} photos · max 5 MB each
+      </p>
     </div>
   );
 };

@@ -6,6 +6,12 @@
  * refund destination and accept the policy, then submits with the basket's
  * stable `submissionId` (idempotent via X-Submission-Id).
  *
+ * Photos picked on the item pages upload only here, on submit: the upload
+ * session controller reserves names on the server, uploads every photo of
+ * every slice, then sends the submit with the session id so the server
+ * attaches all photos or none. A closed tab or abandoned review leaves
+ * nothing behind on the image host.
+ *
  * On the authoritative submit response it renders <SettlementBreakdown />.
  * Razorpay is opened ONLY when the user clicks "Proceed to pay" for a
  * PAYMENT_DUE outcome — never automatically.
@@ -14,7 +20,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { ChevronLeft, ImageOff, Loader2, Pencil } from 'lucide-react';
+import {
+  ChevronLeft,
+  ImageOff,
+  Loader2,
+  Pencil,
+  TriangleAlert,
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 import Container from '@/components/ui/container';
 import Currency from '@/components/ui/currency';
@@ -39,6 +51,14 @@ import type {
 import useReturnBasket from '@/hooks/use-return-basket';
 import useOrderSession from '@/hooks/use-order-session';
 import { useRazorpay } from '@/hooks/use-razorpay';
+import {
+  describeReturnUploadFailure,
+  useReturnUploadSession,
+} from '@/hooks/use-return-upload-session';
+import {
+  hasPickedPhoto,
+  pickedPhotoEntries,
+} from '@/lib/uploads/return-photo-files';
 
 interface ReturnReviewClientProps {
   orderId: string;
@@ -103,8 +123,6 @@ const SUBMIT_ERROR_COPY: Record<string, string> = {
   REASON_BLOCKED_BY_NONRETURNABLE:
     'This item can’t be returned for that reason. Try “Report a problem”.',
   PHOTO_QUOTA_EXCEEDED: 'Too many photos for an item. Remove a few and retry.',
-  UNTRUSTED_EVIDENCE_IMAGE:
-    'We couldn’t verify one of your photos. Please remove it and upload again.',
   SLICE_QUANTITY_EXCEEDED:
     'You’ve already requested that many units. Please lower the quantity.',
   BASKET_TOO_LARGE:
@@ -130,6 +148,12 @@ const ReturnReviewClient = ({ orderId }: ReturnReviewClientProps) => {
   const getRemainingSessionMs = useOrderSession((s) => s.getRemainingSessionMs);
 
   const razorpay = useRazorpay();
+  const { submit: submitWithPhotos, progress: uploadProgress } =
+    useReturnUploadSession({
+      orderId,
+      purpose: 'RETURN_EVIDENCE',
+      scopeId: orderId,
+    });
 
   const [hydrated, setHydrated] = useState(false);
   const [refundPolicy, setRefundPolicy] = useState<RefundTargetResponse | null>(
@@ -163,6 +187,21 @@ const ReturnReviewClient = ({ orderId }: ReturnReviewClientProps) => {
   useEffect(() => setHydrated(true), []);
 
   const configuredSlices = (basket?.slices ?? []).filter((s) => s.configured);
+
+  // A full reload empties the in-memory photo store; those slices need their
+  // photos picked again before the basket can be submitted.
+  const slicesMissingPhotos = new Set(
+    hydrated
+      ? configuredSlices
+          .filter((s) => s.photoKeys.some((key) => !hasPickedPhoto(key)))
+          .map((s) => s.draftId)
+      : []
+  );
+  const photoProgress = Object.values(uploadProgress);
+  const photosUploaded = photoProgress.filter((p) => p.state === 'done').length;
+  const uploadingPhotos =
+    submitting &&
+    photoProgress.some((p) => p.state === 'queued' || p.state === 'uploading');
 
   // A destination is only collected when money actually flows back now. This
   // mirrors the server rule, so a pure exchange/replacement basket is never
@@ -225,6 +264,10 @@ const ReturnReviewClient = ({ orderId }: ReturnReviewClientProps) => {
       toast.error('Please complete your refund details to continue.');
       return;
     }
+    if (slicesMissingPhotos.size > 0) {
+      toast.error('Some photos need to be added again before you submit.');
+      return;
+    }
 
     const remainingSessionMs = getRemainingSessionMs();
     if (remainingSessionMs !== null && remainingSessionMs <= 0) {
@@ -243,9 +286,12 @@ const ReturnReviewClient = ({ orderId }: ReturnReviewClientProps) => {
       reasonConfigId: s.reasonConfigId ?? '',
       reasonDetailedId: s.reasonDetailedId ?? undefined,
       reasonText: s.reasonText ?? undefined,
-      photos: s.photos.length > 0 ? s.photos : undefined,
+      photoKeys: s.photoKeys.length > 0 ? s.photoKeys : undefined,
       exchangeChoice: s.exchangeChoice ?? undefined,
     }));
+    const photoFiles = pickedPhotoEntries(
+      configuredSlices.flatMap((s) => s.photoKeys)
+    );
 
     const body: SubmitBody = {
       slices,
@@ -257,9 +303,45 @@ const ReturnReviewClient = ({ orderId }: ReturnReviewClientProps) => {
     setPolicyAccepted(orderId, true);
 
     try {
-      const res = await submitReturns(orderId, basket.submissionId, body);
-      setResult({ submitted: res.submitted, settlement: res.settlement });
+      const outcome = await submitWithPhotos(photoFiles, (uploadSessionId) =>
+        submitReturns(orderId, basket.submissionId, {
+          ...body,
+          uploadSessionId,
+        })
+      );
+      if (outcome.kind === 'already-saved') {
+        // An earlier attempt went through but its response was lost.
+        toast.success('Your return was already submitted.');
+        clearBasket(orderId);
+        router.push(`/orders/${orderId}?just=submitted`);
+        return;
+      }
+      setResult({
+        submitted: outcome.value.submitted,
+        settlement: outcome.value.settlement,
+      });
     } catch (err) {
+      const uploadFailure = describeReturnUploadFailure(err);
+      if (uploadFailure?.kind === 'aborted') return;
+      if (uploadFailure?.kind === 'auth') {
+        toast.error('Please verify again to submit your return.');
+        requestStepUp({ type: 'START_RETURN' }, 'RETURN');
+        return;
+      }
+      if (uploadFailure) {
+        if (uploadFailure.invalidClientKeys.length > 0) {
+          const invalid = new Set(uploadFailure.invalidClientKeys);
+          for (const slice of configuredSlices) {
+            if (slice.photoKeys.some((key) => invalid.has(key))) {
+              updateSlice(orderId, slice.draftId, {
+                photoKeys: slice.photoKeys.filter((key) => !invalid.has(key)),
+              });
+            }
+          }
+        }
+        toast.error(uploadFailure.message);
+        return;
+      }
       if (err instanceof ReturnsApiError) {
         if (err.isAuthError) {
           // Mid-flow session expiry: keep the basket (sessionStorage) and reopen
@@ -331,6 +413,9 @@ const ReturnReviewClient = ({ orderId }: ReturnReviewClientProps) => {
     setBasketRefundTarget,
     setPolicyAccepted,
     updateSlice,
+    clearBasket,
+    slicesMissingPhotos.size,
+    submitWithPhotos,
     router,
   ]);
 
@@ -507,10 +592,20 @@ const ReturnReviewClient = ({ orderId }: ReturnReviewClientProps) => {
                       : ''}
                   </p>
                 )}
-                {slice.photos.length > 0 && (
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    {slice.photos.length} photo
-                    {slice.photos.length === 1 ? '' : 's'} attached
+                {slice.photoKeys.length > 0 &&
+                  !slicesMissingPhotos.has(slice.draftId) && (
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {slice.photoKeys.length} photo
+                      {slice.photoKeys.length === 1 ? '' : 's'} attached
+                    </p>
+                  )}
+                {slicesMissingPhotos.has(slice.draftId) && (
+                  <p
+                    role="alert"
+                    className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-amber-700"
+                  >
+                    <TriangleAlert size={12} />
+                    Photos were cleared on reload. Tap Edit to add them again.
                   </p>
                 )}
               </div>
@@ -615,11 +710,18 @@ const ReturnReviewClient = ({ orderId }: ReturnReviewClientProps) => {
           <button
             type="button"
             onClick={() => void handleSubmit()}
-            disabled={!policyChecked || !refundTargetReady || submitting}
+            disabled={
+              !policyChecked ||
+              !refundTargetReady ||
+              submitting ||
+              slicesMissingPhotos.size > 0
+            }
             className="btn-press inline-flex items-center gap-2 rounded-full bg-primary px-7 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50"
           >
             {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-            Submit and continue
+            {uploadingPhotos
+              ? `Uploading photos ${photosUploaded}/${photoProgress.length}…`
+              : 'Submit and continue'}
           </button>
         </div>
       </div>

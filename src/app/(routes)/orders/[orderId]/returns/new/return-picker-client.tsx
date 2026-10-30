@@ -34,6 +34,7 @@ import type {
 } from '@/lib/returns-types';
 import useReturnBasket, { type BasketSlice } from '@/hooks/use-return-basket';
 import useOrderSession from '@/hooks/use-order-session';
+import { hasPickedPhoto } from '@/lib/uploads/return-photo-files';
 
 interface ReturnPickerClientProps {
   orderId: string;
@@ -300,9 +301,10 @@ const ItemPickerCard: React.FC<ItemPickerCardProps> = ({
               >
                 <span className="flex-1 text-foreground">
                   ✓ {RESOLUTION_LABEL[slice.resolution]} × {slice.quantity}
-                  {slice.photos.length > 0 && (
+                  {slice.photoKeys.length > 0 && (
                     <span className="ml-1 inline-flex items-center gap-0.5 text-muted-foreground">
-                      <Camera size={11} /> {slice.photos.length}
+                      <Camera size={11} />{' '}
+                      {slice.photoKeys.filter(hasPickedPhoto).length}
                     </span>
                   )}
                 </span>

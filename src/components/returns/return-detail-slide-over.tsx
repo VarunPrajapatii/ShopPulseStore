@@ -6,10 +6,15 @@
  *
  * Shows the reason, customer photos and notes, and the full event timeline.
  * Opens whenever `returnNumber` is non-null.
+ *
+ * Evidence replies: photos are only picked while composing; "Send evidence"
+ * uploads them through a RETURN_EVIDENCE_RESPONSE upload session scoped to
+ * this return and sends the reply in the same step, so closing the panel or
+ * the tab never leaves stray uploads behind.
  */
 
 import { Dialog, Transition } from '@headlessui/react';
-import { Fragment, useCallback, useEffect, useState } from 'react';
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { Loader2, Send, X } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -22,6 +27,14 @@ import {
   ReturnsApiError,
 } from '@/lib/returns-api';
 import type { ReturnByNumberResponse } from '@/lib/returns-types';
+import {
+  describeReturnUploadFailure,
+  useReturnUploadSession,
+} from '@/hooks/use-return-upload-session';
+import {
+  pickedPhotoEntries,
+  releasePickedPhotos,
+} from '@/lib/uploads/return-photo-files';
 
 interface ReturnDetailSlideOverProps {
   orderId: string;
@@ -72,9 +85,22 @@ const ReturnDetailSlideOver: React.FC<ReturnDetailSlideOverProps> = ({
   );
   const [reloadVersion, setReloadVersion] = useState(0);
   const [responseText, setResponseText] = useState('');
-  const [responseImages, setResponseImages] = useState<string[]>([]);
+  const [evidenceKeys, setEvidenceKeys] = useState<string[]>([]);
   const [evidenceError, setEvidenceError] = useState<string | null>(null);
   const [submittingEvidence, setSubmittingEvidence] = useState(false);
+  const evidenceKeysRef = useRef<string[]>([]);
+
+  const replaceEvidenceKeys = useCallback((keys: string[]) => {
+    const kept = new Set(keys);
+    releasePickedPhotos(
+      evidenceKeysRef.current.filter((key) => !kept.has(key))
+    );
+    evidenceKeysRef.current = keys;
+    setEvidenceKeys(keys);
+  }, []);
+
+  // Photos picked for a reply are forgotten when the panel goes away.
+  useEffect(() => () => releasePickedPhotos(evidenceKeysRef.current), []);
 
   const requestReload = useCallback(
     () => setReloadVersion((version) => version + 1),
@@ -105,22 +131,36 @@ const ReturnDetailSlideOver: React.FC<ReturnDetailSlideOverProps> = ({
   );
 
   useEffect(() => {
-    if (!returnNumber) return;
+    if (!returnNumber) {
+      // Panel closed: forget the half-written reply and its picked photos.
+      setResponseText('');
+      replaceEvidenceKeys([]);
+      setEvidenceError(null);
+      return;
+    }
     const controller = new AbortController();
     setData(null);
     setResponseText('');
-    setResponseImages([]);
+    replaceEvidenceKeys([]);
     setEvidenceError(null);
     void loadDetail(controller.signal);
     return () => controller.abort();
-  }, [loadDetail, reloadVersion, returnNumber]);
+  }, [loadDetail, reloadVersion, returnNumber, replaceEvidenceKeys]);
 
   const detail = data?.return;
+  // The session only lives while this return's panel is open; closing it or
+  // switching returns disposes the controller and discards any open session.
+  const uploads = useReturnUploadSession({
+    orderId,
+    purpose: 'RETURN_EVIDENCE_RESPONSE',
+    scopeId: open ? (detail?.id ?? null) : null,
+  });
 
   const handleEvidenceSubmit = async () => {
     if (!detail || detail.status !== 'AWAITING_CUSTOMER_EVIDENCE') return;
     const trimmedResponse = responseText.trim();
-    if (!trimmedResponse && responseImages.length === 0) {
+    const photoFiles = pickedPhotoEntries(evidenceKeys);
+    if (!trimmedResponse && photoFiles.length === 0) {
       setEvidenceError('Add a response or at least one photo.');
       return;
     }
@@ -128,18 +168,35 @@ const ReturnDetailSlideOver: React.FC<ReturnDetailSlideOverProps> = ({
     setEvidenceError(null);
     setSubmittingEvidence(true);
     try {
-      await provideReturnEvidence(orderId, detail.id, {
-        responseText: trimmedResponse || null,
-        images: responseImages,
-      });
+      await uploads.submit(photoFiles, (uploadSessionId) =>
+        provideReturnEvidence(orderId, detail.id, {
+          responseText: trimmedResponse || null,
+          uploadSessionId,
+          imageKeys: photoFiles.map((entry) => entry.clientKey),
+        })
+      );
       setResponseText('');
-      setResponseImages([]);
+      replaceEvidenceKeys([]);
+      uploads.clearProgress();
       toast.success('Evidence sent for review.');
       await loadDetail();
       onUpdated();
     } catch (error) {
-      if (error instanceof ReturnsApiError && error.isAuthError) {
+      const uploadFailure = describeReturnUploadFailure(error);
+      if (uploadFailure?.kind === 'aborted') return;
+      if (
+        uploadFailure?.kind === 'auth' ||
+        (error instanceof ReturnsApiError && error.isAuthError)
+      ) {
         onAuthRequired(() => void handleEvidenceSubmit());
+        return;
+      }
+      if (uploadFailure) {
+        if (uploadFailure.invalidClientKeys.length > 0) {
+          const invalid = new Set(uploadFailure.invalidClientKeys);
+          replaceEvidenceKeys(evidenceKeys.filter((key) => !invalid.has(key)));
+        }
+        setEvidenceError(uploadFailure.message);
         return;
       }
       const code = error instanceof ReturnsApiError ? error.code : 'UNKNOWN';
@@ -154,6 +211,10 @@ const ReturnDetailSlideOver: React.FC<ReturnDetailSlideOverProps> = ({
         code === 'EVIDENCE_NOT_REQUESTED' ||
         code === 'RETURN_STATE_CHANGED'
       ) {
+        // The reply can no longer be sent, so its uploads are released now.
+        uploads.abandon();
+        uploads.clearProgress();
+        replaceEvidenceKeys([]);
         await loadDetail();
         onUpdated();
       }
@@ -342,18 +403,16 @@ const ReturnDetailSlideOver: React.FC<ReturnDetailSlideOverProps> = ({
                                   Additional photos
                                 </p>
                                 <PhotoUploader
-                                  orderId={orderId}
-                                  orderItemId={detail.orderItemId}
-                                  quantity={detail.quantity}
-                                  maxImagesPerUnit={detail.maxImagesPerUnit}
-                                  photos={responseImages}
-                                  onChange={(images) => {
-                                    setResponseImages(images);
+                                  photoKeys={evidenceKeys}
+                                  maxPhotos={
+                                    detail.maxImagesPerUnit * detail.quantity
+                                  }
+                                  progress={uploads.progress}
+                                  disabled={submittingEvidence}
+                                  onChange={(keys) => {
+                                    replaceEvidenceKeys(keys);
                                     setEvidenceError(null);
                                   }}
-                                  onAuthRequired={() =>
-                                    onAuthRequired(requestReload)
-                                  }
                                 />
                               </div>
 
@@ -372,7 +431,7 @@ const ReturnDetailSlideOver: React.FC<ReturnDetailSlideOverProps> = ({
                                 disabled={
                                   submittingEvidence ||
                                   (!responseText.trim() &&
-                                    responseImages.length === 0)
+                                    evidenceKeys.length === 0)
                                 }
                                 className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
                               >

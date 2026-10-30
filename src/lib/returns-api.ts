@@ -38,9 +38,9 @@ import type {
   SubmitBody,
   SubmitResponse,
   TrackingHubResponse,
-  UploadPhotoResponse,
   VerifyOtpResponse,
 } from '@/lib/returns-types';
+import { isUploadErrorBody } from '@/lib/uploads/shared/upload-error-codes';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -50,6 +50,8 @@ export class ReturnsApiError extends Error {
   readonly code: string;
   readonly attemptsLeft?: number;
   readonly details?: unknown;
+  /** Parsed JSON error body, kept so upload errors can be read by the upload controller. */
+  readonly body?: unknown;
 
   constructor(params: {
     status: number;
@@ -57,6 +59,7 @@ export class ReturnsApiError extends Error {
     message?: string;
     attemptsLeft?: number;
     details?: unknown;
+    body?: unknown;
   }) {
     super(params.message ?? params.code);
     this.name = 'ReturnsApiError';
@@ -64,6 +67,7 @@ export class ReturnsApiError extends Error {
     this.code = params.code;
     this.attemptsLeft = params.attemptsLeft;
     this.details = params.details;
+    this.body = params.body;
   }
 
   /** True when the session cookie is missing/expired and a (re)auth is needed. */
@@ -142,6 +146,15 @@ async function request<T>(
   const payload: unknown = isJson ? await res.json().catch(() => null) : null;
 
   if (!res.ok) {
+    // Upload failures use `{ uploadError: { code, details } }` instead of `{ error }`.
+    if (isUploadErrorBody(payload)) {
+      throw new ReturnsApiError({
+        status: res.status,
+        code: payload.uploadError.code,
+        details: payload.uploadError.details,
+        body: payload,
+      });
+    }
     const errBody = (payload ?? {}) as Partial<ApiError>;
     throw new ReturnsApiError({
       status: res.status,
@@ -151,6 +164,7 @@ async function request<T>(
           : `HTTP_${res.status}`,
       attemptsLeft: errBody.attemptsLeft,
       details: errBody.details,
+      body: payload,
     });
   }
 
@@ -325,10 +339,18 @@ export function getReturnByNumber(
   });
 }
 
+/**
+ * Reply to a seller's evidence request. Photos are referenced by the
+ * clientKeys of a RETURN_EVIDENCE_RESPONSE upload session, never by URL.
+ */
 export function provideReturnEvidence(
   orderId: string,
   returnId: string,
-  body: { responseText?: string | null; images?: string[] }
+  body: {
+    responseText?: string | null;
+    uploadSessionId?: string | null;
+    imageKeys?: string[];
+  }
 ) {
   return request<ProvideReturnEvidenceResponse>(
     `/order/${orderId}/returns/${returnId}/evidence`,
@@ -367,10 +389,10 @@ export function cancelReturn(
 /* ================================================================== */
 
 export function payExchangeDiff(orderId: string, returnNumber: string) {
-  return request<PayExchangeDiffResponse>(
-    `/returns/pay-exchange-diff?returnNumber=${returnNumber}`,
-    { method: 'POST' }
-  );
+  return request<PayExchangeDiffResponse>('/returns/pay-exchange-diff', {
+    method: 'POST',
+    body: { returnNumber },
+  });
 }
 
 export function verifyExchangeDiffPayment(
@@ -384,89 +406,16 @@ export function verifyExchangeDiffPayment(
 ) {
   return request<PayExchangeDiffVerifyResponse>(
     `/returns/pay-exchange-diff/verify`,
-    { method: 'POST', body: payment }
-  );
-}
-
-/* ================================================================== */
-/* Photo upload                                                       */
-/* ================================================================== */
-
-export interface UploadSignatureBody {
-  orderItemId: string;
-  unitIndex: number;
-  filename: string;
-  contentType: string;
-  sizeBytes: number;
-}
-
-/** Step 1: ask our API for a scoped Cloudinary upload signature. */
-export function getUploadSignature(orderId: string, body: UploadSignatureBody) {
-  return request<UploadPhotoResponse>(
-    `/order/${orderId}/returns/upload-photo`,
     {
       method: 'POST',
-      body,
+      body: {
+        returnNumber,
+        razorpay_order_id: payment.razorpayOrderId,
+        razorpay_payment_id: payment.razorpayPaymentId,
+        razorpay_signature: payment.razorpaySignature,
+      },
     }
   );
-}
-
-/**
- * Full photo upload: request a signature, then POST the file directly to
- * Cloudinary with the returned fields. Returns the Cloudinary `secure_url` to
- * stash in the slice's `photos[]`. Cloudinary is a third-party origin, so that
- * leg does NOT send our cookie.
- */
-export async function uploadReturnPhoto(
-  orderId: string,
-  params: { orderItemId: string; unitIndex: number; file: File }
-): Promise<string> {
-  const { orderItemId, unitIndex, file } = params;
-  const signature = await getUploadSignature(orderId, {
-    orderItemId,
-    unitIndex,
-    filename: file.name,
-    contentType: file.type,
-    sizeBytes: file.size,
-  });
-
-  const formData = new FormData();
-  for (const [key, value] of Object.entries(signature.fields)) {
-    formData.append(key, String(value));
-  }
-  formData.append('file', file);
-
-  let res: Response;
-  try {
-    res = await fetch(signature.uploadUrl, { method: 'POST', body: formData });
-  } catch (err) {
-    throw new ReturnsApiError({
-      status: 0,
-      code: 'UPLOAD_NETWORK_ERROR',
-      message: 'Photo upload failed',
-      details: err,
-    });
-  }
-
-  if (!res.ok) {
-    throw new ReturnsApiError({
-      status: res.status,
-      code: 'UPLOAD_FAILED',
-      message: 'Cloudinary rejected the upload',
-    });
-  }
-
-  const data = (await res.json().catch(() => null)) as {
-    secure_url?: string;
-  } | null;
-  if (!data?.secure_url) {
-    throw new ReturnsApiError({
-      status: 0,
-      code: 'UPLOAD_NO_URL',
-      message: 'No secure_url returned',
-    });
-  }
-  return data.secure_url;
 }
 
 /* ================================================================== */

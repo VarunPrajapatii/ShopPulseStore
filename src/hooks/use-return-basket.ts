@@ -17,6 +17,7 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import type { RefundTargetInput, Resolution } from '@/lib/returns-types';
+import { releasePickedPhotos } from '@/lib/uploads/return-photo-files';
 
 /** A single per-item draft return request. */
 export interface BasketSlice {
@@ -40,8 +41,11 @@ export interface BasketSlice {
   reasonLabel: string | null;
   detailedReasonLabel: string | null;
   reasonText: string | null;
-  /** Cloudinary secure_urls already uploaded for this slice. */
-  photos: string[];
+  /**
+   * Keys of photos picked for this slice. The files live only in memory
+   * (see return-photo-files); after a page reload a key may have no file.
+   */
+  photoKeys: string[];
   /** EXCHANGE only — chosen replacement target. */
   exchangeChoice: {
     newProductId: string;
@@ -110,6 +114,28 @@ function emptyBasket(): BasketData {
   };
 }
 
+function migrateBasketStorage(persisted: unknown): ReturnBasketState {
+  const baskets =
+    (persisted as { baskets?: Record<string, BasketData> } | null)?.baskets ??
+    {};
+  const migrated: Record<string, BasketData> = {};
+  for (const [orderId, basket] of Object.entries(baskets)) {
+    migrated[orderId] = {
+      ...basket,
+      slices: basket.slices.map((slice) => {
+        const legacy = slice as BasketSlice & { photos?: unknown };
+        const next = {
+          ...legacy,
+          photoKeys: Array.isArray(legacy.photoKeys) ? legacy.photoKeys : [],
+        };
+        delete next.photos;
+        return next;
+      }),
+    };
+  }
+  return { baskets: migrated } as ReturnBasketState;
+}
+
 const useReturnBasket = create(
   persist<ReturnBasketState>(
     (set, get) => ({
@@ -145,7 +171,7 @@ const useReturnBasket = create(
           reasonLabel: null,
           detailedReasonLabel: null,
           reasonText: null,
-          photos: [],
+          photoKeys: [],
           exchangeChoice: null,
           configured: false,
         };
@@ -163,6 +189,12 @@ const useReturnBasket = create(
         const state = get();
         const basket = state.baskets[orderId];
         if (!basket) return;
+        if (patch.photoKeys) {
+          const kept = new Set(patch.photoKeys);
+          const previous =
+            basket.slices.find((s) => s.draftId === draftId)?.photoKeys ?? [];
+          releasePickedPhotos(previous.filter((key) => !kept.has(key)));
+        }
         set({
           baskets: {
             ...state.baskets,
@@ -180,6 +212,8 @@ const useReturnBasket = create(
         const state = get();
         const basket = state.baskets[orderId];
         if (!basket) return;
+        const removed = basket.slices.find((s) => s.draftId === draftId);
+        if (removed) releasePickedPhotos(removed.photoKeys);
         const slices = basket.slices.filter((s) => s.draftId !== draftId);
         const nextBaskets = { ...state.baskets };
         if (slices.length === 0) {
@@ -214,7 +248,9 @@ const useReturnBasket = create(
 
       clearBasket: (orderId) => {
         const state = get();
-        if (!state.baskets[orderId]) return;
+        const basket = state.baskets[orderId];
+        if (!basket) return;
+        releasePickedPhotos(basket.slices.flatMap((s) => s.photoKeys));
         const nextBaskets = { ...state.baskets };
         delete nextBaskets[orderId];
         set({ baskets: nextBaskets });
@@ -223,6 +259,9 @@ const useReturnBasket = create(
     {
       name: 'return-basket-storage',
       storage: createJSONStorage(() => sessionStorage),
+      // Earlier drafts stored uploaded photo URLs; those photos must be picked again.
+      version: 1,
+      migrate: (persisted) => migrateBasketStorage(persisted),
     }
   )
 );

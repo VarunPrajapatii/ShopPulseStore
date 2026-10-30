@@ -463,7 +463,8 @@ export interface SubmitSlice {
   reasonConfigId: string;
   reasonDetailedId?: string | null;
   reasonText?: string | null; // ≤2000
-  photos?: string[]; // Cloudinary secure_urls (flat)
+  /** clientKeys of this slice's photos inside the submit's upload session. */
+  photoKeys?: string[];
   exchangeChoice?: {
     newProductId: string;
     newVariantId: string;
@@ -478,6 +479,8 @@ export type RefundTargetInput =
 
 export interface SubmitBody {
   slices: SubmitSlice[];
+  /** RETURN_EVIDENCE upload session; its files must equal all slices' photoKeys. */
+  uploadSessionId?: string | null;
   refundTarget?: RefundTargetInput;
   customerNotes?: string | null;
 }
@@ -543,16 +546,6 @@ export interface SubmitResponse {
   ok: true;
   submitted: SubmittedSlice[];
   settlement: Settlement;
-}
-
-/* ------------------------------------------------------------------ */
-/* POST /returns/upload-photo                                        */
-/* ------------------------------------------------------------------ */
-
-export interface UploadPhotoResponse {
-  ok: true;
-  uploadUrl: string;
-  fields: Record<string, string>;
 }
 
 /* ------------------------------------------------------------------ */
