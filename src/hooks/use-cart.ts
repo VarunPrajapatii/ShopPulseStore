@@ -70,6 +70,9 @@ const createCartId = () => {
 // Unique per browser tab; lets a tab recognise its own broadcast messages.
 export const CART_TAB_ID = createCartId();
 
+/** sessionStorage key prefix for carts whose prepaid order was not yet confirmed at redirect. */
+export const PENDING_CART_CLEAR_PREFIX = 'pending-cart-clear:';
+
 // Helper to find item index in cart
 // Same product with different sizes = different cart items
 const findItemIndex = (

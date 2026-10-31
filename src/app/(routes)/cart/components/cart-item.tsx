@@ -4,7 +4,7 @@ import PriceDisplay from '@/components/ui/price-display';
 import IconButton from '@/components/ui/icon-button';
 import useCart from '@/hooks/use-cart';
 import { Product, ProductVariant } from '@/types';
-import { X, Plus, Minus, AlertCircle } from 'lucide-react';
+import { X, Plus, Minus, AlertCircle, ImageOff } from 'lucide-react';
 import Image from 'next/image';
 import { getDisplayPrices } from '@/lib/utils';
 
@@ -59,16 +59,26 @@ const CartItem: React.FC<CartItemProps> = ({ data, quantity }) => {
       className={`flex py-6 border-b border-border transition-colors duration-200 ${hasStockIssue ? 'bg-error/5 border-error/20' : ''}`}
     >
       <div className="relative h-24 w-24 rounded-md overflow-hidden sm:h-48 sm:w-48 group">
-        <Image
-          fill
-          src={data?.images?.[0]?.url}
-          alt="Product Image"
-          className="object-cover object-center transition-transform duration-300 group-hover:scale-105"
-        />
+        {data?.images?.[0]?.url ? (
+          <Image
+            fill
+            src={data.images[0].url}
+            alt={data.name}
+            className="object-cover object-center transition-transform duration-300 group-hover:scale-105"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-muted text-muted-foreground">
+            <ImageOff size={24} aria-hidden="true" />
+          </div>
+        )}
       </div>
       <div className="relative ml-4 flex flex-1 flex-col justify-between sm:ml-6">
         <div className="absolute z-10 right-0 top-0">
-          <IconButton onClick={onRemove} icon={<X size={15} />} />
+          <IconButton
+            onClick={onRemove}
+            icon={<X size={15} />}
+            ariaLabel={`Remove ${data.name} from cart`}
+          />
         </div>
         <div className="relative pr-9 sm:grid sm:grid-cols-2 sm:gap-x-6 sm:pr-0">
           <div className="flex justify-between">
@@ -129,6 +139,7 @@ const CartItem: React.FC<CartItemProps> = ({ data, quantity }) => {
             <button
               onClick={onDecrease}
               disabled={quantity <= 1}
+              aria-label={`Decrease quantity of ${data.name}`}
               className="w-8 h-8 rounded-full border border-border flex items-center justify-center hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:scale-110 active:scale-95"
             >
               <Minus size={14} />
@@ -139,6 +150,7 @@ const CartItem: React.FC<CartItemProps> = ({ data, quantity }) => {
             <button
               onClick={onIncrease}
               disabled={!canIncrease}
+              aria-label={`Increase quantity of ${data.name}`}
               className="w-8 h-8 rounded-full border border-border flex items-center justify-center hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:scale-110 active:scale-95"
               title={
                 !canIncrease

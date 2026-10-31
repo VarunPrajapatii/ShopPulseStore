@@ -5,16 +5,20 @@ interface IconButtonProps {
   onClick?: MouseEventHandler<HTMLButtonElement> | undefined;
   icon: React.ReactNode;
   className?: string;
+  ariaLabel?: string;
 }
 
 const IconButton: React.FC<IconButtonProps> = ({
   onClick,
   icon,
   className,
+  ariaLabel,
 }) => {
   return (
     <button
+      type="button"
       onClick={onClick}
+      aria-label={ariaLabel}
       className={cn(
         `rounded-full flex items-center justify-center bg-background border border-border shadow-md p-2 hover-scale`,
         className

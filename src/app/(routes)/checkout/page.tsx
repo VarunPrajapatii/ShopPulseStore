@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Container from '@/components/ui/container';
-import useCart from '@/hooks/use-cart';
+import useCart, { PENDING_CART_CLEAR_PREFIX } from '@/hooks/use-cart';
 import useShipping from '@/hooks/use-shipping';
 import toast from 'react-hot-toast';
 import { formSchema, CheckoutFormValues } from '@/lib/zodSchema';
@@ -13,8 +13,10 @@ import B2bForm from './components/b2b-form';
 import type { BuyerBlock } from '@/lib/returns-types';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, ShoppingBag } from 'lucide-react';
+import { AlertCircle, ArrowLeft, ShoppingBag } from 'lucide-react';
+import getProduct from '@/actions/get-product';
 import Link from 'next/link';
+import Script from 'next/script';
 import CheckoutProgress from '@/components/ui/checkout-progress';
 import TrustBadges from '@/components/ui/trust-badges';
 import MobileStickyCheckout from '@/components/ui/mobile-sticky-checkout';
@@ -107,6 +109,73 @@ const CheckoutPage = () => {
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  // Cart stock is a snapshot from add-to-cart time; fetch live stock once on open
+  const [liveStock, setLiveStock] = useState<
+    Record<string, { stock: number; lowThreshold: number }>
+  >({});
+  useEffect(() => {
+    const productIds = [...new Set(useCart.getState().items.map((i) => i.id))];
+    if (productIds.length === 0) return;
+    let cancelled = false;
+    void Promise.all(productIds.map((id) => getProduct(id))).then(
+      (products) => {
+        if (cancelled) return;
+        const next: Record<string, { stock: number; lowThreshold: number }> =
+          {};
+        for (const product of products) {
+          for (const variant of product?.variants ?? []) {
+            next[`${product!.id}:${variant.id}`] = {
+              stock: variant.stockQuantity,
+              lowThreshold: variant.lowStockThreshold,
+            };
+          }
+        }
+        setLiveStock(next);
+      }
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const stockNotices = items.flatMap((item) => {
+    const live = liveStock[`${item.id}:${item.variantId}`];
+    if (!live) return [];
+    const qty = item.quantity || 1;
+    const label =
+      item.selectedVariant.size.name !== 'Default'
+        ? `${item.name} (${item.selectedVariant.size.name})`
+        : item.name;
+    if (live.stock <= 0) {
+      return [
+        {
+          key: item.variantId,
+          error: true,
+          text: `${label} is out of stock. Please remove it from your cart.`,
+        },
+      ];
+    }
+    if (qty > live.stock) {
+      return [
+        {
+          key: item.variantId,
+          error: true,
+          text: `Only ${live.stock} left of ${label}, but your cart has ${qty}. Please reduce the quantity.`,
+        },
+      ];
+    }
+    if (live.stock <= live.lowThreshold) {
+      return [
+        {
+          key: item.variantId,
+          error: false,
+          text: `Hurry, only ${live.stock} left of ${label}.`,
+        },
+      ];
+    }
+    return [];
+  });
 
   // Items for display in order summary (with name and size from variant)
   // Use variant-specific pricing (effectivePrice from cart)
@@ -233,18 +302,6 @@ const CheckoutPage = () => {
     }
     return false;
   };
-
-  // Load Razorpay script
-  useEffect(() => {
-    const script = document.createElement('script');
-    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-    script.async = true;
-    document.body.appendChild(script);
-
-    return () => {
-      document.body.removeChild(script);
-    };
-  }, []);
 
   const form = useForm<CheckoutFormValues>({
     resolver: zodResolver(formSchema),
@@ -535,6 +592,23 @@ const CheckoutPage = () => {
             // Network/5xx: paisa kat chuka ho sakta hai. Error mat dikhao,
             // order-success page status poll karega (webhook safety net hai).
             toast('We are confirming your payment. Please wait…');
+            // Success page clears these lines once it sees the payment confirmed
+            try {
+              sessionStorage.setItem(
+                `${PENDING_CART_CLEAR_PREFIX}${orderId}`,
+                JSON.stringify({
+                  cartId: checkoutCartId,
+                  cartRevision: checkoutCartRevision,
+                  lines: items.map((item) => ({
+                    productId: item.id,
+                    variantId: item.variantId,
+                    quantity: item.quantity || 1,
+                  })),
+                })
+              );
+            } catch {
+              // Storage unavailable: re-submitting the same cart still finalizes it
+            }
             finalizingRef.current = true;
             setPhase('redirecting');
             router.replace(
@@ -906,6 +980,10 @@ const CheckoutPage = () => {
 
   return (
     <div className="bg-white min-h-screen pb-24 lg:pb-0">
+      <Script
+        src="https://checkout.razorpay.com/v1/checkout.js"
+        strategy="afterInteractive"
+      />
       <Container>
         <div className="px-4 py-8 sm:px-6 lg:px-8">
           {/* Back to Cart Link */}
@@ -1013,6 +1091,31 @@ const CheckoutPage = () => {
 
             {/* Order Summary Sidebar */}
             <div className="lg:col-span-5">
+              {stockNotices.length > 0 && (
+                <div className="mb-4 space-y-2" role="status">
+                  {stockNotices.map((notice) => (
+                    <div
+                      key={notice.key}
+                      className={`flex items-start gap-2 rounded-md border p-3 text-sm ${
+                        notice.error
+                          ? 'border-red-200 bg-red-50 text-red-700'
+                          : 'border-amber-200 bg-amber-50 text-amber-800'
+                      }`}
+                    >
+                      <AlertCircle size={16} className="mt-0.5 shrink-0" />
+                      <span>{notice.text}</span>
+                    </div>
+                  ))}
+                  {stockNotices.some((n) => n.error) && (
+                    <Link
+                      href="/cart"
+                      className="inline-block text-sm font-medium underline"
+                    >
+                      Update cart
+                    </Link>
+                  )}
+                </div>
+              )}
               <OrderSummary
                 items={displayItems}
                 totalPrice={totalPrice}

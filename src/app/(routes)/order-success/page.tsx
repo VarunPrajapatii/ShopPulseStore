@@ -23,6 +23,10 @@ import getOrderDetails, {
   PaymentView,
 } from '@/actions/get-order-details';
 import Currency from '@/components/ui/currency';
+import useCart, {
+  PENDING_CART_CLEAR_PREFIX,
+  type CartOrderedLine,
+} from '@/hooks/use-cart';
 import Image from 'next/image';
 import { getOptimizedUrl, getBlurUrl } from '@/lib/cloudinary-utils';
 
@@ -151,6 +155,32 @@ const OrderSuccessContent = () => {
 
   const confirmedOrderId = orderDetails?.orderId;
 
+  // Checkout redirected here before payment was confirmed; clear those cart lines now
+  useEffect(() => {
+    if (!isConfirmed || !confirmedOrderId) return;
+    try {
+      const key = `${PENDING_CART_CLEAR_PREFIX}${confirmedOrderId}`;
+      const raw = sessionStorage.getItem(key);
+      if (!raw) return;
+      sessionStorage.removeItem(key);
+      const pending = JSON.parse(raw) as {
+        cartId: string;
+        cartRevision: number;
+        lines: CartOrderedLine[];
+      };
+      useCart
+        .getState()
+        .completeOrder(
+          confirmedOrderId,
+          pending.cartId,
+          pending.cartRevision,
+          pending.lines
+        );
+    } catch {
+      // Ignore unreadable storage; the cart simply stays as it was
+    }
+  }, [isConfirmed, confirmedOrderId]);
+
   useEffect(() => {
     if (!isConfirmed || !confirmedOrderId) return;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -177,8 +207,8 @@ const OrderSuccessContent = () => {
       hour12: true,
     };
     return {
-      date: date.toLocaleDateString('en-US', dateOptions),
-      time: date.toLocaleTimeString('en-US', timeOptions),
+      date: date.toLocaleDateString('en-IN', dateOptions),
+      time: date.toLocaleTimeString('en-IN', timeOptions),
     };
   };
 
