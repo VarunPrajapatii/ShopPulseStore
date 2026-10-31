@@ -24,10 +24,26 @@ interface CartStore {
   completeOrder: (
     orderId: string,
     cartId: string,
-    cartRevision: number
-  ) => boolean;
-  clearPlacedCart: (cartId: string, cartRevision: number) => boolean;
+    cartRevision: number,
+    orderedLines: CartOrderedLine[]
+  ) => void;
 }
+
+// One line that was submitted with an order (product + variant + quantity).
+export interface CartOrderedLine {
+  productId: string;
+  variantId: string;
+  quantity: number;
+}
+
+// Largest quantity for one line: stock, further capped by the store's per-order limit.
+const getQuantityLimit = (stock: number, cap?: number) =>
+  cap !== undefined ? Math.min(stock, cap) : stock;
+
+const quantityLimitMessage = (stock: number, cap?: number) =>
+  cap !== undefined && cap < stock
+    ? `Max ${cap} per order`
+    : `Only ${stock} available in this size`;
 
 export const CART_CHECKOUT_CHANNEL = 'shoppulse-cart-checkout';
 
@@ -36,6 +52,7 @@ export interface CartOrderPlacedMessage {
   cartId: string;
   cartRevision: number;
   orderId: string;
+  senderTabId: string;
 }
 
 const createCartId = () => {
@@ -49,6 +66,9 @@ const createCartId = () => {
     return value.toString(16);
   });
 };
+
+// Unique per browser tab; lets a tab recognise its own broadcast messages.
+export const CART_TAB_ID = createCartId();
 
 // Helper to find item index in cart
 // Same product with different sizes = different cart items
@@ -85,9 +105,17 @@ const useCart = create(
           const existingItem = currentItems[existingIndex];
           const newQuantity = (existingItem.quantity || 1) + quantity;
 
-          // Check stock limit
-          if (newQuantity > variant.stockQuantity) {
-            toast.error(`Only ${variant.stockQuantity} available in this size`);
+          // Check stock and per-order limit
+          if (
+            newQuantity >
+            getQuantityLimit(variant.stockQuantity, data.maxQuantityPerItem)
+          ) {
+            toast.error(
+              quantityLimitMessage(
+                variant.stockQuantity,
+                data.maxQuantityPerItem
+              )
+            );
             return;
           }
 
@@ -106,9 +134,17 @@ const useCart = create(
               : 'Item quantity increased'
           );
         } else {
-          // Check stock limit for new items
-          if (quantity > variant.stockQuantity) {
-            toast.error(`Only ${variant.stockQuantity} available in this size`);
+          // Check stock and per-order limit for new items
+          if (
+            quantity >
+            getQuantityLimit(variant.stockQuantity, data.maxQuantityPerItem)
+          ) {
+            toast.error(
+              quantityLimitMessage(
+                variant.stockQuantity,
+                data.maxQuantityPerItem
+              )
+            );
             return;
           }
 
@@ -164,10 +200,19 @@ const useCart = create(
         const item = currentItems[itemIndex];
         const newQuantity = (item.quantity || 1) + 1;
 
-        // Check stock limit
-        if (newQuantity > item.selectedVariant.stockQuantity) {
+        // Check stock and per-order limit
+        if (
+          newQuantity >
+          getQuantityLimit(
+            item.selectedVariant.stockQuantity,
+            item.maxQuantityPerItem
+          )
+        ) {
           toast.error(
-            `Only ${item.selectedVariant.stockQuantity} available in this size`
+            quantityLimitMessage(
+              item.selectedVariant.stockQuantity,
+              item.maxQuantityPerItem
+            )
           );
           return;
         }
@@ -219,10 +264,19 @@ const useCart = create(
 
           if ((item.quantity || 1) === quantity) return;
 
-          // Check stock limit
-          if (quantity > item.selectedVariant.stockQuantity) {
+          // Check stock and per-order limit
+          if (
+            quantity >
+            getQuantityLimit(
+              item.selectedVariant.stockQuantity,
+              item.maxQuantityPerItem
+            )
+          ) {
             toast.error(
-              `Only ${item.selectedVariant.stockQuantity} available in this size`
+              quantityLimitMessage(
+                item.selectedVariant.stockQuantity,
+                item.maxQuantityPerItem
+              )
             );
             return;
           }
@@ -240,15 +294,27 @@ const useCart = create(
       completeOrder: (
         orderId: string,
         cartId: string,
-        cartRevision: number
+        cartRevision: number,
+        orderedLines: CartOrderedLine[]
       ) => {
-        const current = get();
-        if (
-          current.cartId !== cartId ||
-          current.cartRevision !== cartRevision
-        ) {
-          return false;
+        // Remove only what was ordered; lines added in other tabs stay in the cart.
+        const ordered = new Map<string, number>();
+        for (const line of orderedLines) {
+          const key = `${line.productId}:${line.variantId}`;
+          ordered.set(key, (ordered.get(key) ?? 0) + line.quantity);
         }
+
+        const remaining = get().items.flatMap((item) => {
+          const left =
+            (item.quantity || 1) -
+            (ordered.get(`${item.id}:${item.variantId}`) ?? 0);
+          return left > 0 ? [{ ...item, quantity: left }] : [];
+        });
+
+        set({
+          items: remaining,
+          cartRevision: (get().cartRevision ?? 0) + 1,
+        });
 
         if (typeof BroadcastChannel !== 'undefined') {
           const channel = new BroadcastChannel(CART_CHECKOUT_CHANNEL);
@@ -257,26 +323,11 @@ const useCart = create(
             cartId,
             cartRevision,
             orderId,
+            senderTabId: CART_TAB_ID,
           };
           channel.postMessage(message);
           channel.close();
         }
-
-        set({ items: [], cartRevision: cartRevision + 1 });
-        return true;
-      },
-
-      clearPlacedCart: (cartId: string, cartRevision: number) => {
-        const current = get();
-        if (
-          current.cartId !== cartId ||
-          current.cartRevision !== cartRevision
-        ) {
-          return false;
-        }
-
-        set({ items: [], cartRevision: cartRevision + 1 });
-        return true;
       },
     }),
     {

@@ -45,7 +45,6 @@ export interface Category {
   updatedAt: string;
 }
 
-
 export interface Specification {
   key: string;
   value: string;
@@ -62,71 +61,72 @@ export interface ProductVariant {
   sku: string | null;
   displayOrder: number;
   // Individual variant pricing (optional - falls back to product price if null)
-  price: number | null;        // MRP / Original Price for this variant
+  price: number | null; // MRP / Original Price for this variant
   sellingPrice: number | null; // Discounted/Selling price for this variant
 }
 
 export interface Product {
-  id: string
-  name: string
-  description: string
-  shortDescription: string | null       // 160 char tagline for cards & SEO
-  titlepoints: string[]
-  bulletPoints: string[]
-  price: string
-  sellingPrice: number | null           // Discounted/sale price
-  sku: string | null                    // Stock Keeping Unit / Model number
-  specifications: Specification[] | null // Key-value product specs
-  warranty: string | null               // Warranty information
-  isFeatured: boolean
-  isArchived: boolean
-  
+  id: string;
+  name: string;
+  description: string;
+  shortDescription: string | null; // 160 char tagline for cards & SEO
+  titlepoints: string[];
+  bulletPoints: string[];
+  price: string;
+  sellingPrice: number | null; // Discounted/sale price
+  sku: string | null; // Stock Keeping Unit / Model number
+  specifications: Specification[] | null; // Key-value product specs
+  warranty: string | null; // Warranty information
+  isFeatured: boolean;
+  isArchived: boolean;
+
   // Inventory System - supports both variant and non-variant products
-  hasVariants: boolean                  // TRUE = size variants, FALSE = single stock
-  baseStockQuantity: number             // Stock when hasVariants=false
-  baseLowStockThreshold: number         // Threshold when hasVariants=false
-  variants: ProductVariant[]            // Size variants (when hasVariants=true)
-  
-  category: Category
-  images: Image[]
-  relatedItems: Product[]
-  quantity?: number                     // For cart items
-  createdAt: string
-  updatedAt: string
+  hasVariants: boolean; // TRUE = size variants, FALSE = single stock
+  baseStockQuantity: number; // Stock when hasVariants=false
+  baseLowStockThreshold: number; // Threshold when hasVariants=false
+  variants: ProductVariant[]; // Size variants (when hasVariants=true)
+
+  category: Category;
+  images: Image[];
+  relatedItems: Product[];
+  quantity?: number; // For cart items
+  maxQuantityPerItem?: number; // Store's per-order cap for one item (product detail only)
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface UpcomingProduct {
-  id: string
-  name: string
-  price: string
-  imageUrl: string
-  storeId: string
-  categoryId: string
-  CreatedAt: string
-  updatedAt: string
-  category: Category
+  id: string;
+  name: string;
+  price: string;
+  imageUrl: string;
+  storeId: string;
+  categoryId: string;
+  CreatedAt: string;
+  updatedAt: string;
+  category: Category;
 }
 
 export type MediaType = 'IMAGE' | 'VIDEO' | 'GIF';
 
 export interface Image {
-  id: string
-  url: string
-  bytes?: number
-  width?: number
-  height?: number
-  format?: string
-  type?: MediaType
-  duration?: number | null
-  position?: number
-  altText?: string | null
-  isFeatured?: boolean
+  id: string;
+  url: string;
+  bytes?: number;
+  width?: number;
+  height?: number;
+  format?: string;
+  type?: MediaType;
+  duration?: number | null;
+  position?: number;
+  altText?: string | null;
+  isFeatured?: boolean;
 }
 
 export interface Size {
-  id: string
-  name: string
-  value: string
+  id: string;
+  name: string;
+  value: string;
 }
 
 export interface StoreSEOConfig {

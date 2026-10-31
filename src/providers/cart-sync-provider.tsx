@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import toast from 'react-hot-toast';
 import useCart, {
   CART_CHECKOUT_CHANNEL,
+  CART_TAB_ID,
   type CartOrderPlacedMessage,
 } from '@/hooks/use-cart';
 
@@ -16,7 +17,8 @@ const isOrderPlacedMessage = (
     message.type === 'ORDER_PLACED' &&
     typeof message.cartId === 'string' &&
     typeof message.cartRevision === 'number' &&
-    typeof message.orderId === 'string'
+    typeof message.orderId === 'string' &&
+    typeof message.senderTabId === 'string'
   );
 };
 
@@ -36,20 +38,12 @@ const CartSyncProvider = () => {
     const channel = new BroadcastChannel(CART_CHECKOUT_CHANNEL);
     channel.onmessage = (event: MessageEvent<unknown>) => {
       if (!isOrderPlacedMessage(event.data)) return;
+      // The tab that placed the order already updated its own cart.
+      if (event.data.senderTabId === CART_TAB_ID) return;
 
-      const current = useCart.getState();
-      const cleared = current.clearPlacedCart(
-        event.data.cartId,
-        event.data.cartRevision
-      );
-      const storageAlreadySynchronized =
-        current.cartId === event.data.cartId &&
-        current.items.length === 0 &&
-        current.cartRevision === event.data.cartRevision + 1;
-
-      if (cleared || storageAlreadySynchronized) {
-        toast.success('This order was placed in another tab.');
-      }
+      // The placing tab already wrote the remaining cart to storage.
+      void useCart.persist.rehydrate();
+      toast.success('This order was placed in another tab.');
     };
 
     return () => {

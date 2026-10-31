@@ -43,6 +43,7 @@ interface RazorpayOptions {
   modal?: {
     ondismiss?: () => void;
   };
+  timeout?: number;
   theme?: {
     color?: string;
   };
@@ -190,10 +191,47 @@ const CheckoutPage = () => {
   ) => {
     finalizingRef.current = true;
     setPhase('redirecting');
-    cart.completeOrder(orderId, cartId, cartRevision);
+    cart.completeOrder(
+      orderId,
+      cartId,
+      cartRevision,
+      items.map((item) => ({
+        productId: item.id,
+        variantId: item.variantId,
+        quantity: item.quantity || 1,
+      }))
+    );
     clearShippingData();
     // replace => Back dabane pe user checkout pe wapas nahi aayega
     router.replace(`/order-success?orderId=${encodeURIComponent(orderId)}`);
+  };
+
+  // Known checkout error codes from the backend. Returns true when handled.
+  const handleCheckoutErrorCode = (
+    errorData: unknown,
+    cartId: string,
+    cartRevision: number
+  ): boolean => {
+    if (!errorData || typeof errorData !== 'object') return false;
+    const { code, orderId } = errorData as { code?: string; orderId?: string };
+
+    if (code === 'CHECKOUT_ALREADY_COMPLETED' && orderId) {
+      finalizeOrder(orderId, cartId, cartRevision);
+      return true;
+    }
+    if (code === 'PREVIOUS_PAYMENT_PENDING' && orderId) {
+      // Cart stays as is; the success page polls the earlier order.
+      toast('Your earlier payment is being confirmed');
+      router.replace(`/order-success?orderId=${encodeURIComponent(orderId)}`);
+      return true;
+    }
+    if (code === 'CHECKOUT_TEMPORARILY_UNAVAILABLE') {
+      toast.error(
+        'We could not complete your request right now. Please try again in a moment.'
+      );
+      return true;
+    }
+    return false;
   };
 
   // Load Razorpay script
@@ -310,6 +348,8 @@ const CheckoutPage = () => {
 
     checkoutInFlightRef.current = true;
     setOtpLoading(true);
+    const checkoutCartId = cart.cartId;
+    const checkoutCartRevision = cart.cartRevision;
     try {
       // TODO: Add OTP verification API call
       // const response = await axios.post(
@@ -403,8 +443,6 @@ const CheckoutPage = () => {
         };
       }
 
-      const checkoutCartId = cart.cartId;
-      const checkoutCartRevision = cart.cartRevision;
       const idempotencyKey = `${checkoutCartId}:${checkoutCartRevision}`;
 
       const response = await axios.post(
@@ -422,11 +460,38 @@ const CheckoutPage = () => {
         toast('This checkout is already being processed in another tab.');
         return;
       }
-      const { razorpayOrderId, razorpayKeyId, amount, email, phone, orderId } =
-        response.data;
+      const {
+        razorpayOrderId,
+        razorpayKeyId,
+        amount,
+        email,
+        phone,
+        orderId,
+        paymentExpiresAt,
+      } = response.data;
       if (!razorpayKeyId) {
         throw new Error('Payment gateway key was not returned by checkout.');
       }
+
+      // Close Checkout a minute before the unpaid hold ends on the server.
+      let checkoutTimeoutSeconds: number | undefined;
+      if (paymentExpiresAt) {
+        const secondsLeft =
+          Math.floor(
+            (new Date(paymentExpiresAt).getTime() - Date.now()) / 1000
+          ) - 60;
+        if (Number.isFinite(secondsLeft)) {
+          if (secondsLeft < 1) {
+            setPhase('idle');
+            toast('Payment session expired, please try again');
+            return;
+          }
+          checkoutTimeoutSeconds = secondsLeft;
+        }
+      }
+      const checkoutDeadline = checkoutTimeoutSeconds
+        ? Date.now() + checkoutTimeoutSeconds * 1000
+        : null;
 
       // Handler fire hone ke baad ondismiss ko ignore karne ke liye
       let paymentStarted = false;
@@ -481,11 +546,18 @@ const CheckoutPage = () => {
           ondismiss: function () {
             if (paymentStarted) return;
             setPhase('idle');
+            // Checkout closes itself when its timeout elapses
+            const timedOut =
+              checkoutDeadline !== null &&
+              Date.now() >= checkoutDeadline - 2000;
             toast(
-              'Payment cancelled. You can try again whenever you are ready.'
+              timedOut
+                ? 'Payment session expired, please try again'
+                : 'Payment cancelled. You can try again whenever you are ready.'
             );
           },
         },
+        timeout: checkoutTimeoutSeconds,
         theme: {
           color: '#000000',
         },
@@ -507,6 +579,16 @@ const CheckoutPage = () => {
       if (axios.isAxiosError(error) && error.response) {
         console.error('Error response data:', error.response.data);
         const errorData = error.response.data;
+
+        if (
+          handleCheckoutErrorCode(
+            errorData,
+            checkoutCartId,
+            checkoutCartRevision
+          )
+        ) {
+          return;
+        }
 
         // Handle insufficient stock error
         if (
@@ -599,6 +681,8 @@ const CheckoutPage = () => {
 
     checkoutInFlightRef.current = true;
     setOtpLoading(true);
+    const checkoutCartId = cart.cartId;
+    const checkoutCartRevision = cart.cartRevision;
     try {
       // TODO: Add OTP verification API call
       // const verifyResponse = await axios.post(
@@ -685,8 +769,6 @@ const CheckoutPage = () => {
         };
       }
 
-      const checkoutCartId = cart.cartId;
-      const checkoutCartRevision = cart.cartRevision;
       const idempotencyKey = `${checkoutCartId}:${checkoutCartRevision}`;
 
       // Call the checkout endpoint with paymentMethod: 'COD'
@@ -721,17 +803,27 @@ const CheckoutPage = () => {
       if (axios.isAxiosError(error) && error.response) {
         const errorData = error.response.data;
 
+        if (
+          handleCheckoutErrorCode(
+            errorData,
+            checkoutCartId,
+            checkoutCartRevision
+          )
+        ) {
+          return;
+        }
+
         // Handle B2B errors
-        if (errorData.error === 'B2B_NOT_ALLOWED') {
+        if (errorData.code === 'B2B_NOT_ALLOWED') {
           setB2bEnabled(false);
           toast.error('GST invoicing is not available for this store.');
-        } else if (errorData.error === 'INVALID_GSTIN') {
+        } else if (errorData.code === 'INVALID_GSTIN') {
           setB2bServerError('INVALID_GSTIN');
           toast.error('Invalid GSTIN. Please check and try again.');
-        } else if (errorData.error === 'MISSING_LEGAL_NAME') {
+        } else if (errorData.code === 'MISSING_LEGAL_NAME') {
           setB2bServerError('MISSING_LEGAL_NAME');
           toast.error('Legal name is required for GST invoice.');
-        } else if (errorData.error === 'MISSING_B2B_ADDRESS') {
+        } else if (errorData.code === 'MISSING_B2B_ADDRESS') {
           setB2bServerError('MISSING_B2B_ADDRESS');
           toast.error('Complete the billing address for GST invoice.');
         } else if (
