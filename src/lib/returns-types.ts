@@ -708,18 +708,29 @@ export interface InvoiceRequestOtpResponse {
  * POST /api/{storeId}/storefront/orders/{orderId}/invoice/verify-otp
  * Body: `{ code: string }`
  *
- * On success: a short-lived (5 min) HMAC-signed `token` + a fully-formed
- * `downloadUrl` the storefront can navigate to directly.  On failure the
+ * On success: a short-lived (5 min) HMAC-signed `token`, a `downloadUrl` for the
+ * first tax document and a `documentsUrl` that lists every document of the order.
+ * On failure the
  * server returns a non-2xx shape with `{ ok: false, error, attemptsLeft? }`.
  */
 export interface InvoiceVerifyOtpResponse {
   ok: true;
-  token: string; // short-lived (5 min); reuse for email-resend + contact-hints
-  downloadUrl: string; // fully-formed PDF URL; navigate to it to trigger download
+  token: string; // short-lived (5 min); reuse for documents resend + contact-hints
+  downloadUrl: string; // PDF URL of the first document, or the list when none exists
+  documentsUrl: string; // GET returns { documents: OrderTaxDocument[] }
+}
+
+export interface OrderTaxDocument {
+  id: string;
+  number: string;
+  label: string;
+  issueDate: string;
+  againstNumber: string | null;
+  downloadUrl: string;
 }
 
 /**
- * POST /api/{storeId}/storefront/orders/{orderId}/invoice/email-resend
+ * POST /api/{storeId}/storefront/orders/{orderId}/documents/resend
  * Body: `{ token: string }` — must be a short-lived `kind === 'short'` token
  * from a fresh `verify-otp`.
  *

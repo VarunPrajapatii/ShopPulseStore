@@ -1,27 +1,27 @@
-"use client";
+'use client';
 
-import { UseFormReturn, useWatch } from "react-hook-form";
-import { useEffect } from "react";
+import { UseFormReturn, useWatch } from 'react-hook-form';
+import { useEffect } from 'react';
 import {
   FormControl,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { indianStates } from "@/lib/utils";
-import { CheckoutFormValues } from "@/lib/zodSchema";
-import { MapPin, Receipt, Lock } from "lucide-react";
-import useShipping from "@/hooks/use-shipping";
+} from '@/components/ui/select';
+import { indianStates } from '@/lib/utils';
+import { CheckoutFormValues } from '@/lib/zodSchema';
+import { MapPin, Receipt, Lock } from 'lucide-react';
+import useShipping from '@/hooks/use-shipping';
 
 interface AddressFormProps {
   form: UseFormReturn<CheckoutFormValues>;
@@ -30,18 +30,18 @@ interface AddressFormProps {
 
 const AddressForm: React.FC<AddressFormProps> = ({ form, loading }) => {
   const { shippingData } = useShipping();
-  
+
   // Watch the billing toggle to show/hide billing address form
   const isShippingSameAsBilling = useWatch({
     control: form.control,
-    name: "isShippingSameAsBilling",
+    name: 'isShippingSameAsBilling',
     defaultValue: true,
   });
 
   // Pre-fill pincode from shipping data if available
   useEffect(() => {
     if (shippingData?.pincode) {
-      form.setValue("shippingAddress.pincode", shippingData.pincode);
+      form.setValue('shippingAddress.pincode', shippingData.pincode);
     }
   }, [shippingData?.pincode, form]);
 
@@ -55,7 +55,7 @@ const AddressForm: React.FC<AddressFormProps> = ({ form, loading }) => {
         <h3 className="text-lg font-medium text-gray-900 flex items-center gap-2">
           Contact Information
         </h3>
-        
+
         {/* Name Fields */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FormField
@@ -202,11 +202,7 @@ const AddressForm: React.FC<AddressFormProps> = ({ form, loading }) => {
                   City <span className="text-red-500">*</span>
                 </FormLabel>
                 <FormControl>
-                  <Input
-                    disabled={loading}
-                    placeholder="City"
-                    {...field}
-                  />
+                  <Input disabled={loading} placeholder="City" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -236,13 +232,24 @@ const AddressForm: React.FC<AddressFormProps> = ({ form, loading }) => {
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {indianStates.map((state) => (
+                    {(shippingData?.stateNames?.length
+                      ? shippingData.stateNames
+                      : indianStates
+                    ).map((state) => (
                       <SelectItem key={state} value={state}>
                         {state}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                {(shippingData?.stateNames?.length ?? 0) > 1 && (
+                  <p
+                    className={`text-xs ${field.value ? 'text-muted-foreground' : 'text-amber-700'}`}
+                  >
+                    This pincode is shared by more than one state/UT. Please
+                    select yours.
+                  </p>
+                )}
                 <FormMessage />
               </FormItem>
             )}
@@ -270,7 +277,11 @@ const AddressForm: React.FC<AddressFormProps> = ({ form, loading }) => {
                     disabled={loading || hasPincodeFromShipping}
                     placeholder="6-digit pincode"
                     maxLength={6}
-                    className={hasPincodeFromShipping ? "bg-muted cursor-not-allowed" : ""}
+                    className={
+                      hasPincodeFromShipping
+                        ? 'bg-muted cursor-not-allowed'
+                        : ''
+                    }
                     {...field}
                   />
                 </FormControl>
@@ -290,7 +301,7 @@ const AddressForm: React.FC<AddressFormProps> = ({ form, loading }) => {
                     disabled={loading}
                     placeholder="India"
                     {...field}
-                    value={field.value || "India"}
+                    value={field.value || 'India'}
                   />
                 </FormControl>
                 <FormMessage />
@@ -319,7 +330,8 @@ const AddressForm: React.FC<AddressFormProps> = ({ form, loading }) => {
                   Billing address is same as shipping address
                 </FormLabel>
                 <p className="text-sm text-gray-500">
-                  Uncheck if your billing address is different from your shipping address
+                  Uncheck if your billing address is different from your
+                  shipping address
                 </p>
               </div>
             </FormItem>
@@ -427,11 +439,7 @@ const AddressForm: React.FC<AddressFormProps> = ({ form, loading }) => {
                     City <span className="text-red-500">*</span>
                   </FormLabel>
                   <FormControl>
-                    <Input
-                      disabled={loading}
-                      placeholder="City"
-                      {...field}
-                    />
+                    <Input disabled={loading} placeholder="City" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -508,7 +516,7 @@ const AddressForm: React.FC<AddressFormProps> = ({ form, loading }) => {
                       disabled={loading}
                       placeholder="IN"
                       {...field}
-                      value={field.value || "IN"}
+                      value={field.value || 'IN'}
                     />
                   </FormControl>
                   <FormMessage />

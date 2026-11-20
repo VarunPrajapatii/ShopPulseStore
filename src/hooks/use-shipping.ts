@@ -14,6 +14,8 @@ export interface ShippingData {
   codEnabledForStore: boolean;
   codChargeAmount: number | null;
   allowB2BInvoices: boolean;
+  /** State name(s) of the pincode; empty when the directory has none. */
+  stateNames?: string[];
   shippingChargeEnabled: boolean;
   shippingChargeMode: ShippingChargeMode;
   variableShippingChargeAllowed: boolean;

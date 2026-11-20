@@ -1,7 +1,8 @@
 /**
  * GSTIN validator — storefront-local implementation.
  *
- * GSTIN validation and buyer invoice helpers for checkout.
+ * GSTIN validation and buyer invoice helpers for checkout. Same algorithm as the
+ * server (format, State code, embedded PAN, checksum); the server decides.
  * Do NOT import from the admin repo.
  *
  * A valid GSTIN is 15 characters:
@@ -16,6 +17,17 @@
 
 const GSTIN_RE = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
 
+// Embedded PAN: the 4th letter is the holder type.
+const PAN_RE = /^[A-Z]{3}[ABCFGHLJPT][A-Z][0-9]{4}[A-Z]$/;
+
+// GST State / UT codes in use. The server stays the final authority.
+const STATE_CODES = new Set([
+  ...Array.from({ length: 38 }, (_, i) =>
+    String(i + 1).padStart(2, '0')
+  ).filter((c) => c !== '25' && c !== '28'),
+  '97',
+]);
+
 const CHARSET = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
 /**
@@ -27,6 +39,8 @@ const CHARSET = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 export function validateGstin(input: string): boolean {
   const s = input.toUpperCase();
   if (!GSTIN_RE.test(s)) return false;
+  if (!STATE_CODES.has(s.slice(0, 2))) return false;
+  if (!PAN_RE.test(s.slice(2, 12))) return false;
 
   // Mod-36 checksum over the first 14 characters (1-indexed position p).
   let sum = 0;

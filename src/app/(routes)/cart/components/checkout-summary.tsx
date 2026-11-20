@@ -5,6 +5,8 @@ import Currency from '@/components/ui/currency';
 import TrustBadges from '@/components/ui/trust-badges';
 import PincodeChecker from '@/components/pincode-checker';
 import useShipping from '@/hooks/use-shipping';
+import useCart from '@/hooks/use-cart';
+import useCheckoutQuote from '@/hooks/use-checkout-quote';
 import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { ArrowRight, Lock, Tag, Truck, AlertCircle } from 'lucide-react';
@@ -24,6 +26,7 @@ const Summary: React.FC<SummaryProps> = ({
 }) => {
   const [isMounted, setIsMounted] = useState(false);
   const { shippingData } = useShipping();
+  const cartItems = useCart((s) => s.items);
 
   useEffect(() => {
     setIsMounted(true);
@@ -36,6 +39,20 @@ const Summary: React.FC<SummaryProps> = ({
   // Block checkout only if pincode has been checked AND is not serviceable
   const isPincodeBlocking = hasPincodeChecked && !isServiceable;
 
+  // GST shown here comes from the backend quote for the saved pincode's State.
+  const { quote } = useCheckoutQuote({
+    enabled: isMounted && hasPincodeChecked && isServiceable,
+    items: cartItems.map((item) => ({
+      productId: item.id,
+      variantId:
+        item.selectedVariant.size.name !== 'Default' ? item.variantId : null,
+      quantity: item.quantity || 1,
+    })),
+    pincode: shippingData?.pincode,
+    state: shippingData?.stateNames?.[0] ?? null,
+    paymentMethod: 'PREPAID',
+  });
+  const gstIncluded = quote?.gstApplies ? Number(quote.gst.total) : null;
   const handleCheckout = () => {
     if (hasStockIssues) {
       toast.error('Please resolve stock issues before proceeding to checkout.');
@@ -58,8 +75,7 @@ const Summary: React.FC<SummaryProps> = ({
     hasPincodeChecked && isServiceable
       ? (shippingData?.deliveryCharge ?? 0)
       : 0;
-  const tax = 0; // Tax included in price
-  const orderTotal = subtotal + shippingCost + tax;
+  const orderTotal = subtotal + shippingCost;
 
   // Checkout button disabled conditions:
   // 1. No items in cart
@@ -105,10 +121,12 @@ const Summary: React.FC<SummaryProps> = ({
           )}
         </div>
 
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-gray-600">Tax (Included)</span>
-          <span className="text-gray-500">₹0</span>
-        </div>
+        {gstIncluded !== null && (
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-gray-600">Includes GST</span>
+            <Currency amount={gstIncluded} />
+          </div>
+        )}
 
         {/* Coupon Placeholder */}
         <div className="pt-2">

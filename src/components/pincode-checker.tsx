@@ -116,6 +116,7 @@ const PincodeChecker: React.FC<PincodeCheckerProps> = ({
           codEnabledForStore: response.codEnabledForStore,
           codChargeAmount: response.codChargeAmount,
           allowB2BInvoices: response.allowB2BInvoices,
+          stateNames: response.stateNames ?? [],
           ...shippingChargeMetadata,
         };
         setShippingData(shippingInfo);
@@ -185,6 +186,8 @@ const PincodeChecker: React.FC<PincodeCheckerProps> = ({
     !shippingData.serviceable &&
     !isLoading;
   const isTemporaryFailure = hasCurrentFailure && shippingData.retryable;
+  const isDirectoryMiss =
+    hasCurrentFailure && shippingData.errorCode === 'PINCODE_NOT_IN_DIRECTORY';
 
   // Compact display when pincode is already set and verified
   if (!isEditing && shippingData?.pincode && shippingData.serviceable) {
@@ -317,15 +320,16 @@ const PincodeChecker: React.FC<PincodeCheckerProps> = ({
       </div>
 
       {/* Error Message */}
-      {error && !hasCurrentFailure && (
+      {(error && !hasCurrentFailure) || isDirectoryMiss ? (
         <div className="flex items-center gap-2 text-sm text-destructive">
           <AlertCircle className="h-4 w-4" />
-          <span>{error}</span>
+          <span>{isDirectoryMiss ? shippingData?.errorMessage : error}</span>
         </div>
-      )}
+      ) : null}
 
       {/* Not Serviceable Message */}
       {hasCurrentFailure &&
+        !isDirectoryMiss &&
         (isTemporaryFailure ? (
           <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 space-y-3 text-amber-950">
             <div className="flex items-center gap-2 text-sm">

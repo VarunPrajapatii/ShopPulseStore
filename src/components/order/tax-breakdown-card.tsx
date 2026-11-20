@@ -3,39 +3,39 @@ import type { OrderItem } from '@/actions/get-order-details';
 interface TaxBreakdownCardProps {
   items: OrderItem[];
   placeOfSupply: string | null;
+  invoiced?: boolean;
 }
 
-/** Returns true if at least one item has any GST/tax snapshot data. */
+/** Returns true if at least one item carries GST from the checkout quote. */
 function hasTaxData(items: OrderItem[]): boolean {
   return items.some(
     (item) =>
-      item.taxableAmount != null ||
-      item.cgstAmount != null ||
-      item.sgstAmount != null ||
-      item.igstAmount != null ||
-      item.cessAmount != null
+      (item.cgstAmount ?? 0) +
+        (item.sgstAmount ?? 0) +
+        (item.utgstAmount ?? 0) +
+        (item.igstAmount ?? 0) +
+        (item.cessAmount ?? 0) >
+      0
   );
 }
 
 function fmt(n: number | null): string {
-  if (n == null) return '—';
+  if (n == null || n === 0) return '—';
   return `₹${n.toFixed(2)}`;
-}
-
-function fmtRate(n: number | null): string {
-  if (n == null) return '—';
-  return `${n}%`;
 }
 
 export default function TaxBreakdownCard({
   items,
   placeOfSupply,
+  invoiced = false,
 }: TaxBreakdownCardProps) {
   if (!hasTaxData(items)) return null;
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-6">
-      <h3 className="text-xl font-bold text-gray-900 mb-1">Tax Breakdown</h3>
+      <h3 className="text-xl font-bold text-gray-900 mb-1">
+        {invoiced ? 'GST (as invoiced)' : 'Estimated GST'}
+      </h3>
       {placeOfSupply && (
         <p className="text-sm text-gray-500 mb-4">
           Place of supply: {placeOfSupply}
@@ -48,9 +48,10 @@ export default function TaxBreakdownCard({
             <tr className="border-b border-gray-200 text-left text-xs text-gray-500 uppercase tracking-wider">
               <th className="px-2 py-2 font-medium">Item</th>
               <th className="px-2 py-2 font-medium text-right">HSN</th>
+              <th className="px-2 py-2 font-medium text-right">Rate</th>
               <th className="px-2 py-2 font-medium text-right">Taxable</th>
               <th className="px-2 py-2 font-medium text-right">CGST</th>
-              <th className="px-2 py-2 font-medium text-right">SGST</th>
+              <th className="px-2 py-2 font-medium text-right">SGST/UTGST</th>
               <th className="px-2 py-2 font-medium text-right">IGST</th>
               <th className="px-2 py-2 font-medium text-right">Cess</th>
             </tr>
@@ -62,47 +63,22 @@ export default function TaxBreakdownCard({
                   {item.productName}
                 </td>
                 <td className="px-2 py-3 text-right text-gray-500 font-mono text-xs">
-                  {item.hsnCodeSnapshot ?? '—'}
+                  {item.hsnCode ?? '—'}
+                </td>
+                <td className="px-2 py-3 text-right">
+                  {item.gstRatePercent != null
+                    ? `${item.gstRatePercent}%`
+                    : '—'}
                 </td>
                 <td className="px-2 py-3 text-right">
                   {fmt(item.taxableAmount)}
                 </td>
+                <td className="px-2 py-3 text-right">{fmt(item.cgstAmount)}</td>
                 <td className="px-2 py-3 text-right">
-                  {item.cgstAmount != null ? (
-                    <span title={fmtRate(item.cgstRate)}>
-                      {fmt(item.cgstAmount)}
-                    </span>
-                  ) : (
-                    '—'
-                  )}
+                  {fmt((item.sgstAmount ?? 0) + (item.utgstAmount ?? 0))}
                 </td>
-                <td className="px-2 py-3 text-right">
-                  {item.sgstAmount != null ? (
-                    <span title={fmtRate(item.sgstRate)}>
-                      {fmt(item.sgstAmount)}
-                    </span>
-                  ) : (
-                    '—'
-                  )}
-                </td>
-                <td className="px-2 py-3 text-right">
-                  {item.igstAmount != null ? (
-                    <span title={fmtRate(item.igstRate)}>
-                      {fmt(item.igstAmount)}
-                    </span>
-                  ) : (
-                    '—'
-                  )}
-                </td>
-                <td className="px-2 py-3 text-right">
-                  {item.cessAmount != null ? (
-                    <span title={fmtRate(item.cessRate)}>
-                      {fmt(item.cessAmount)}
-                    </span>
-                  ) : (
-                    '—'
-                  )}
-                </td>
+                <td className="px-2 py-3 text-right">{fmt(item.igstAmount)}</td>
+                <td className="px-2 py-3 text-right">{fmt(item.cessAmount)}</td>
               </tr>
             ))}
           </tbody>
@@ -110,8 +86,8 @@ export default function TaxBreakdownCard({
       </div>
 
       <p className="text-xs text-gray-400 mt-3">
-        Hover rate cells to see the applicable tax rate. CGST + SGST applies for
-        intra-state; IGST applies for inter-state supply.
+        GST is already included in the prices you paid. CGST + SGST applies
+        within the State; IGST applies to supply between States.
       </p>
     </div>
   );

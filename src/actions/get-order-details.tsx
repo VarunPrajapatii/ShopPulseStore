@@ -23,17 +23,16 @@ export interface OrderItem {
   lineTotal: number;
   productStatus: 'available' | 'archived' | 'deleted';
 
-  // GST / Tax snapshot (null when not yet computed or pre-tax legacy order)
+  // GST quoted at checkout for this line (an estimate until a tax invoice is issued)
+  hsnCode: string | null;
+  gstRatePercent: number | null;
+  cessRatePercent: number | null;
   taxableAmount: number | null;
-  cgstRate: number | null;
   cgstAmount: number | null;
-  sgstRate: number | null;
   sgstAmount: number | null;
-  igstRate: number | null;
+  utgstAmount: number | null;
   igstAmount: number | null;
-  cessRate: number | null;
   cessAmount: number | null;
-  hsnCodeSnapshot: string | null;
 
   // If product is still available
   currentProduct?: {
@@ -74,6 +73,28 @@ export interface ShippingAddress {
   country: string;
 }
 
+export interface OrderGst {
+  regime: 'REGULAR' | 'COMPOSITION' | 'UNREGISTERED' | null;
+  supplyType: string | null;
+  pricesIncludeTax: boolean;
+  placeOfSupplyStateCode: string | null;
+  taxable: number;
+  cgst: number;
+  sgst: number;
+  utgst: number;
+  igst: number;
+  cess: number;
+  /** GST included in the price paid; an estimate until the tax invoice is issued. */
+  total: number;
+}
+
+export interface OrderCharge {
+  kind: string;
+  label: string;
+  amount: number;
+  gstAmount: number;
+}
+
 export interface OrderDetails {
   orderId: string;
   orderItems: OrderItem[];
@@ -103,10 +124,12 @@ export interface OrderDetails {
 
   // Pricing Breakdown
   subtotal: number;
-  tax: number;
   shippingCost: number;
+  codCharge: number;
   shippingEstimate: number | null; // Original estimate shown at checkout
   totalAmount: number;
+  gst: OrderGst;
+  charges: OrderCharge[];
 
   // Razorpay Details (PREPAID only)
   razorpayOrderId: string | null;
@@ -117,17 +140,11 @@ export interface OrderDetails {
   updatedAt: string;
   paidAt: string | null;
 
-  // B2B / GST Invoice fields (null for B2C orders)
+  // GST invoice buyer (null for B2C orders)
   buyerGstin: string | null;
   buyerLegalName: string | null;
-  buyerStateCode: string | null;
-  buyerBillingAddress: ShippingAddress | null;
-  buyerPan: string | null;
-  sellerGstin: string | null;
-  placeOfSupply: string | null;
-  invoiceNumber: string | null;
-  invoiceDate: string | null;
-  invoiceFy: string | null;
+  isB2B: boolean;
+  saleDocumentStatus: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -139,31 +156,10 @@ export interface OrderDetails {
 
 interface RawOrderItem extends Omit<
   OrderItem,
-  | 'priceAtPurchase'
-  | 'lineTotal'
-  | 'taxableAmount'
-  | 'cgstRate'
-  | 'cgstAmount'
-  | 'sgstRate'
-  | 'sgstAmount'
-  | 'igstRate'
-  | 'igstAmount'
-  | 'cessRate'
-  | 'cessAmount'
-  | 'currentProduct'
-  | 'archivedProduct'
+  'priceAtPurchase' | 'lineTotal' | 'currentProduct' | 'archivedProduct'
 > {
   priceAtPurchase: Numeric;
   lineTotal: Numeric;
-  taxableAmount: Numeric | null;
-  cgstRate: Numeric | null;
-  cgstAmount: Numeric | null;
-  sgstRate: Numeric | null;
-  sgstAmount: Numeric | null;
-  igstRate: Numeric | null;
-  igstAmount: Numeric | null;
-  cessRate: Numeric | null;
-  cessAmount: Numeric | null;
   currentProduct?: {
     id: string;
     name: string;
@@ -192,7 +188,6 @@ interface RawOrderDetails extends Omit<
   | 'orderItems'
   | 'codAmount'
   | 'subtotal'
-  | 'tax'
   | 'shippingCost'
   | 'shippingEstimate'
   | 'totalAmount'
@@ -200,7 +195,6 @@ interface RawOrderDetails extends Omit<
   orderItems: RawOrderItem[];
   codAmount: Numeric | null;
   subtotal: Numeric;
-  tax: Numeric;
   shippingCost: Numeric;
   shippingEstimate: Numeric | null;
   totalAmount: Numeric;
@@ -235,7 +229,6 @@ function normalizeOrderDetails(raw: RawOrderDetails): OrderDetails {
     ...raw,
     codAmount: toNumberOrNull(raw.codAmount),
     subtotal: toNumber(raw.subtotal),
-    tax: toNumber(raw.tax),
     shippingCost: toNumber(raw.shippingCost),
     shippingEstimate: toNumberOrNull(raw.shippingEstimate),
     totalAmount: toNumber(raw.totalAmount),
@@ -244,15 +237,6 @@ function normalizeOrderDetails(raw: RawOrderDetails): OrderDetails {
         ...item,
         priceAtPurchase: toNumber(item.priceAtPurchase),
         lineTotal: toNumber(item.lineTotal),
-        taxableAmount: toNumberOrNull(item.taxableAmount),
-        cgstRate: toNumberOrNull(item.cgstRate),
-        cgstAmount: toNumberOrNull(item.cgstAmount),
-        sgstRate: toNumberOrNull(item.sgstRate),
-        sgstAmount: toNumberOrNull(item.sgstAmount),
-        igstRate: toNumberOrNull(item.igstRate),
-        igstAmount: toNumberOrNull(item.igstAmount),
-        cessRate: toNumberOrNull(item.cessRate),
-        cessAmount: toNumberOrNull(item.cessAmount),
         currentProduct: item.currentProduct
           ? {
               ...item.currentProduct,

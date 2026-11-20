@@ -168,6 +168,8 @@ export interface StoreInfo {
   name: string;
   promotionalBanner?: string;
   promotionalBannerAltText?: string | null;
+  /** True when prices include GST and the buyer sees the GST breakdown. */
+  gstApplies?: boolean;
   createdAt: string;
   updatedAt: string;
 }

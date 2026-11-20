@@ -22,6 +22,8 @@ import TrustBadges from '@/components/ui/trust-badges';
 import MobileStickyCheckout from '@/components/ui/mobile-sticky-checkout';
 import { CheckoutSkeleton } from '@/components/ui/skeleton';
 import CheckoutProcessingOverlay from '@/components/ui/checkout-processing-overlay';
+import useCheckoutQuote from '@/hooks/use-checkout-quote';
+import type { CheckoutQuote } from '@/actions/get-checkout-quote';
 
 // Declare Razorpay type for TypeScript
 declare global {
@@ -282,7 +284,48 @@ const CheckoutPage = () => {
     cartRevision: number
   ): boolean => {
     if (!errorData || typeof errorData !== 'object') return false;
-    const { code, orderId } = errorData as { code?: string; orderId?: string };
+    const { code, orderId, message, details } = errorData as {
+      code?: string;
+      orderId?: string;
+      message?: string;
+      details?: { quote?: CheckoutQuote };
+    };
+
+    if (code === 'QUOTE_CHANGED') {
+      if (details?.quote) replaceQuote(details.quote);
+      toast.error('Prices were updated. Please review your total.');
+      return true;
+    }
+    if (code === 'QUOTE_TOKEN_REQUIRED') {
+      toast.error('Please review your order total before paying.');
+      return true;
+    }
+    if (code === 'B2B_STATE_MISMATCH' || code === 'B2B_NOT_AVAILABLE') {
+      setB2bEnabled(false);
+      setBuyer(null);
+      toast.error(message || 'GST invoice is not available for this order.');
+      return true;
+    }
+    if (code === 'INVALID_GSTIN') {
+      setB2bServerError('INVALID_GSTIN');
+      toast.error('Invalid GSTIN. Please check and try again.');
+      return true;
+    }
+    if (code === 'B2B_DETAILS_MISSING') {
+      setB2bServerError('MISSING_B2B_ADDRESS');
+      toast.error(message || 'Complete the GST invoice details.');
+      return true;
+    }
+    if (
+      code === 'SHIP_TO_STATE_NOT_ALLOWED' ||
+      code === 'PINCODE_STATE_MISMATCH' ||
+      code === 'PLACE_OF_SUPPLY_UNRESOLVED' ||
+      code === 'TAX_NOT_READY' ||
+      code === 'TAX_NOT_SELLABLE'
+    ) {
+      toast.error(message || 'We could not process this order.');
+      return true;
+    }
 
     if (code === 'CHECKOUT_ALREADY_COMPLETED' && orderId) {
       finalizeOrder(orderId, cartId, cartRevision);
@@ -358,8 +401,52 @@ const CheckoutPage = () => {
       ? (shippingData?.deliveryCharge ?? 0)
       : 0;
 
-  // Calculate order total (COD charge is added in order summary based on selected payment method)
-  const orderTotal = totalPrice + shippingCost;
+  // The backend quote is the only source of amounts once a pincode and State are known.
+  const shippingStateText = form.watch('shippingAddress.state');
+  const billingStateText = form.watch('isShippingSameAsBilling')
+    ? null
+    : form.watch('billingAddress.state') || null;
+  const quoteState = shippingStateText || null;
+
+  // One State: fill it. Several States: the buyer must choose, never auto-pick.
+  const pincodeStateNames = shippingData?.stateNames;
+  useEffect(() => {
+    if (!pincodeStateNames || pincodeStateNames.length === 0) return;
+    const current = form.getValues('shippingAddress.state');
+    if (pincodeStateNames.includes(current)) return;
+    form.setValue(
+      'shippingAddress.state',
+      pincodeStateNames.length === 1 ? pincodeStateNames[0] : '',
+      { shouldValidate: pincodeStateNames.length === 1 }
+    );
+  }, [pincodeStateNames, form]);
+
+  const {
+    quote,
+    failure: quoteFailure,
+    loading: quoteLoading,
+    replaceQuote,
+  } = useCheckoutQuote({
+    enabled: isMounted && hasPincodeChecked && isServiceable,
+    items: items.map((item) => ({
+      productId: item.id,
+      variantId:
+        item.selectedVariant.size.name !== 'Default' ? item.variantId : null,
+      quantity: item.quantity || 1,
+    })),
+    pincode: shippingData?.pincode,
+    state: quoteState,
+    paymentMethod,
+    buyer: b2bEnabled ? buyer : null,
+    billingState: billingStateText,
+  });
+  const quoteReady =
+    !!quote && !quoteLoading && quote.paymentMethod === paymentMethod;
+
+  // Total the buyer pays: the quote when ready, else goods + shipping.
+  const orderTotal = quoteReady
+    ? Number(quote.total)
+    : totalPrice + shippingCost;
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const onSubmit = async (data: CheckoutFormValues) => {
@@ -431,6 +518,11 @@ const CheckoutPage = () => {
         return;
       }
 
+      if (!quoteReady || !quote) {
+        toast.error('Please wait while we confirm your order total.');
+        return;
+      }
+
       // Get form values
       const formData = form.getValues();
       const isShippingSameAsBilling = formData.isShippingSameAsBilling;
@@ -463,6 +555,7 @@ const CheckoutPage = () => {
         items: typeof checkoutItems;
         paymentMethod: 'PREPAID';
         buyer?: BuyerBlock;
+        quoteToken: string;
       } = {
         name: `${formData.firstName} ${formData.lastName}`,
         phone: formData.phone,
@@ -479,6 +572,7 @@ const CheckoutPage = () => {
         items: checkoutItems,
         paymentMethod: 'PREPAID',
         buyer: b2bEnabled && buyer ? buyer : undefined,
+        quoteToken: quote.quoteToken,
       };
 
       // Add order notes if provided
@@ -775,6 +869,11 @@ const CheckoutPage = () => {
         return;
       }
 
+      if (!quoteReady || !quote) {
+        toast.error('Please wait while we confirm your order total.');
+        return;
+      }
+
       const formData = form.getValues();
       const isShippingSameAsBilling = formData.isShippingSameAsBilling;
 
@@ -806,6 +905,7 @@ const CheckoutPage = () => {
         items: typeof checkoutItems;
         paymentMethod: 'COD';
         buyer?: BuyerBlock;
+        quoteToken: string;
       } = {
         name: `${formData.firstName} ${formData.lastName}`,
         phone: formData.phone,
@@ -822,6 +922,7 @@ const CheckoutPage = () => {
         items: checkoutItems,
         paymentMethod: 'COD',
         buyer: b2bEnabled && buyer ? buyer : undefined,
+        quoteToken: quote.quoteToken,
       };
 
       // Add order notes if provided
@@ -1124,6 +1225,14 @@ const CheckoutPage = () => {
                 otp={otp}
                 otpLoading={otpLoading}
                 phoneNumber={form.getValues('phone')}
+                quote={quoteReady ? quote : null}
+                quoteLoading={quoteLoading}
+                quoteFailure={quoteFailure}
+                onContinueWithoutGstInvoice={() => {
+                  setB2bEnabled(false);
+                  setBuyer(null);
+                  setB2bServerError(null);
+                }}
                 paymentMethod={paymentMethod}
                 onPaymentMethodChange={setPaymentMethod}
                 onSubmit={form.handleSubmit(onSubmit)}
@@ -1160,7 +1269,9 @@ const CheckoutPage = () => {
         }
         isLoading={loading || otpLoading || phase !== 'idle'}
         disabled={
-          (showOtpField && otp.length !== 6) || !shippingData?.serviceable
+          (showOtpField && otp.length !== 6) ||
+          !shippingData?.serviceable ||
+          !quoteReady
         }
       />
       {isFinalizing && (

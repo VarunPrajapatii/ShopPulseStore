@@ -5,6 +5,8 @@ export type ShippingChargeSource = 'DISABLED' | 'FIXED' | 'VARIABLE';
 export type DeliveryAvailabilityErrorCode =
   | 'INVALID_PINCODE'
   | 'PINCODE_NOT_SERVICEABLE'
+  | 'SHIP_TO_STATE_NOT_ALLOWED'
+  | 'PINCODE_NOT_IN_DIRECTORY'
   | 'STORE_CONFIGURATION_ERROR'
   | 'PROVIDER_AUTHENTICATION_ERROR'
   | 'PROVIDER_UNAVAILABLE'
@@ -40,6 +42,8 @@ export interface DeliveryChargesResponse {
   codCouriersCount: number; // Number of COD-supporting couriers
   codChargeAmount: number | null; // Extra COD handling charge (e.g., ₹30)
   allowB2BInvoices: boolean;
+  stateNames?: string[];
+  shipToAllowed?: boolean | null;
 
   // Errors (only present on error responses)
   error?: string;
@@ -79,9 +83,13 @@ const getDeliveryCharges = async (
       const errorData = await res.json().catch(() => ({}));
       return {
         serviceable: false,
-        error: errorData.error || `Failed to check delivery: ${res.status}`,
+        error:
+          errorData.error ||
+          errorData.message ||
+          `Failed to check delivery: ${res.status}`,
         errorCode:
           errorData.errorCode ||
+          errorData.code ||
           (res.status >= 500 ? 'PROVIDER_UNAVAILABLE' : 'UNKNOWN'),
         retryable: errorData.retryable ?? res.status >= 500,
       };

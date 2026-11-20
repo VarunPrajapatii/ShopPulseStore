@@ -489,10 +489,6 @@ const OrderSuccessContent = () => {
                     <Currency amount={orderDetails.subtotal.toString()} />
                   </div>
                   <div className="flex justify-between text-gray-600">
-                    <span>Tax</span>
-                    <Currency amount={orderDetails.tax.toString()} />
-                  </div>
-                  <div className="flex justify-between text-gray-600">
                     <span>Shipping</span>
                     {orderDetails.shippingCost === 0 ? (
                       <span className="text-green-600 font-semibold">FREE</span>
@@ -500,26 +496,27 @@ const OrderSuccessContent = () => {
                       <Currency amount={orderDetails.shippingCost.toString()} />
                     )}
                   </div>
-                  {/* Derived COD fee, only for COD orders. */}
                   {orderDetails.paymentMethod === 'COD' &&
-                    orderDetails.codAmount &&
-                    (() => {
-                      const derivedCodFee =
-                        orderDetails.codAmount -
-                        orderDetails.subtotal -
-                        orderDetails.shippingCost -
-                        orderDetails.tax;
-                      return derivedCodFee > 0 ? (
-                        <div className="flex justify-between text-gray-600">
-                          <span>COD Handling Charge</span>
-                          <Currency amount={derivedCodFee.toString()} />
-                        </div>
-                      ) : null;
-                    })()}
+                    orderDetails.codCharge > 0 && (
+                      <div className="flex justify-between text-gray-600">
+                        <span>COD Handling Charge</span>
+                        <Currency amount={orderDetails.codCharge.toString()} />
+                      </div>
+                    )}
                   <div className="flex justify-between text-xl font-bold text-gray-900 pt-2 border-t border-gray-200">
                     <span>Total</span>
                     <Currency amount={orderDetails.totalAmount.toString()} />
                   </div>
+                  {orderDetails.gst.regime === 'REGULAR' && (
+                    <div className="flex justify-between text-sm text-gray-500">
+                      <span>
+                        {orderDetails.saleDocumentStatus === 'ISSUED'
+                          ? 'GST included (as invoiced)'
+                          : 'Estimated GST included'}
+                      </span>
+                      <Currency amount={orderDetails.gst.total.toString()} />
+                    </div>
+                  )}
                   {orderDetails.paymentMethod === 'COD' &&
                     !orderDetails.isPaid && (
                       <p className="text-sm text-amber-600 text-right">

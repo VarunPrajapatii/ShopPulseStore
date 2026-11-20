@@ -34,6 +34,7 @@ import {
   ReturnsApiError,
   verifyInvoiceOtp,
 } from '@/lib/returns-api';
+import type { OrderTaxDocument } from '@/lib/returns-types';
 
 export type InvoicePurpose = 'INVOICE_DOWNLOAD' | 'INVOICE_EMAIL';
 
@@ -51,7 +52,19 @@ const VERIFY_ERROR_COPY: Record<string, string> = {
   TEMPORARY: 'Something went wrong. Please try again.',
 };
 
-type Step = 'request' | 'code' | 'success';
+type Step = 'request' | 'code' | 'success' | 'documents';
+
+/** The order's tax documents; an empty list when the lookup fails. */
+async function fetchDocuments(url: string): Promise<OrderTaxDocument[]> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return [];
+    const body = (await res.json()) as { documents?: OrderTaxDocument[] };
+    return body.documents ?? [];
+  } catch {
+    return [];
+  }
+}
 
 const InvoiceOtpModal: React.FC<InvoiceOtpModalProps> = ({
   orderId,
@@ -68,6 +81,8 @@ const InvoiceOtpModal: React.FC<InvoiceOtpModalProps> = ({
   const [inlineError, setInlineError] = useState<string | null>(null);
   /** Masked email to show in the success screen (INVOICE_EMAIL purpose only). */
   const [maskedEmail, setMaskedEmail] = useState<string | null>(null);
+  /** Every tax document of the order, shown when there is more than one. */
+  const [documents, setDocuments] = useState<OrderTaxDocument[]>([]);
 
   // Reset all local state whenever the modal closes.
   useEffect(() => {
@@ -80,6 +95,7 @@ const InvoiceOtpModal: React.FC<InvoiceOtpModalProps> = ({
       setAttemptsLeft(null);
       setInlineError(null);
       setMaskedEmail(null);
+      setDocuments([]);
     }
   }, [open]);
 
@@ -119,6 +135,12 @@ const InvoiceOtpModal: React.FC<InvoiceOtpModalProps> = ({
       const res = await verifyInvoiceOtp(orderId, trimmed);
 
       if (purpose === 'INVOICE_DOWNLOAD') {
+        const list = await fetchDocuments(res.documentsUrl);
+        if (list.length > 1) {
+          setDocuments(list);
+          setStep('documents');
+          return;
+        }
         window.open(res.downloadUrl, '_blank', 'noopener,noreferrer');
         onClose();
         return;
@@ -298,6 +320,47 @@ const InvoiceOtpModal: React.FC<InvoiceOtpModalProps> = ({
                         </button>
                       )}
                     </div>
+                  </div>
+                )}
+
+                {/* ── Step 3b: several documents to download ── */}
+                {step === 'documents' && (
+                  <div className="mt-4">
+                    <p className="text-sm text-muted-foreground">
+                      Your order has {documents.length} documents.
+                    </p>
+                    <ul className="mt-3 space-y-2">
+                      {documents.map((d) => (
+                        <li key={d.id}>
+                          <a
+                            href={d.downloadUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-between rounded-xl border border-border px-4 py-3 text-sm hover:bg-muted/50"
+                          >
+                            <span>
+                              <span className="font-medium text-foreground">
+                                {d.label}
+                              </span>
+                              <span className="block text-xs text-muted-foreground">
+                                {d.number}
+                                {d.againstNumber
+                                  ? ` (against ${d.againstNumber})`
+                                  : ''}
+                              </span>
+                            </span>
+                            <span className="text-primary">Download</span>
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                    <button
+                      type="button"
+                      onClick={onClose}
+                      className="mt-5 inline-flex w-full items-center justify-center rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground"
+                    >
+                      Done
+                    </button>
                   </div>
                 )}
 

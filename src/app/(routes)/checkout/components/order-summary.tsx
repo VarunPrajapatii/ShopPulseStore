@@ -7,6 +7,7 @@ import PincodeChecker from '@/components/pincode-checker';
 import useShipping from '@/hooks/use-shipping';
 import { Lock, Truck, Shield, CreditCard, Banknote } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import type { CheckoutQuote, QuoteFailure } from '@/actions/get-checkout-quote';
 
 export type PaymentMethod = 'PREPAID' | 'COD';
 
@@ -28,6 +29,11 @@ interface OrderSummaryProps {
   otp: string;
   otpLoading: boolean;
   phoneNumber: string;
+  /** Backend price breakdown for the current cart, address and payment method. */
+  quote: CheckoutQuote | null;
+  quoteLoading: boolean;
+  quoteFailure: QuoteFailure | null;
+  onContinueWithoutGstInvoice: () => void;
   paymentMethod: PaymentMethod;
   onPaymentMethodChange: (method: PaymentMethod) => void;
   onSubmit: () => void;
@@ -45,6 +51,10 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   otp,
   otpLoading,
   phoneNumber,
+  quote,
+  quoteLoading,
+  quoteFailure,
+  onContinueWithoutGstInvoice,
   paymentMethod,
   onPaymentMethodChange,
   onSubmit,
@@ -76,8 +86,28 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     maximumFractionDigits: 2,
   }).format(codFee);
 
-  // Calculate order total
-  const orderTotal = totalPrice + shippingCost + appliedCodFee;
+  // Calculate order total: the quote when ready, else goods + shipping + COD fee
+  const orderTotal = quote
+    ? Number(quote.total)
+    : totalPrice + shippingCost + appliedCodFee;
+  const gstSplit = quote?.gstApplies
+    ? (
+        [
+          ['CGST', quote.gst.cgst],
+          ['SGST', quote.gst.sgst],
+          ['UTGST', quote.gst.utgst],
+          ['IGST', quote.gst.igst],
+          ['Cess', quote.gst.cess],
+        ] as const
+      ).filter(([, amount]) => Number(amount) > 0)
+    : [];
+  const showContinueWithoutGst =
+    quoteFailure?.code === 'B2B_STATE_MISMATCH' ||
+    quoteFailure?.code === 'B2B_NOT_AVAILABLE';
+  const shownShipping = quote
+    ? Number(quote.shipping?.amount ?? 0)
+    : shippingCost;
+  const shownCodFee = quote ? Number(quote.codFee?.amount ?? 0) : appliedCodFee;
 
   // Check if COD is available - must be enabled for store AND available for this pincode
   const isCODAvailable =
@@ -145,7 +175,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       <div className="mt-4 pt-4 border-t border-border space-y-2">
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground">Subtotal</span>
-          <Currency amount={totalPrice.toString()} />
+          <Currency amount={(quote ? quote.subtotal : totalPrice).toString()} />
         </div>
         <div className="flex items-center justify-between text-sm">
           <div className="flex items-center gap-1.5 text-muted-foreground">
@@ -156,24 +186,40 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
             <span className="text-muted-foreground text-xs">Enter pincode</span>
           ) : !isServiceable || shippingData?.deliveryCharge === null ? (
             <span className="text-red-600 text-xs">Not available</span>
-          ) : shippingCost === 0 ? (
+          ) : shownShipping === 0 ? (
             <span className="text-green-600 font-medium text-sm">FREE</span>
           ) : (
-            <Currency amount={shippingCost.toString()} />
+            <Currency amount={shownShipping.toString()} />
           )}
         </div>
         {/* COD fee - only show when COD is selected and there is a fee. */}
-        {isCODSelected && codFee > 0 && (
+        {isCODSelected && shownCodFee > 0 && (
           <div className="flex items-center justify-between text-sm">
             <div className="flex items-center gap-1.5 text-muted-foreground">
               <Banknote className="h-3.5 w-3.5" />
               <span>COD Charge</span>
             </div>
-            <Currency amount={codFee.toString()} />
+            <Currency amount={shownCodFee.toString()} />
+          </div>
+        )}
+        {quote?.gstApplies && (
+          <div className="text-xs text-muted-foreground space-y-1">
+            <div className="flex items-center justify-between">
+              <span>Includes GST</span>
+              <Currency amount={quote.gst.total} />
+            </div>
+            {gstSplit.map(([label, amount]) => (
+              <div
+                key={label}
+                className="flex items-center justify-between pl-3"
+              >
+                <span>{label}</span>
+                <Currency amount={amount} />
+              </div>
+            ))}
           </div>
         )}
       </div>
-
       {/* Order Total */}
       <div className="mt-4 pt-4 border-t border-border">
         <div className="flex items-center justify-between">
@@ -182,11 +228,35 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
             <Currency amount={orderTotal.toString()} />
           </span>
         </div>
-        {isDeliveryAvailable && shippingCost === 0 && (
+        {isDeliveryAvailable && shownShipping === 0 && (
           <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
             <Truck className="h-3 w-3" />
             Free shipping applied!
           </p>
+        )}
+        {quote?.gstApplies && (
+          <p className="text-xs text-muted-foreground mt-1">
+            Inclusive of all taxes
+          </p>
+        )}
+        {quoteLoading && (
+          <p className="text-xs text-muted-foreground mt-1">
+            Updating your total…
+          </p>
+        )}
+        {quoteFailure && isDeliveryAvailable && !quoteLoading && (
+          <div className="mt-2 rounded-md border border-red-200 bg-red-50 p-3 text-xs text-red-700">
+            <p>{quoteFailure.message}</p>
+            {showContinueWithoutGst && (
+              <button
+                type="button"
+                onClick={onContinueWithoutGstInvoice}
+                className="mt-2 font-medium underline"
+              >
+                Continue without GST invoice
+              </button>
+            )}
+          </div>
         )}
       </div>
 
@@ -359,7 +429,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           {paymentMethod === 'COD' ? (
             <Button
               onClick={onPlaceCODOrder}
-              disabled={loading || !isDeliveryAvailable}
+              disabled={loading || !isDeliveryAvailable || !quote}
               className="w-full mt-6 bg-primary text-primary-foreground px-6 py-3.5 rounded-lg font-semibold hover:bg-primary/90 transition-colors disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {loading ? (
@@ -377,7 +447,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           ) : (
             <Button
               onClick={onSubmit}
-              disabled={loading || !isDeliveryAvailable}
+              disabled={loading || !isDeliveryAvailable || !quote}
               className="w-full mt-6 bg-primary text-primary-foreground px-6 py-3.5 rounded-lg font-semibold hover:bg-primary/90 transition-colors disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {loading ? (

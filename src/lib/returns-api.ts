@@ -452,6 +452,10 @@ function invoicePath(orderId: string, suffix: string): string {
   return `/api/${storeId}/storefront/orders/${orderId}/invoice${suffix}`;
 }
 
+function documentsPath(orderId: string, suffix: string): string {
+  return invoicePath(orderId, '').replace(/\/invoice$/, `/documents${suffix}`);
+}
+
 /**
  * Request a 6-digit invoice OTP.
  *
@@ -510,7 +514,7 @@ export function resendInvoiceEmail(
   token: string
 ): Promise<InvoiceEmailResendResponse> {
   return request<InvoiceEmailResendResponse>(
-    invoicePath(orderId, '/email-resend'),
+    documentsPath(orderId, '/resend'),
     {
       method: 'POST',
       body: { token },
