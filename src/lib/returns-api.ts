@@ -3,7 +3,7 @@
  *
  * Single source for every returns-flow network call. Rules baked in here so
  * no call site can get them wrong:
- *  - ALWAYS `credentials: 'include'` carries the HttpOnly `order_session_token`
+ *  - `credentials: 'include'` (default) carries the HttpOnly `order_session_token`
  *    cookie (SameSite=None; Secure) for INVOICE/RETURN-gated endpoints.
  *  - Every non-2xx is normalised into a thrown {@link ReturnsApiError} carrying
  *    the server's `error` code + optional `attemptsLeft`.
@@ -41,8 +41,7 @@ import type {
   VerifyOtpResponse,
 } from '@/lib/returns-types';
 import { isUploadErrorBody } from '@/lib/uploads/shared/upload-error-codes';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+import { API_URL } from '@/lib/api-base';
 
 /** Thrown for any non-2xx response or transport failure. */
 export class ReturnsApiError extends Error {
@@ -75,7 +74,8 @@ export class ReturnsApiError extends Error {
     return (
       this.status === 401 ||
       this.code === 'CAPABILITY_REQUIRED' ||
-      this.code === 'SESSION_EXPIRED'
+      this.code === 'SESSION_EXPIRED' ||
+      this.code === 'FORBIDDEN'
     );
   }
 }
@@ -86,6 +86,8 @@ interface RequestOptions {
   body?: unknown;
   headers?: Record<string, string>;
   signal?: AbortSignal;
+  /** Defaults to 'include'; token-gated invoice routes answer with a wildcard CORS origin, so they must omit. */
+  credentials?: RequestCredentials;
 }
 
 function buildUrl(path: string, query?: RequestOptions['query']): string {
@@ -111,13 +113,20 @@ async function request<T>(
   path: string,
   options: RequestOptions = {}
 ): Promise<T> {
-  const { method = 'GET', query, body, headers, signal } = options;
+  const {
+    method = 'GET',
+    query,
+    body,
+    headers,
+    signal,
+    credentials = 'include',
+  } = options;
 
   let res: Response;
   try {
     res = await fetch(buildUrl(path, query), {
       method,
-      credentials: 'include', // carry the HttpOnly order_session_token cookie
+      credentials, // 'include' carries the HttpOnly order_session_token cookie
       cache: 'no-store',
       headers: {
         ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
@@ -127,6 +136,7 @@ async function request<T>(
       signal,
     });
   } catch (err) {
+    if (err instanceof ReturnsApiError) throw err;
     if (err instanceof DOMException && err.name === 'AbortError') throw err;
     throw new ReturnsApiError({
       status: 0,
@@ -182,7 +192,9 @@ async function request<T>(
       status: res.status,
       code:
         typeof errBody.error === 'string' ? errBody.error : 'RESPONSE_NOT_OK',
+      attemptsLeft: errBody.attemptsLeft,
       details: payload,
+      body: payload,
     });
   }
 
@@ -315,6 +327,14 @@ export function getCancelPreview(orderId: string, signal?: AbortSignal) {
   });
 }
 
+/** The backend takes one free-text `reason` (max 500 chars). */
+function cancelReason(reasonCode: string, reasonText?: string): string {
+  return (reasonText ? `${reasonCode}: ${reasonText}` : reasonCode).slice(
+    0,
+    500
+  );
+}
+
 export function cancelOrderByCustomer(
   orderId: string,
   reasonCode: string,
@@ -324,7 +344,7 @@ export function cancelOrderByCustomer(
     `/order/${orderId}/cancel-by-customer`,
     {
       method: 'POST',
-      body: { reasonCode, reasonText: reasonText ?? null },
+      body: { reason: cancelReason(reasonCode, reasonText) },
     }
   );
 }
@@ -379,7 +399,7 @@ export function cancelReturn(
     `/returns/by-number/${returnNumber}/cancel`,
     {
       method: 'POST',
-      body: { reasonCode, reasonText: reasonText ?? null },
+      body: { reason: cancelReason(reasonCode, reasonText) },
     }
   );
 }
@@ -433,23 +453,12 @@ export function getProductVariants(productId: string, signal?: AbortSignal) {
 /* ================================================================== */
 
 /**
- * The invoice endpoints are under a different URL base than the returns API:
- *   /api/{storeId}/storefront/orders/{orderId}/invoice/...
- *
- * `NEXT_PUBLIC_STORE_ID` identifies the store. These endpoints do NOT carry
- * the `order_session_token` cookie (they're public, token-gated). We still
- * send credentials:'include' (harmless) because `request<T>()` always does.
+ * These endpoints do NOT use
+ * the `order_session_token` cookie (they're public, token-gated) and reply
+ * with a wildcard CORS origin, so they are sent with credentials omitted.
  */
 function invoicePath(orderId: string, suffix: string): string {
-  const storeId = process.env.NEXT_PUBLIC_STORE_ID;
-  if (!storeId) {
-    throw new ReturnsApiError({
-      status: 0,
-      code: 'CONFIG_MISSING',
-      message: 'NEXT_PUBLIC_STORE_ID is not configured',
-    });
-  }
-  return `/api/${storeId}/storefront/orders/${orderId}/invoice${suffix}`;
+  return `/storefront/orders/${orderId}/invoice${suffix}`;
 }
 
 function documentsPath(orderId: string, suffix: string): string {
@@ -470,6 +479,7 @@ export function requestInvoiceOtp(
     invoicePath(orderId, '/request-otp'),
     {
       method: 'POST',
+      credentials: 'omit',
     }
   );
 }
@@ -495,6 +505,7 @@ export function verifyInvoiceOtp(
     {
       method: 'POST',
       body: { code },
+      credentials: 'omit',
     }
   );
 }
@@ -518,6 +529,7 @@ export function resendInvoiceEmail(
     {
       method: 'POST',
       body: { token },
+      credentials: 'omit',
     }
   );
 }
@@ -534,18 +546,11 @@ export function getContactHints(
   orderId: string,
   token: string
 ): Promise<ContactHintsResponse> {
-  const storeId = process.env.NEXT_PUBLIC_STORE_ID;
-  if (!storeId) {
-    throw new ReturnsApiError({
-      status: 0,
-      code: 'CONFIG_MISSING',
-      message: 'NEXT_PUBLIC_STORE_ID is not configured',
-    });
-  }
   return request<ContactHintsResponse>(
-    `/api/${storeId}/storefront/orders/${orderId}/contact-hints`,
+    `/storefront/orders/${orderId}/contact-hints`,
     {
       query: { token },
+      credentials: 'omit',
     }
   );
 }

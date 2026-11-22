@@ -26,6 +26,22 @@ import {
 import type { CancelPreviewResponse } from '@/lib/returns-types';
 
 // PLACEHOLDER reasons — replace with seller-configured list when backend lands.
+// Backend codes meaning the order is past the cancellation window.
+const CANCEL_BLOCKED_CODES = new Set([
+  'ALREADY_CANCELLED',
+  'ALREADY_DELIVERED',
+  'ILLEGAL_STATE',
+  'SHIPMENT_IN_TRANSIT',
+  'BOOKING_IN_PROGRESS',
+]);
+
+const BLOCKED_MESSAGES: Record<string, string> = {
+  ALREADY_CANCELLED: 'This order has already been cancelled.',
+  ALREADY_DELIVERED: 'This order has been delivered and can’t be cancelled.',
+  SHIPMENT_IN_TRANSIT:
+    'This order is already on its way and can no longer be cancelled.',
+};
+
 const PLACEHOLDER_REASONS: Array<{ code: string; label: string }> = [
   { code: 'ORDERED_BY_MISTAKE', label: 'Ordered by mistake' },
   { code: 'BETTER_PRICE_ELSEWHERE', label: 'Found a better price elsewhere' },
@@ -103,7 +119,7 @@ const CancelOrderModal: React.FC<CancelOrderModalProps> = ({
     } catch (err) {
       const code = err instanceof ReturnsApiError ? err.code : 'UNKNOWN';
       toast.error(
-        code === 'CANCELLATION_NOT_ALLOWED'
+        CANCEL_BLOCKED_CODES.has(code)
           ? 'This order can no longer be cancelled.'
           : 'Couldn’t cancel the order. Please try again.'
       );
@@ -171,7 +187,7 @@ const CancelOrderModal: React.FC<CancelOrderModalProps> = ({
                             className="flex items-center justify-between text-sm"
                           >
                             <span className="text-muted-foreground">
-                              {leg.descriptionInr}
+                              {leg.sourceLabel}
                             </span>
                             <Currency
                               amount={leg.amountInr}
@@ -186,7 +202,8 @@ const CancelOrderModal: React.FC<CancelOrderModalProps> = ({
 
                 {blocked ? (
                   <div className="mt-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">
-                    {preview?.blockedReason ??
+                    {(preview?.blockedReason &&
+                      BLOCKED_MESSAGES[preview.blockedReason]) ??
                       'This order can no longer be cancelled.'}
                   </div>
                 ) : (

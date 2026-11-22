@@ -118,6 +118,9 @@ export function useRazorpay() {
       throw new Error('Razorpay is not ready yet');
     }
     const key = options.keyId || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || '';
+    if (!key) {
+      throw new Error('Payment gateway key is unavailable');
+    }
     const rzp = new RazorpayCtor({
       key,
       amount: options.amountPaise,

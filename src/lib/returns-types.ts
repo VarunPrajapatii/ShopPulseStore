@@ -220,6 +220,7 @@ export interface HubMeta {
     phone: string | null;
   } | null; // null means hide footer
   codRefundMethod: CodRefundMethod;
+  personalDetailsMasked: boolean;
 }
 
 export interface TrackingHubResponse {
@@ -305,8 +306,8 @@ export interface EligibilityItem {
 
 export interface ReverseShippingPolicy {
   mode: string;
-  flatAmountInr: string;
-  inheritPct: number;
+  flatAmountInr: string | null;
+  inheritPct: number | null;
   payerOnReturn: 'STORE' | 'CUSTOMER' | 'CONDITIONAL';
   payerOnExchange: 'STORE' | 'CUSTOMER' | 'CONDITIONAL';
   payerOnReplacement: 'STORE' | 'CUSTOMER' | 'CONDITIONAL';
@@ -331,7 +332,7 @@ export interface EligibilityPolicy {
   waiver: WaiverPolicy;
   refundShaping: {
     restockingFeeEnabled: boolean;
-    defaultRestockingFeePercent: number;
+    defaultRestockingFeePercent: string;
     codRefundMethod: CodRefundMethod;
     codRefundSlaHours: number;
   };
@@ -350,7 +351,9 @@ export interface EligibilityChainEntry {
 
 export interface EligibilityResponse {
   ok: true;
-  order: { id: string; deliveredAt: string | null; status: OrderStatus };
+  /** `status` is 'OK' or the global block code. */
+  order: { id: string; deliveredAt: string | null; status: string };
+  globalBlock?: string | null;
   items: EligibilityItem[];
   store: { name: string; logoUrl: string | null; exchangeFlowMode: string };
   policy: EligibilityPolicy;
@@ -571,25 +574,31 @@ export interface RefundTargetResponse {
   };
 }
 
-export interface RefundLeg {
-  kind: string;
-  descriptionInr: string;
+export interface CancelRefundPreview {
+  kind: 'PAYMENT_REFUND' | 'PRICE_DIFF_REFUND';
   amountInr: string;
-  destination?: string;
+  /** Short customer-facing label ("Original payment method"). */
+  sourceLabel: string;
+  method: string;
+  allowedChoices: string[];
+  requiresCustomerInput: boolean;
+  expectedEta: string;
 }
 
 export interface CancelPreviewResponse {
   ok: true;
   canCancel: boolean;
-  blockedReason?: string;
-  cancelMode?: 'INSTANT' | 'PENDING_CONFIRMATION';
-  refundsRequired: RefundLeg[];
+  blockedReason?: string | null;
+  cancelMode?: 'INSTANT' | 'PENDING_CONFIRMATION' | null;
+  refundsRequired: CancelRefundPreview[];
 }
 
 export interface CancelByCustomerResponse {
-  ok?: true;
+  ok: true;
+  orderId: string;
   newStatus: 'CANCELLED' | 'CANCELLATION_PENDING';
-  refunds: RefundLeg[];
+  confirmationEta?: string;
+  refundLeg: { id: string; amountInr: string; expectedEta: string } | null;
 }
 
 export interface ReturnByNumberResponse {
@@ -633,11 +642,14 @@ export interface ReturnByNumberResponse {
 export interface RrCancelPreviewResponse {
   ok: true;
   canCancel: boolean;
-  blockedReason?: string;
+  blockedReason?: string | null;
   refundsRequired: Array<{
     kind: 'PRICE_DIFF_REFUND';
-    descriptionInr: string;
     amountInr: string;
+    currency: 'INR';
+    method: string;
+    sourceFallback: { type: string; masked: string | null; label: string };
+    expectedEta: string;
   }>;
 }
 
@@ -659,14 +671,14 @@ export interface ProvideReturnEvidenceResponse {
 export interface PayExchangeDiffResponse {
   ok: true;
   razorpayOrderId: string;
-  amount: number; // rupees
-  currency: 'INR';
+  amountInr: string;
+  keyId: string;
+  prefill: { name: string; email: string; contact: string };
 }
 
 export interface PayExchangeDiffVerifyResponse {
   ok: true;
-  returnNumber: string;
-  returnRequestId: string;
+  status: string;
 }
 
 /* ------------------------------------------------------------------ */
@@ -683,7 +695,7 @@ export interface ProductVariantsResponse {
     stock: number;
     inStock: boolean;
     imageUrl: string | null;
-    weightKg: number | null;
+    weightKg: string;
     dims: { lCm: number | null; bCm: number | null; hCm: number | null };
   }>;
 }

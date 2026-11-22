@@ -1,12 +1,9 @@
 import { StoreSEOConfig } from '@/types';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+import { API_URL, getStoreId } from '@/lib/api-base';
 
 const getSEOConfig = async (): Promise<StoreSEOConfig | null> => {
   try {
-    // Extract storeId from API_URL (format: http://domain/api/{storeId})
-    const storeId = API_URL?.split('/').pop();
-    if (!storeId) {
+    if (!API_URL || !getStoreId()) {
       console.error('No storeId found in API_URL');
       return null;
     }

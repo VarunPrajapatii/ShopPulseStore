@@ -268,8 +268,9 @@ function OrderHubInner({ orderId }: OrderHubClientProps) {
         try {
           const res = await payExchangeDiff(orderId, returnNumber);
           openRazorpay({
+            keyId: res.keyId,
             razorpayOrderId: res.razorpayOrderId,
-            amountPaise: Math.round(res.amount * 100),
+            amountPaise: Math.round(Number(res.amountInr) * 100),
             name: `Order #${hub?.order.orderNumber ?? orderId.slice(0, 8).toUpperCase()}`,
             description: `Exchange difference · ${returnNumber}`,
             prefill: hub
@@ -298,7 +299,7 @@ function OrderHubInner({ orderId }: OrderHubClientProps) {
         } catch (err) {
           const code = err instanceof ReturnsApiError ? err.code : 'UNKNOWN';
           toast.error(
-            code === 'NOTHING_TO_PAY'
+            code === 'NOTHING_TO_PAY' || code === 'NO_DIFF_DUE'
               ? 'There’s nothing left to pay on this request.'
               : 'Couldn’t start the payment. Please try again.'
           );

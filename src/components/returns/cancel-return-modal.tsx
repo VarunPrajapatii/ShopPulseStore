@@ -22,6 +22,17 @@ import {
 } from '@/lib/returns-api';
 import type { RrCancelPreviewResponse } from '@/lib/returns-types';
 
+// Backend codes meaning the request can no longer be cancelled.
+const CANCEL_BLOCKED_CODES = new Set([
+  'REPLACEMENT_CANCEL_BLOCKED',
+  'ILLEGAL_STATE',
+]);
+
+const BLOCKED_MESSAGES: Record<string, string> = {
+  REPLACEMENT_CANCEL_BLOCKED:
+    'A replacement has already been dispatched, so this request can’t be cancelled.',
+};
+
 const PLACEHOLDER_REASONS: Array<{ code: string; label: string }> = [
   { code: 'CHANGED_MIND', label: 'Changed my mind' },
   { code: 'KEEPING_ITEM', label: 'Decided to keep the item' },
@@ -92,7 +103,7 @@ const CancelReturnModal: React.FC<CancelReturnModalProps> = ({
     } catch (err) {
       const code = err instanceof ReturnsApiError ? err.code : 'UNKNOWN';
       toast.error(
-        code === 'RETURN_CANCEL_NOT_ALLOWED'
+        CANCEL_BLOCKED_CODES.has(code)
           ? 'This request can no longer be cancelled.'
           : 'Couldn’t cancel the request. Please try again.'
       );
@@ -161,7 +172,7 @@ const CancelReturnModal: React.FC<CancelReturnModalProps> = ({
                             className="flex items-center justify-between text-sm"
                           >
                             <span className="text-muted-foreground">
-                              {leg.descriptionInr}
+                              {leg.sourceFallback.label}
                             </span>
                             <Currency
                               amount={leg.amountInr}
@@ -176,7 +187,8 @@ const CancelReturnModal: React.FC<CancelReturnModalProps> = ({
 
                 {blocked ? (
                   <div className="mt-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">
-                    {preview?.blockedReason ??
+                    {(preview?.blockedReason &&
+                      BLOCKED_MESSAGES[preview.blockedReason]) ??
                       'This request can no longer be cancelled.'}
                   </div>
                 ) : (
