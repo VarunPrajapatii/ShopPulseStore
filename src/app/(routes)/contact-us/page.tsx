@@ -4,6 +4,14 @@ import { useState } from 'react';
 import Container from '@/components/ui/container';
 import { Mail, Phone, MapPin, Clock, Send } from 'lucide-react';
 import toast from 'react-hot-toast';
+import {
+  grievanceEmail,
+  grievanceOfficerName,
+  grievancePhone,
+  supportAddress,
+  supportEmail,
+  supportPhone,
+} from '@/config/site';
 
 const ContactUsPage = () => {
   const [formData, setFormData] = useState({
@@ -16,7 +24,11 @@ const ContactUsPage = () => {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
+  ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
@@ -27,7 +39,9 @@ const ContactUsPage = () => {
 
     // Simulate form submission
     setTimeout(() => {
-      toast.success('Thank you for contacting us! We will get back to you soon.');
+      toast.success(
+        'Thank you for contacting us! We will get back to you soon.'
+      );
       setFormData({
         name: '',
         email: '',
@@ -44,11 +58,10 @@ const ContactUsPage = () => {
       <div className="px-4 py-16 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-12 text-center">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            Contact Us
-          </h1>
+          <h1 className="text-4xl font-bold text-gray-900 mb-4">Contact Us</h1>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Have a question or need assistance? We&apos;re here to help. Reach out to us and we&apos;ll get back to you as soon as possible.
+            Have a question or need assistance? We&apos;re here to help. Reach
+            out to us and we&apos;ll get back to you as soon as possible.
           </p>
         </div>
 
@@ -58,8 +71,10 @@ const ContactUsPage = () => {
           <div className="lg:col-span-1 space-y-8">
             {/* Contact Details */}
             <div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Get in Touch</h2>
-              
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">
+                Get in Touch
+              </h2>
+
               <div className="space-y-6">
                 {/* Email */}
                 <div className="flex items-start gap-4">
@@ -68,8 +83,11 @@ const ContactUsPage = () => {
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-900 mb-1">Email</h3>
-                    <a href="mailto:support@store.com" className="text-blue-600 hover:underline">
-                      support@store.com
+                    <a
+                      href={`mailto:${supportEmail}`}
+                      className="text-blue-600 hover:underline"
+                    >
+                      {supportEmail}
                     </a>
                   </div>
                 </div>
@@ -81,8 +99,11 @@ const ContactUsPage = () => {
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-900 mb-1">Phone</h3>
-                    <a href="tel:+911234567890" className="text-blue-600 hover:underline">
-                      +91 123 456 7890
+                    <a
+                      href={`tel:${supportPhone.replace(/[^\d+]/g, '')}`}
+                      className="text-blue-600 hover:underline"
+                    >
+                      {supportPhone}
                     </a>
                   </div>
                 </div>
@@ -93,11 +114,16 @@ const ContactUsPage = () => {
                     <MapPin className="h-6 w-6 text-purple-600" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900 mb-1">Address</h3>
+                    <h3 className="font-semibold text-gray-900 mb-1">
+                      Address
+                    </h3>
                     <p className="text-gray-600">
-                      123 Business Park<br />
-                      Mumbai, Maharashtra 400001<br />
-                      India
+                      {supportAddress.map((line, index) => (
+                        <span key={index}>
+                          {index > 0 && <br />}
+                          {line}
+                        </span>
+                      ))}
                     </p>
                   </div>
                 </div>
@@ -108,9 +134,12 @@ const ContactUsPage = () => {
                     <Clock className="h-6 w-6 text-orange-600" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900 mb-1">Business Hours</h3>
+                    <h3 className="font-semibold text-gray-900 mb-1">
+                      Business Hours
+                    </h3>
                     <p className="text-gray-600">
-                      Monday - Saturday<br />
+                      Monday - Saturday
+                      <br />
                       10:00 AM - 6:00 PM IST
                     </p>
                   </div>
@@ -124,12 +153,32 @@ const ContactUsPage = () => {
                 Grievance Redressal Officer
               </h3>
               <p className="text-sm text-gray-600 mb-3">
-                In accordance with Information Technology Act 2000 and rules made there under, the name and contact details of the Grievance Redressal Officer are provided below:
+                In accordance with Information Technology Act 2000 and rules
+                made there under, the name and contact details of the Grievance
+                Redressal Officer are provided below:
               </p>
               <div className="text-sm text-gray-700 space-y-1">
-                <p><strong>Name:</strong> Rajesh Kumar</p>
-                <p><strong>Email:</strong> <a href="mailto:grievance@store.com" className="text-blue-600 hover:underline">grievance@store.com</a></p>
-                <p><strong>Phone:</strong> <a href="tel:+911234567891" className="text-blue-600 hover:underline">+91 123 456 7891</a></p>
+                <p>
+                  <strong>Name:</strong> {grievanceOfficerName}
+                </p>
+                <p>
+                  <strong>Email:</strong>{' '}
+                  <a
+                    href={`mailto:${grievanceEmail}`}
+                    className="text-blue-600 hover:underline"
+                  >
+                    {grievanceEmail}
+                  </a>
+                </p>
+                <p>
+                  <strong>Phone:</strong>{' '}
+                  <a
+                    href={`tel:${grievancePhone.replace(/[^\d+]/g, '')}`}
+                    className="text-blue-600 hover:underline"
+                  >
+                    {grievancePhone}
+                  </a>
+                </p>
                 <p className="mt-2 text-xs text-gray-500">
                   Time: Monday to Saturday (10:00 AM - 6:00 PM IST)
                 </p>
@@ -140,12 +189,17 @@ const ContactUsPage = () => {
           {/* Right Column - Contact Form */}
           <div className="lg:col-span-2">
             <div className="bg-white border border-gray-200 rounded-lg p-8 shadow-sm">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Send us a Message</h2>
-              
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">
+                Send us a Message
+              </h2>
+
               <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Name */}
                 <div>
-                  <label htmlFor="name" className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label
+                    htmlFor="name"
+                    className="block text-sm font-semibold text-gray-700 mb-2"
+                  >
                     Full Name <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -162,7 +216,10 @@ const ContactUsPage = () => {
 
                 {/* Email */}
                 <div>
-                  <label htmlFor="email" className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label
+                    htmlFor="email"
+                    className="block text-sm font-semibold text-gray-700 mb-2"
+                  >
                     Email Address <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -179,7 +236,10 @@ const ContactUsPage = () => {
 
                 {/* Phone */}
                 <div>
-                  <label htmlFor="phone" className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label
+                    htmlFor="phone"
+                    className="block text-sm font-semibold text-gray-700 mb-2"
+                  >
                     Phone Number <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -197,7 +257,10 @@ const ContactUsPage = () => {
 
                 {/* Subject */}
                 <div>
-                  <label htmlFor="subject" className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label
+                    htmlFor="subject"
+                    className="block text-sm font-semibold text-gray-700 mb-2"
+                  >
                     Subject <span className="text-red-500">*</span>
                   </label>
                   <select
@@ -222,7 +285,10 @@ const ContactUsPage = () => {
 
                 {/* Message */}
                 <div>
-                  <label htmlFor="message" className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label
+                    htmlFor="message"
+                    className="block text-sm font-semibold text-gray-700 mb-2"
+                  >
                     Message <span className="text-red-500">*</span>
                   </label>
                   <textarea
@@ -260,8 +326,9 @@ const ContactUsPage = () => {
               {/* Additional Info */}
               <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                 <p className="text-sm text-blue-900">
-                  <strong>Note:</strong> We typically respond within 24-48 hours during business days. 
-                  For urgent matters, please call us directly.
+                  <strong>Note:</strong> We typically respond within 24-48 hours
+                  during business days. For urgent matters, please call us
+                  directly.
                 </p>
               </div>
             </div>

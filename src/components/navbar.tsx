@@ -7,6 +7,7 @@ import NavbarAction from '@/components/navbar-actions';
 import { useCategoriesStore } from '@/hooks/use-categories';
 import Image from 'next/image';
 import { useState, useEffect } from 'react';
+import { useStoreBrand } from '@/providers/store-brand-provider';
 
 // what this does is that it never caches this page
 // meaning it will always fetch the latest data from the server
@@ -16,6 +17,7 @@ import { useState, useEffect } from 'react';
 export const revalidate = 0;
 
 const Navbar = () => {
+  const { name, logoUrl } = useStoreBrand();
   const categories = useCategoriesStore((state) => state.categories);
   const [isScrolled, setIsScrolled] = useState(false);
 
@@ -46,15 +48,16 @@ const Navbar = () => {
           <Link href="/" className="flex shrink-0 items-center gap-x-2.5 group">
             <div className="relative overflow-hidden">
               <Image
-                src="/shoppulselogo.png"
-                alt="ShopPulse Logo"
+                src={logoUrl}
+                alt={`${name} Logo`}
+                unoptimized={/^https?:\/\//i.test(logoUrl)}
                 width={32}
                 height={32}
                 className="transition-all duration-300 group-hover:scale-105"
               />
             </div>
             <span className="font-semibold text-base tracking-[0.2em] text-foreground uppercase">
-              Store
+              {name}
             </span>
           </Link>
 

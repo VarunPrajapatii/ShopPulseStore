@@ -3,8 +3,11 @@
 import React from 'react'
 import Link from 'next/link'
 import { Instagram, Youtube, Facebook, Mail, Phone, MapPin, CreditCard, Wallet, Smartphone, Building2, ArrowUp } from 'lucide-react'
+import { footerAddress, supportEmail, supportPhone } from '@/config/site'
+import { useStoreBrand } from '@/providers/store-brand-provider'
 
 const Footer = () => {
+  const { name } = useStoreBrand();
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -19,7 +22,7 @@ const Footer = () => {
           {/* Logo Section */}
           <div className="mb-10 lg:mb-12">
             <Link href="/" className="inline-block">
-              <p className="font-bold text-4xl lg:text-5xl text-background">STORE</p>
+              <p className="font-bold text-4xl lg:text-5xl text-background uppercase">{name}</p>
             </Link>
           </div>
 
@@ -34,17 +37,17 @@ const Footer = () => {
               
               {/* Contact Info */}
               <div className="mt-6 space-y-3">
-                <a href="mailto:hello@store.com" className="flex items-center gap-2 text-background/80 hover:text-background transition-colors text-sm">
+                <a href={`mailto:${supportEmail}`} className="flex items-center gap-2 text-background/80 hover:text-background transition-colors text-sm">
                   <Mail className="w-4 h-4" />
-                  hello@store.com
+                  {supportEmail}
                 </a>
-                <a href="tel:+1234567890" className="flex items-center gap-2 text-background/80 hover:text-background transition-colors text-sm">
+                <a href={`tel:${supportPhone.replace(/[^\d+]/g, '')}`} className="flex items-center gap-2 text-background/80 hover:text-background transition-colors text-sm">
                   <Phone className="w-4 h-4" />
-                  +1 (234) 567-890
+                  {supportPhone}
                 </a>
                 <p className="flex items-center gap-2 text-background/80 text-sm">
                   <MapPin className="w-4 h-4" />
-                  Your City, Country
+                  {footerAddress}
                 </p>
               </div>
             </section>
@@ -182,7 +185,7 @@ const Footer = () => {
         <div className="border-t border-background/10 py-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <p className="text-xs text-background/60 text-center sm:text-left">
-              © {new Date().getFullYear()} Store. All rights reserved.
+              © {new Date().getFullYear()} {name}. All rights reserved.
             </p>
             <div className="flex flex-wrap justify-center sm:justify-end gap-4 text-xs">
               <Link href="/terms-of-use" className="text-background/60 hover:text-background transition-colors">

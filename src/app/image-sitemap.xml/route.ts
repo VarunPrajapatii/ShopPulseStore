@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
+import { storeUrlFallback } from '@/config/site';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
-const SITE_URL =
-  process.env.NEXT_PUBLIC_STORE_URL || 'https://store.example.com';
+const SITE_URL = process.env.NEXT_PUBLIC_STORE_URL || storeUrlFallback;
 
 interface SitemapImage {
   url: string;

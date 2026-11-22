@@ -13,6 +13,13 @@ import StoreBillboardsHydration from '@/components/store-billboards-hydration';
 import getSEOConfig from '@/actions/get-seo-config';
 import getAnnouncementBar from '@/actions/get-announcement-bar';
 import { AnnouncementBar } from '@/components/home';
+import { StoreBrandProvider } from '@/providers/store-brand-provider';
+import {
+  brandDescriptionFallback,
+  brandLogoFallback,
+  brandNameFallback,
+  brandTitleFallback,
+} from '@/config/site';
 
 const font = Urbanist({
   variable: '--font-urbanist',
@@ -24,12 +31,12 @@ export async function generateMetadata(): Promise<Metadata> {
 
   if (!seoConfig) {
     return {
-      title: 'ShopPulse Template - Feel the Pulse of Your Business',
-      description: 'Its a ecommerce storefront template built with nextjs 15',
+      title: brandTitleFallback,
+      description: brandDescriptionFallback,
       icons: {
-        icon: [{ url: '/shoppulselogo.png', type: 'image/png' }],
-        shortcut: ['/shoppulselogo.png'],
-        apple: [{ url: '/shoppulselogo.png', type: 'image/png' }],
+        icon: [{ url: brandLogoFallback, type: 'image/png' }],
+        shortcut: [brandLogoFallback],
+        apple: [{ url: brandLogoFallback, type: 'image/png' }],
       },
     };
   }
@@ -48,13 +55,11 @@ export async function generateMetadata(): Promise<Metadata> {
     icons: {
       icon: seoConfig.logoUrl
         ? [{ url: seoConfig.logoUrl, type: 'image/png' }]
-        : [{ url: '/shoppulselogo.png', type: 'image/png' }],
-      shortcut: seoConfig.logoUrl
-        ? [seoConfig.logoUrl]
-        : ['/shoppulselogo.png'],
+        : [{ url: brandLogoFallback, type: 'image/png' }],
+      shortcut: seoConfig.logoUrl ? [seoConfig.logoUrl] : [brandLogoFallback],
       apple: seoConfig.logoUrl
         ? [{ url: seoConfig.logoUrl, type: 'image/png' }]
-        : [{ url: '/shoppulselogo.png', type: 'image/png' }],
+        : [{ url: brandLogoFallback, type: 'image/png' }],
     },
     openGraph: {
       type: 'website',
@@ -170,16 +175,23 @@ export default async function RootLayout({
         <CategoriesHydration categories={categories} />
         <StoreBillboardsHydration storeBillboards={storeBillboards} />
         <AnnouncementBar data={announcementBar} />
-        <Navbar />
-        <main
-          className="pt-16"
-          style={{
-            paddingTop: 'calc(var(--announcement-bar-height, 0px) + 4rem)',
+        <StoreBrandProvider
+          brand={{
+            name: seoConfig?.storeName || brandNameFallback,
+            logoUrl: seoConfig?.logoUrl || brandLogoFallback,
           }}
         >
-          {children}
-        </main>
-        <Footer />
+          <Navbar />
+          <main
+            className="pt-16"
+            style={{
+              paddingTop: 'calc(var(--announcement-bar-height, 0px) + 4rem)',
+            }}
+          >
+            {children}
+          </main>
+          <Footer />
+        </StoreBrandProvider>
       </body>
     </html>
   );
