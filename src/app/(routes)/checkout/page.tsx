@@ -24,6 +24,13 @@ import { CheckoutSkeleton } from '@/components/ui/skeleton';
 import CheckoutProcessingOverlay from '@/components/ui/checkout-processing-overlay';
 import useCheckoutQuote from '@/hooks/use-checkout-quote';
 import type { CheckoutQuote } from '@/actions/get-checkout-quote';
+import { useStoreBrand } from '@/providers/store-brand-provider';
+import {
+  CheckoutOtpError,
+  normalizeIndianPhone,
+  requestCheckoutOtp,
+  verifyCheckoutOtp,
+} from '@/lib/checkout-otp-api';
 
 // Declare Razorpay type for TypeScript
 declare global {
@@ -71,6 +78,21 @@ type CheckoutStep = 'address' | 'verification' | 'payment' | 'done';
 
 type CheckoutPhase = 'idle' | 'paying' | 'verifying' | 'redirecting';
 
+function checkoutBuyer(buyer: BuyerBlock): Omit<BuyerBlock, 'pan'> {
+  return {
+    gstin: buyer.gstin,
+    legalName: buyer.legalName,
+    billingAddress: {
+      line1: buyer.billingAddress.line1,
+      line2: buyer.billingAddress.line2,
+      city: buyer.billingAddress.city,
+      state: buyer.billingAddress.state,
+      pincode: buyer.billingAddress.pincode,
+      country: buyer.billingAddress.country,
+    },
+  };
+}
+
 // Verify call ko network blips se bachane ke liye retry.
 // 4xx (server ne explicitly reject kiya) pe retry nahi hota.
 // NOTE: backend /checkout/verify idempotent hona chahiye (settlement atomic hai to ok).
@@ -99,6 +121,7 @@ const verifyWithRetry = async (razorpayResponse: RazorpayResponse) => {
 };
 
 const CheckoutPage = () => {
+  const { name: storeName } = useStoreBrand();
   const cart = useCart();
   const items = cart.items;
   const router = useRouter();
@@ -231,6 +254,71 @@ const CheckoutPage = () => {
   const [otp, setOtp] = useState('');
   const [otpLoading, setOtpLoading] = useState(false);
   const checkoutInFlightRef = useRef(false);
+  const [otpPhone, setOtpPhone] = useState(''); // 10-digit number the OTP was sent to
+  const [otpMasked, setOtpMasked] = useState('');
+  const [otpCooldown, setOtpCooldown] = useState(0);
+  const [otpAttemptsLeft, setOtpAttemptsLeft] = useState<number | null>(null);
+  const [checkoutAuth, setCheckoutAuth] = useState<{
+    token: string;
+    phone: string;
+    expiresAt: number;
+  } | null>(null);
+
+  useEffect(() => {
+    if (otpCooldown <= 0) return;
+    const t = setTimeout(() => setOtpCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [otpCooldown]);
+
+  const resetOtpState = () => {
+    setShowOtpField(false);
+    setOtp('');
+    setOtpPhone('');
+    setOtpMasked('');
+    setOtpCooldown(0);
+    setOtpAttemptsLeft(null);
+    setCheckoutAuth(null);
+  };
+
+  // Sends (or resends) the checkout OTP. Returns true when the OTP step should be shown.
+  const sendCheckoutOtp = async (rawPhone: string): Promise<boolean> => {
+    const phone10 = normalizeIndianPhone(rawPhone);
+    try {
+      const res = await requestCheckoutOtp(phone10);
+      setOtpPhone(phone10);
+      setOtpMasked(res.masked);
+      setOtpCooldown(res.cooldownSeconds ?? 30);
+      setOtpAttemptsLeft(null);
+      setCheckoutAuth(null);
+      setOtp('');
+      setShowOtpField(true);
+      toast.success(`OTP sent to ${res.masked}`);
+      return true;
+    } catch (error) {
+      if (error instanceof CheckoutOtpError) {
+        if (error.code === 'COOLDOWN_ACTIVE') {
+          // A code was just sent; let the user enter it.
+          setOtpPhone(phone10);
+          setOtpMasked(`••••••${phone10.slice(-4)}`);
+          setOtpCooldown(error.cooldownSeconds ?? 30);
+          setShowOtpField(true);
+          toast('An OTP was sent a moment ago. Please enter that code.');
+          return true;
+        }
+        const messages: Record<string, string> = {
+          INVALID_PHONE: 'Enter a valid 10-digit mobile number.',
+          RATE_LIMITED: 'Too many OTP requests. Please try again later.',
+          SEND_FAILED: 'We could not send the OTP. Please try again.',
+        };
+        toast.error(
+          messages[error.code] ?? 'Failed to send OTP. Please try again.'
+        );
+      } else {
+        toast.error('Failed to send OTP. Please try again.');
+      }
+      return false;
+    }
+  };
 
   const [phase, setPhase] = useState<CheckoutPhase>('idle');
   // Ref isliye: cart clear hone wale render mein bhi overlay guaranteed rahe,
@@ -291,6 +379,12 @@ const CheckoutPage = () => {
       details?: { quote?: CheckoutQuote };
     };
 
+    if (code === 'OTP_REQUIRED') {
+      resetOtpState();
+      toast.error('Phone verification expired. Please verify again.');
+      return true;
+    }
+
     if (code === 'QUOTE_CHANGED') {
       if (details?.quote) replaceQuote(details.quote);
       toast.error('Prices were updated. Please review your total.');
@@ -308,7 +402,10 @@ const CheckoutPage = () => {
     }
     if (code === 'INVALID_GSTIN') {
       setB2bServerError('INVALID_GSTIN');
-      toast.error('Invalid GSTIN. Please check and try again.');
+      toast.error(
+        message ||
+          'Invalid GSTIN. Please check the 15-character number and try again.'
+      );
       return true;
     }
     if (code === 'B2B_DETAILS_MISSING') {
@@ -407,6 +504,7 @@ const CheckoutPage = () => {
     ? null
     : form.watch('billingAddress.state') || null;
   const quoteState = shippingStateText || null;
+  const b2bBuyerReady = !b2bEnabled || buyer !== null;
 
   // One State: fill it. Several States: the buyer must choose, never auto-pick.
   const pincodeStateNames = shippingData?.stateNames;
@@ -427,7 +525,7 @@ const CheckoutPage = () => {
     loading: quoteLoading,
     replaceQuote,
   } = useCheckoutQuote({
-    enabled: isMounted && hasPincodeChecked && isServiceable,
+    enabled: isMounted && hasPincodeChecked && isServiceable && b2bBuyerReady,
     items: items.map((item) => ({
       productId: item.id,
       variantId:
@@ -437,47 +535,76 @@ const CheckoutPage = () => {
     pincode: shippingData?.pincode,
     state: quoteState,
     paymentMethod,
-    buyer: b2bEnabled ? buyer : null,
+    buyer: b2bEnabled && buyer ? checkoutBuyer(buyer) : null,
     billingState: billingStateText,
   });
   const quoteReady =
-    !!quote && !quoteLoading && quote.paymentMethod === paymentMethod;
+    b2bBuyerReady &&
+    !!quote &&
+    !quoteLoading &&
+    quote.paymentMethod === paymentMethod;
 
   // Total the buyer pays: the quote when ready, else goods + shipping.
   const orderTotal = quoteReady
     ? Number(quote.total)
     : totalPrice + shippingCost;
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // Returns a valid checkout auth token, verifying the typed OTP if needed.
+  // The token is cached, so a Razorpay cancel + retry does not need the (already used) OTP again.
+  const ensureCheckoutAuth = async (): Promise<string | null> => {
+    const currentPhone = normalizeIndianPhone(form.getValues('phone'));
+    if (!otpPhone || otpPhone !== currentPhone) {
+      toast.error('Phone number changed. Please request a new OTP.');
+      resetOtpState();
+      return null;
+    }
+
+    if (
+      checkoutAuth &&
+      checkoutAuth.phone === otpPhone &&
+      checkoutAuth.expiresAt > Date.now() + 30_000
+    ) {
+      return checkoutAuth.token;
+    }
+
+    try {
+      const res = await verifyCheckoutOtp(otpPhone, otp);
+      setCheckoutAuth({
+        token: res.checkoutAuthToken,
+        phone: otpPhone,
+        expiresAt: new Date(res.expiresAt).getTime(),
+      });
+      return res.checkoutAuthToken;
+    } catch (error) {
+      if (error instanceof CheckoutOtpError) {
+        if (typeof error.attemptsLeft === 'number') {
+          setOtpAttemptsLeft(error.attemptsLeft);
+        }
+        toast.error(
+          error.code === 'LOCKED'
+            ? 'Too many wrong attempts. Please request a new OTP.'
+            : error.code === 'INVALID_OR_EXPIRED'
+              ? 'Invalid or expired OTP. Please try again.'
+              : 'Could not verify OTP. Please try again.'
+        );
+      } else {
+        toast.error('Could not verify OTP. Please try again.');
+      }
+      setOtp('');
+      return null;
+    }
+  };
+
   const onSubmit = async (data: CheckoutFormValues) => {
+    if (!b2bBuyerReady) {
+      toast.error(
+        'Complete the GST invoice details to continue, or untick the option.'
+      );
+      return;
+    }
     setLoading(true);
     try {
-      // const response = await axios.post(
-      //   `${process.env.NEXT_PUBLIC_API_URL}/phone-verification`,
-      //   {
-      //     phone: data.phone,
-      //     fullName: `${data.firstName} ${data.lastName}`,
-      //     address: {
-      //       flatHouse: data.flatHouse,
-      //       areaStreet: data.areaStreet,
-      //       landmark: data.landmark,
-      //       townCity: data.townCity,
-      //       state: data.state,
-      //       pincode: data.pincode,
-      //     },
-      //   }
-      // );
-
-      // TODO: Uncomment above API call when OTP backend is ready
-      // For now, showing OTP field for testing
-
-      // if (response.data) {
-      setShowOtpField(true);
-      toast.success('OTP sent to your phone number');
-      // }
-    } catch (error) {
-      console.error('Error sending OTP:', error);
-      toast.error('Failed to send OTP. Please try again.');
+      await sendCheckoutOtp(data.phone);
     } finally {
       setLoading(false);
     }
@@ -495,23 +622,8 @@ const CheckoutPage = () => {
     const checkoutCartId = cart.cartId;
     const checkoutCartRevision = cart.cartRevision;
     try {
-      // TODO: Add OTP verification API call
-      // const response = await axios.post(
-      //   `${process.env.NEXT_PUBLIC_API_URL}/otp`,
-      //   {
-      //     phone: form.getValues("phone"),
-      //     otp: otp,
-      //   }
-      // );
-
-      // TEMPORARY: Hardcoded OTP verification for testing Razorpay
-      // Remove this line and uncomment the above API call when OTP backend is ready
-      const isOtpVerified = true; // TODO: Replace with: response.data.verified
-
-      if (!isOtpVerified) {
-        toast.error('Invalid OTP. Please try again.');
-        return;
-      }
+      const authToken = await ensureCheckoutAuth();
+      if (!authToken) return;
 
       if (typeof window.Razorpay === 'undefined') {
         toast.error('Payment gateway not loaded. Please refresh the page.');
@@ -571,7 +683,7 @@ const CheckoutPage = () => {
         isShippingSameAsBilling,
         items: checkoutItems,
         paymentMethod: 'PREPAID',
-        buyer: b2bEnabled && buyer ? buyer : undefined,
+        buyer: b2bEnabled && buyer ? checkoutBuyer(buyer) : undefined,
         quoteToken: quote.quoteToken,
       };
 
@@ -598,11 +710,13 @@ const CheckoutPage = () => {
 
       const response = await axios.post(
         `${process.env.NEXT_PUBLIC_API_URL}/checkout`,
+
         payload,
         {
           headers: {
             'Content-Type': 'application/json',
             'X-Idempotency-Key': idempotencyKey,
+            'X-Checkout-Auth': authToken,
           },
         }
       );
@@ -651,7 +765,7 @@ const CheckoutPage = () => {
         key: razorpayKeyId,
         amount: Math.round(amount * 100), // float errors se bachao
         currency: 'INR',
-        name: 'varuntd', // TODO: store ka real name
+        name: storeName,
         description: 'Order Payment',
         order_id: razorpayOrderId,
         prefill: {
@@ -796,6 +910,12 @@ const CheckoutPage = () => {
 
   // Handle COD order - Step 1: Validate and send OTP
   const handlePlaceCODOrder = async () => {
+    if (!b2bBuyerReady) {
+      toast.error(
+        'Complete the GST invoice details to continue, or untick the option.'
+      );
+      return;
+    }
     // Trigger form validation first
     const isValid = await form.trigger();
     if (!isValid) {
@@ -819,21 +939,7 @@ const CheckoutPage = () => {
     // Send OTP for verification (same as prepaid flow)
     setLoading(true);
     try {
-      // TODO: Uncomment API call when OTP backend is ready
-      // const response = await axios.post(
-      //   `${process.env.NEXT_PUBLIC_API_URL}/phone-verification`,
-      //   {
-      //     phone: form.getValues('phone'),
-      //     fullName: `${form.getValues('firstName')} ${form.getValues('lastName')}`,
-      //   }
-      // );
-
-      // For now, showing OTP field for testing
-      setShowOtpField(true);
-      toast.success('OTP sent to your phone number');
-    } catch (error) {
-      console.error('Error sending OTP:', error);
-      toast.error('Failed to send OTP. Please try again.');
+      await sendCheckoutOtp(form.getValues('phone'));
     } finally {
       setLoading(false);
     }
@@ -852,22 +958,8 @@ const CheckoutPage = () => {
     const checkoutCartId = cart.cartId;
     const checkoutCartRevision = cart.cartRevision;
     try {
-      // TODO: Add OTP verification API call
-      // const verifyResponse = await axios.post(
-      //   `${process.env.NEXT_PUBLIC_API_URL}/otp`,
-      //   {
-      //     phone: form.getValues("phone"),
-      //     otp: otp,
-      //   }
-      // );
-
-      // TEMPORARY: Hardcoded OTP verification for testing
-      const isOtpVerified = true; // TODO: Replace with: verifyResponse.data.verified
-
-      if (!isOtpVerified) {
-        toast.error('Invalid OTP. Please try again.');
-        return;
-      }
+      const authToken = await ensureCheckoutAuth();
+      if (!authToken) return;
 
       if (!quoteReady || !quote) {
         toast.error('Please wait while we confirm your order total.');
@@ -921,7 +1013,7 @@ const CheckoutPage = () => {
         isShippingSameAsBilling,
         items: checkoutItems,
         paymentMethod: 'COD',
-        buyer: b2bEnabled && buyer ? buyer : undefined,
+        buyer: b2bEnabled && buyer ? checkoutBuyer(buyer) : undefined,
         quoteToken: quote.quoteToken,
       };
 
@@ -954,6 +1046,7 @@ const CheckoutPage = () => {
           headers: {
             'Content-Type': 'application/json',
             'X-Idempotency-Key': idempotencyKey,
+            'X-Checkout-Auth': authToken,
           },
         }
       );
@@ -1151,12 +1244,19 @@ const CheckoutPage = () => {
                     <div className="mt-4">
                       <B2bForm
                         disabled={loading || otpLoading}
+                        shipToState={quoteState || null}
                         onChange={(val) => {
                           setBuyer(val);
                           setB2bServerError(null);
                         }}
                         serverError={b2bServerError}
                       />
+                      {!buyer && (
+                        <p className="mt-3 text-xs text-amber-700">
+                          Complete the GST invoice details to continue, or
+                          untick the option.
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1224,7 +1324,13 @@ const CheckoutPage = () => {
                 showOtpField={showOtpField}
                 otp={otp}
                 otpLoading={otpLoading}
-                phoneNumber={form.getValues('phone')}
+                phoneNumber={otpPhone || form.getValues('phone')}
+                otpMasked={otpMasked}
+                otpCooldown={otpCooldown}
+                otpAttemptsLeft={otpAttemptsLeft}
+                onResendOtp={() =>
+                  sendCheckoutOtp(otpPhone || form.getValues('phone'))
+                }
                 quote={quoteReady ? quote : null}
                 quoteLoading={quoteLoading}
                 quoteFailure={quoteFailure}

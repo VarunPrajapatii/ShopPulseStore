@@ -39,6 +39,9 @@ export default function useCheckoutQuote({
   const [quote, setQuote] = useState<CheckoutQuote | null>(null);
   const [failure, setFailure] = useState<QuoteFailure | null>(null);
   const [loading, setLoading] = useState(false);
+  const [settledRequestKey, setSettledRequestKey] = useState<string | null>(
+    null
+  );
 
   const request = useMemo<QuoteRequest | null>(() => {
     if (!enabled || items.length === 0 || !pincode || !state) return null;
@@ -52,7 +55,19 @@ export default function useCheckoutQuote({
             billingAddress: { state: billingState },
           }
         : {}),
-      buyer: buyer ?? null,
+      buyer: buyer
+        ? {
+            gstin: buyer.gstin,
+            legalName: buyer.legalName,
+            billingAddress: {
+              line1: buyer.billingAddress.line1,
+              line2: buyer.billingAddress.line2,
+              city: buyer.billingAddress.city,
+              state: buyer.billingAddress.state,
+              pincode: buyer.billingAddress.pincode,
+            },
+          }
+        : null,
     };
   }, [enabled, items, pincode, state, paymentMethod, buyer, billingState]);
 
@@ -77,6 +92,7 @@ export default function useCheckoutQuote({
           setQuote(null);
           setFailure(result.failure);
         }
+        setSettledRequestKey(requestKey);
         setLoading(false);
       } catch {
         // Aborted by a newer request; that one owns the loading state.
@@ -90,10 +106,26 @@ export default function useCheckoutQuote({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [requestKey]);
 
-  const replaceQuote = useCallback((fresh: CheckoutQuote) => {
-    setQuote(fresh);
-    setFailure(null);
-  }, []);
+  const replaceQuote = useCallback(
+    (fresh: CheckoutQuote) => {
+      setQuote(fresh);
+      setFailure(null);
+      setSettledRequestKey(requestKey);
+    },
+    [requestKey]
+  );
 
-  return { quote, failure, loading, replaceQuote };
+  const currentQuote =
+    requestKey !== null && settledRequestKey === requestKey ? quote : null;
+  const currentFailure =
+    requestKey !== null && settledRequestKey === requestKey ? failure : null;
+  const currentLoading =
+    requestKey !== null && (loading || settledRequestKey !== requestKey);
+
+  return {
+    quote: currentQuote,
+    failure: currentFailure,
+    loading: currentLoading,
+    replaceQuote,
+  };
 }

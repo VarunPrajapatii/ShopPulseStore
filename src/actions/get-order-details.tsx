@@ -75,7 +75,7 @@ export interface ShippingAddress {
 
 export interface OrderGst {
   regime: 'REGULAR' | 'COMPOSITION' | 'UNREGISTERED' | null;
-  supplyType: string | null;
+  supplyType: 'INTER_STATE' | 'INTRA_STATE' | 'NONE' | null;
   pricesIncludeTax: boolean;
   placeOfSupplyStateCode: string | null;
   taxable: number;

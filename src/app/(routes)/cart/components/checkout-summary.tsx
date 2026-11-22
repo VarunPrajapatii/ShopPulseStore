@@ -68,14 +68,13 @@ const Summary: React.FC<SummaryProps> = ({
     onCheckout();
   };
 
-  // Calculate breakdown
-  const subtotal = totalPrice;
-  // Use shipping cost from pincode check
-  const shippingCost =
-    hasPincodeChecked && isServiceable
+  const subtotal = quote ? Number(quote.subtotal) : totalPrice;
+  const shippingCost = quote
+    ? Number(quote.shipping?.amount ?? 0)
+    : hasPincodeChecked && isServiceable
       ? (shippingData?.deliveryCharge ?? 0)
       : 0;
-  const orderTotal = subtotal + shippingCost;
+  const orderTotal = quote ? Number(quote.total) : subtotal + shippingCost;
 
   // Checkout button disabled conditions:
   // 1. No items in cart

@@ -93,16 +93,8 @@ const PriceDisplay: React.FC<PriceDisplayProps> = ({
 
   const s = styles[size];
 
-  // Tax wording only on the product page: regular GST sellers say prices include
-  // all taxes; other sellers only label the struck-out MRP.
   const taxNote =
-    size !== 'lg' || gstApplies === null
-      ? null
-      : gstApplies
-        ? 'Inclusive of all taxes'
-        : hasDiscount
-          ? 'MRP (incl. of all taxes)'
-          : null;
+    size === 'lg' && gstApplies === true ? 'Inclusive of all taxes' : null;
 
   return (
     <div className={`${s.container} ${className}`}>

@@ -33,11 +33,10 @@ const CHARSET = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 /**
  * Validates the format and Mod-36 checksum of a GSTIN.
  *
- * Always pass an UPPERCASED string. The function does not normalise case
- * itself so that callers can show the raw input while validating.
+ * Trims surrounding whitespace and normalizes case for validation.
  */
 export function validateGstin(input: string): boolean {
-  const s = input.toUpperCase();
+  const s = input.trim().toUpperCase();
   if (!GSTIN_RE.test(s)) return false;
   if (!STATE_CODES.has(s.slice(0, 2))) return false;
   if (!PAN_RE.test(s.slice(2, 12))) return false;
@@ -62,5 +61,10 @@ export function validateGstin(input: string): boolean {
  * Callers must only invoke this after `validateGstin` returns `true`.
  */
 export function deriveStateCode(gstin: string): string {
-  return gstin.slice(0, 2);
+  return gstin.trim().toUpperCase().slice(0, 2);
+}
+
+/** Canonical value sent to quote and checkout APIs. */
+export function normalizeGstin(input: string): string {
+  return input.replace(/\s/g, '').toUpperCase();
 }

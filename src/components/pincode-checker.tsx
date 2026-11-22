@@ -15,6 +15,7 @@ import getDeliveryCharges from '@/actions/get-delivery-charges';
 import useShipping, { ShippingData } from '@/hooks/use-shipping';
 import Currency from '@/components/ui/currency';
 import { cn } from '@/lib/utils';
+import { serviceEmail } from '@/config/site';
 
 interface PincodeCheckerProps {
   /** Whether to show in compact mode (for cart) */
@@ -360,10 +361,10 @@ const PincodeChecker: React.FC<PincodeCheckerProps> = ({
             <p className="text-xs text-muted-foreground">
               We don&apos;t deliver to this pincode yet. Please contact us at{' '}
               <a
-                href={`mailto:${process.env.NEXT_PUBLIC_SERVICE_EMAIL || 'support@example.com'}`}
+                href={`mailto:${serviceEmail}`}
                 className="text-primary hover:underline"
               >
-                {process.env.NEXT_PUBLIC_SERVICE_EMAIL || 'support@example.com'}
+                {serviceEmail}
               </a>{' '}
               for special delivery requests.
             </p>

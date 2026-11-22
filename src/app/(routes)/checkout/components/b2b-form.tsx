@@ -2,12 +2,13 @@
 
 import { useState } from 'react';
 import { CheckCircle2 } from 'lucide-react';
-import { validateGstin } from '@/lib/gstin';
+import { normalizeGstin, validateGstin } from '@/lib/gstin';
 import { indianStates } from '@/lib/utils';
 import type { BuyerBlock } from '@/lib/returns-api';
 
 interface B2bFormProps {
   disabled?: boolean;
+  shipToState: string | null;
   onChange: (buyer: BuyerBlock | null) => void;
   /** Hard error from server — highlight the matching field */
   serverError?:
@@ -17,10 +18,9 @@ interface B2bFormProps {
     | null;
 }
 
-const PAN_RE = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
-
 export default function B2bForm({
   disabled,
+  shipToState,
   onChange,
   serverError,
 }: B2bFormProps) {
@@ -31,10 +31,8 @@ export default function B2bForm({
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
   const [pincode, setPincode] = useState('');
-  const [pan, setPan] = useState('');
 
   const gstinValid = validateGstin(gstin);
-  const panValid = pan === '' || PAN_RE.test(pan);
 
   /** Notify parent of current values every time a field changes */
   function notify(
@@ -46,7 +44,6 @@ export default function B2bForm({
       city: string;
       state: string;
       pincode: string;
-      pan: string;
     }>
   ) {
     const g = updates.gstin ?? gstin;
@@ -55,16 +52,15 @@ export default function B2bForm({
     const ct = updates.city ?? city;
     const st = updates.state ?? state;
     const pc = updates.pincode ?? pincode;
-    const pn = updates.pan ?? pan;
 
+    const normalizedGstin = normalizeGstin(g);
     const isComplete =
-      validateGstin(g) &&
+      validateGstin(normalizedGstin) &&
       ln.trim().length >= 2 &&
       l1.trim().length > 0 &&
       ct.trim().length > 0 &&
       st.trim().length > 0 &&
-      /^[0-9]{6}$/.test(pc) &&
-      (pn === '' || PAN_RE.test(pn));
+      /^[0-9]{6}$/.test(pc);
 
     if (!isComplete) {
       onChange(null);
@@ -72,7 +68,7 @@ export default function B2bForm({
     }
 
     const buyer: BuyerBlock = {
-      gstin: g,
+      gstin: normalizedGstin,
       legalName: ln.trim(),
       billingAddress: {
         line1: l1.trim(),
@@ -81,7 +77,6 @@ export default function B2bForm({
         state: st,
         pincode: pc,
       },
-      pan: pn || undefined,
     };
     onChange(buyer);
   }
@@ -95,9 +90,14 @@ export default function B2bForm({
     <div className="space-y-4">
       {/* GSTIN */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          GSTIN <span className="text-red-500">*</span>
-        </label>
+        <div className="mb-1 flex items-center justify-between gap-3">
+          <label className="text-sm font-medium text-gray-700">
+            GSTIN <span className="text-red-500">*</span>
+          </label>
+          <span className="text-xs text-gray-500">
+            Ship-to state: {shipToState || 'Not selected'}
+          </span>
+        </div>
         <div className="relative">
           <input
             disabled={disabled}
@@ -106,7 +106,7 @@ export default function B2bForm({
             placeholder="e.g. 27AAPFU0939F1ZV"
             className={`${inputCls(serverError === 'INVALID_GSTIN')} pr-8 font-mono uppercase`}
             onChange={(e) => {
-              const v = e.target.value.toUpperCase();
+              const v = normalizeGstin(e.target.value);
               setGstin(v);
               notify({ gstin: v });
             }}
@@ -245,28 +245,6 @@ export default function B2bForm({
         )}
       </fieldset>
 
-      {/* PAN (optional) */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          PAN{' '}
-          <span className="text-gray-400 text-xs font-normal">(optional)</span>
-        </label>
-        <input
-          disabled={disabled}
-          value={pan}
-          maxLength={10}
-          placeholder="e.g. AAPFU0939F"
-          className={`${inputCls(false)} font-mono uppercase`}
-          onChange={(e) => {
-            const v = e.target.value.toUpperCase();
-            setPan(v);
-            notify({ pan: v });
-          }}
-        />
-        {pan.length === 10 && !panValid && (
-          <p className="text-xs text-red-500 mt-1">PAN format is invalid.</p>
-        )}
-      </div>
     </div>
   );
 }

@@ -29,6 +29,10 @@ interface OrderSummaryProps {
   otp: string;
   otpLoading: boolean;
   phoneNumber: string;
+  otpMasked: string;
+  otpCooldown: number;
+  otpAttemptsLeft: number | null;
+  onResendOtp: () => void;
   /** Backend price breakdown for the current cart, address and payment method. */
   quote: CheckoutQuote | null;
   quoteLoading: boolean;
@@ -51,6 +55,10 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   otp,
   otpLoading,
   phoneNumber,
+  otpMasked,
+  otpCooldown,
+  otpAttemptsLeft,
+  onResendOtp,
   quote,
   quoteLoading,
   quoteFailure,
@@ -379,7 +387,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                 paymentMethod === 'COD' ? 'text-green-900' : 'text-blue-900'
               )}
             >
-              Enter OTP sent to {phoneNumber}
+              Enter OTP sent to {otpMasked || phoneNumber}
             </label>
             <input
               type="text"
@@ -393,6 +401,22 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                 paymentMethod === 'COD' ? 'border-green-200' : 'border-blue-200'
               )}
             />
+            {otpAttemptsLeft !== null && (
+              <p className="mt-2 text-xs text-red-600">
+                {otpAttemptsLeft} attempt{otpAttemptsLeft === 1 ? '' : 's'}{' '}
+                left.
+              </p>
+            )}
+            <div className="mt-2 text-right">
+              <button
+                type="button"
+                onClick={onResendOtp}
+                disabled={otpCooldown > 0 || otpLoading || loading}
+                className="text-xs font-semibold text-primary disabled:text-muted-foreground"
+              >
+                {otpCooldown > 0 ? `Resend in ${otpCooldown}s` : 'Resend OTP'}
+              </button>
+            </div>
           </div>
           <Button
             onClick={
@@ -400,7 +424,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                 ? onVerifyAndPlaceCODOrder
                 : onVerifyAndPay
             }
-            disabled={otpLoading || otp.length !== 6}
+            disabled={otpLoading || otp.length !== 6 || !quote}
             className="w-full bg-primary text-primary-foreground px-6 py-3.5 rounded-lg font-semibold hover:bg-primary/90 transition-colors disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {otpLoading ? (

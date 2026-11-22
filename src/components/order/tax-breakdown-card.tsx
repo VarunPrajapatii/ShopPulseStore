@@ -30,6 +30,8 @@ export default function TaxBreakdownCard({
   invoiced = false,
 }: TaxBreakdownCardProps) {
   if (!hasTaxData(items)) return null;
+  const hasUtgst = items.some((item) => (item.utgstAmount ?? 0) > 0);
+  const intraStateLabel = hasUtgst ? 'UTGST' : 'SGST';
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-6">
@@ -51,7 +53,9 @@ export default function TaxBreakdownCard({
               <th className="px-2 py-2 font-medium text-right">Rate</th>
               <th className="px-2 py-2 font-medium text-right">Taxable</th>
               <th className="px-2 py-2 font-medium text-right">CGST</th>
-              <th className="px-2 py-2 font-medium text-right">SGST/UTGST</th>
+              <th className="px-2 py-2 font-medium text-right">
+                {intraStateLabel}
+              </th>
               <th className="px-2 py-2 font-medium text-right">IGST</th>
               <th className="px-2 py-2 font-medium text-right">Cess</th>
             </tr>
@@ -86,8 +90,8 @@ export default function TaxBreakdownCard({
       </div>
 
       <p className="text-xs text-gray-400 mt-3">
-        GST is already included in the prices you paid. CGST + SGST applies
-        within the State; IGST applies to supply between States.
+        GST is already included in the prices you paid. CGST with SGST or UTGST
+        applies within the State; IGST applies between States.
       </p>
     </div>
   );

@@ -13,7 +13,7 @@ interface B2bBuyerCardProps {
 }
 
 export default function B2bBuyerCard({ order }: B2bBuyerCardProps) {
-  if (!order.buyerGstin) return null;
+  if (order.gst.regime !== 'REGULAR' || !order.buyerGstin) return null;
 
   const issued = order.saleDocumentStatus === 'ISSUED';
 

@@ -29,7 +29,7 @@ export interface CheckoutQuote {
   pricesIncludeTax: boolean;
   paymentMethod: 'PREPAID' | 'COD';
   placeOfSupply: { stateCode: string; stateName: string };
-  supplyType: string;
+  supplyType: 'INTER_STATE' | 'INTRA_STATE' | 'NONE';
   lines: QuoteLine[];
   subtotal: string;
   shipping: { amount: string; gstAmount: string } | null;
