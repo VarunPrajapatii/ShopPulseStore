@@ -108,10 +108,12 @@ function OrderHubInner({ orderId }: OrderHubClientProps) {
         setHub(data);
         setCookieCapabilities(data.meta.cookieCapabilities);
         setStatus('ready');
+        return data;
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') return;
         setErrorCode(err instanceof ReturnsApiError ? err.code : 'UNKNOWN');
         setStatus('error');
+        return null;
       }
     },
     [orderId, setCookieCapabilities]
@@ -244,6 +246,36 @@ function OrderHubInner({ orderId }: OrderHubClientProps) {
     },
     [guard]
   );
+
+  const handleViewDetails = useCallback(() => {
+    if (!hub) return;
+
+    const openDetailsAfterRefresh = async () => {
+      const refreshed = await loadHub();
+      if (!refreshed) return;
+      if (refreshed.meta.personalDetailsMasked) {
+        setCookieCapabilities([], null);
+        toast.error(
+          'We still couldn’t unlock these details. Please verify again.'
+        );
+        return;
+      }
+      setOrderDetailOpen(true);
+    };
+
+    if (!hub.meta.personalDetailsMasked) {
+      setOrderDetailOpen(true);
+      return;
+    }
+
+    if (hasCapability('INVOICE') || hasCapability('RETURN')) {
+      void openDetailsAfterRefresh();
+      return;
+    }
+
+    pendingResume.current = () => void openDetailsAfterRefresh();
+    requestStepUp({ type: 'VIEW_DETAILS' }, 'INVOICE');
+  }, [hasCapability, hub, loadHub, requestStepUp, setCookieCapabilities]);
 
   const handleReturnDetailAuthRequired = useCallback(
     (resume: () => void) => {
@@ -382,7 +414,8 @@ function OrderHubInner({ orderId }: OrderHubClientProps) {
             order={hub.order}
             invoices={hub.invoices}
             canStartAnyReturn={canStartAnyReturn}
-            onViewDetails={() => setOrderDetailOpen(true)}
+            personalDetailsMasked={hub.meta.personalDetailsMasked}
+            onViewDetails={handleViewDetails}
             onStartReturn={handleStartReturn}
             onDownloadInvoice={handleDownloadInvoice}
             onInvoiceDownload={() =>

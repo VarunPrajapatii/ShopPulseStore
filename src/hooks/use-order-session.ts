@@ -16,6 +16,7 @@ import type { Capability } from '@/lib/returns-types';
 
 /** An action the user attempted that may require a capability step-up first. */
 export type PendingAction =
+  | { type: 'VIEW_DETAILS' }
   | { type: 'CANCEL_ORDER' }
   | { type: 'CANCEL_RETURN'; returnNumber: string }
   | { type: 'START_RETURN' }
@@ -71,7 +72,20 @@ const useOrderSession = create<OrderSessionState>((set, get) => ({
   pendingAction: null,
   requiredCapability: null,
 
-  setOrderId: (orderId) => set({ orderId }),
+  setOrderId: (orderId) =>
+    set((state) =>
+      state.orderId === orderId
+        ? { orderId }
+        : {
+            orderId,
+            cookieCapabilities: [],
+            sessionExpiresAt: null,
+            fromMagicLink: false,
+            isOtpModalOpen: false,
+            pendingAction: null,
+            requiredCapability: null,
+          }
+    ),
   setCookieCapabilities: (capabilities, expiresAt) =>
     set((state) => ({
       cookieCapabilities: capabilities,

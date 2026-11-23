@@ -10,7 +10,13 @@
  * shows only when the caller reports at least one returnable item.
  */
 
-import { FileText, Mail, MapPin, PanelRightOpen } from 'lucide-react';
+import {
+  FileText,
+  LockKeyhole,
+  Mail,
+  MapPin,
+  PanelRightOpen,
+} from 'lucide-react';
 import Currency from '@/components/ui/currency';
 import StatusBadge from '@/components/returns/status-badge';
 import type { HubInvoice, HubOrder } from '@/lib/returns-types';
@@ -19,6 +25,7 @@ interface HubOrderCardProps {
   order: HubOrder;
   invoices: HubInvoice[];
   canStartAnyReturn: boolean;
+  personalDetailsMasked: boolean;
   onViewDetails: () => void;
   onStartReturn: () => void;
   onDownloadInvoice: (invoice: HubInvoice) => void;
@@ -43,6 +50,7 @@ const HubOrderCard: React.FC<HubOrderCardProps> = ({
   order,
   invoices,
   canStartAnyReturn,
+  personalDetailsMasked,
   onViewDetails,
   onStartReturn,
   onDownloadInvoice,
@@ -187,9 +195,18 @@ const HubOrderCard: React.FC<HubOrderCardProps> = ({
           type="button"
           onClick={onViewDetails}
           className="inline-flex items-center gap-2 rounded-full border border-border px-5 py-2.5 text-sm font-semibold text-foreground transition hover:border-primary"
+          aria-label={
+            personalDetailsMasked
+              ? 'Verify identity and view full order details'
+              : 'View order details'
+          }
         >
-          <PanelRightOpen className="h-4 w-4" />
-          Order details
+          {personalDetailsMasked ? (
+            <LockKeyhole className="h-4 w-4" />
+          ) : (
+            <PanelRightOpen className="h-4 w-4" />
+          )}
+          View details
         </button>
       </div>
     </section>

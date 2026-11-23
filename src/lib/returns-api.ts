@@ -18,6 +18,7 @@ import type {
   ApiError,
   CancelByCustomerResponse,
   CancelPreviewResponse,
+  Capability,
   ContactHintsResponse,
   EligibilityResponse,
   ExchangeOptionsResponse,
@@ -233,10 +234,14 @@ export function requestOtp(orderId: string, channel: 'phone' | 'email') {
   });
 }
 
-export function verifyOtp(orderId: string, code: string) {
+export function verifyOtp(
+  orderId: string,
+  code: string,
+  capabilitiesRequested: Capability[] = ['INVOICE', 'RETURN']
+) {
   return request<VerifyOtpResponse>(`/order/${orderId}/auth/verify-otp`, {
     method: 'POST',
-    body: { otp: code, capabilitiesRequested: ['INVOICE', 'RETURN'] },
+    body: { otp: code, capabilitiesRequested },
   });
 }
 

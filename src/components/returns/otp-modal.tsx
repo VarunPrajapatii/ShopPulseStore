@@ -33,6 +33,8 @@ const OtpModal: React.FC<OtpModalProps> = ({ orderId, onVerified }) => {
   const isOpen = useOrderSession((s) => s.isOtpModalOpen);
   const closeOtpModal = useOrderSession((s) => s.closeOtpModal);
   const setCookieCapabilities = useOrderSession((s) => s.setCookieCapabilities);
+  const cookieCapabilities = useOrderSession((s) => s.cookieCapabilities);
+  const requiredCapability = useOrderSession((s) => s.requiredCapability);
 
   const [step, setStep] = useState<'channel' | 'code'>('channel');
   const [channel, setChannel] = useState<Channel | null>(null);
@@ -91,7 +93,19 @@ const OtpModal: React.FC<OtpModalProps> = ({ orderId, onVerified }) => {
     }
     setSubmitting(true);
     try {
-      const res = await verifyOtp(orderId, code);
+      const capabilitiesRequested = Array.from(
+        new Set<Capability>([
+          ...cookieCapabilities,
+          ...(requiredCapability ? [requiredCapability] : []),
+        ])
+      );
+      const res = await verifyOtp(
+        orderId,
+        code,
+        capabilitiesRequested.length > 0
+          ? capabilitiesRequested
+          : ['INVOICE', 'RETURN']
+      );
       setCookieCapabilities(res.capabilities, res.expiresAt);
       const remainingMs = new Date(res.expiresAt).getTime() - Date.now();
       if (remainingMs < 5 * 60 * 1000) {
