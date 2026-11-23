@@ -1,3 +1,5 @@
+import { getBuyerFriendlyCheckoutMessage } from '@/lib/checkout-messages';
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export type ShippingChargeMode = 'FIXED' | 'VARIABLE';
@@ -49,6 +51,7 @@ export interface DeliveryChargesResponse {
   error?: string;
   errorCode?: DeliveryAvailabilityErrorCode;
   retryable?: boolean;
+  details?: Record<string, unknown>;
 }
 
 export interface DeliveryChargesError {
@@ -56,6 +59,7 @@ export interface DeliveryChargesError {
   error: string;
   errorCode: DeliveryAvailabilityErrorCode;
   retryable: boolean;
+  details?: Record<string, unknown>;
 }
 
 const getDeliveryCharges = async (
@@ -81,17 +85,28 @@ const getDeliveryCharges = async (
 
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({}));
+      const errorCode: DeliveryAvailabilityErrorCode =
+        errorData.errorCode ||
+        errorData.code ||
+        (res.status >= 500 ? 'PROVIDER_UNAVAILABLE' : 'UNKNOWN');
+      const details =
+        errorData.details &&
+        typeof errorData.details === 'object' &&
+        !Array.isArray(errorData.details)
+          ? (errorData.details as Record<string, unknown>)
+          : undefined;
       return {
         serviceable: false,
-        error:
+        error: getBuyerFriendlyCheckoutMessage(
+          errorCode,
           errorData.error ||
-          errorData.message ||
-          `Failed to check delivery: ${res.status}`,
-        errorCode:
-          errorData.errorCode ||
-          errorData.code ||
-          (res.status >= 500 ? 'PROVIDER_UNAVAILABLE' : 'UNKNOWN'),
+            errorData.message ||
+            `Failed to check delivery: ${res.status}`,
+          details
+        ),
+        errorCode,
         retryable: errorData.retryable ?? res.status >= 500,
+        details,
       };
     }
 

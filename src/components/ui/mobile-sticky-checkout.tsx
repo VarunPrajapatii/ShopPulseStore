@@ -1,12 +1,12 @@
-"use client";
+'use client';
 
-import { cn } from "@/lib/utils";
-import Button from "@/components/ui/button";
-import { Lock, ArrowRight } from "lucide-react";
-import { formatPrice } from "@/lib/utils";
+import { cn } from '@/lib/utils';
+import Button from '@/components/ui/button';
+import { Lock, ArrowRight } from 'lucide-react';
+import { formatPrice } from '@/lib/utils';
 
 interface MobileStickyCheckoutProps {
-  total: number;
+  total: number | null;
   onAction: () => void;
   actionLabel?: string;
   isLoading?: boolean;
@@ -18,23 +18,25 @@ interface MobileStickyCheckoutProps {
 const MobileStickyCheckout: React.FC<MobileStickyCheckoutProps> = ({
   total,
   onAction,
-  actionLabel = "Proceed to Checkout",
+  actionLabel = 'Proceed to Checkout',
   isLoading = false,
   disabled = false,
   showSecure = true,
-  className = "",
+  className = '',
 }) => {
   return (
     <div
       className={cn(
-        "fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4 lg:hidden z-50 shadow-[0_-4px_20px_-4px_rgba(0,0,0,0.1)]",
+        'fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4 lg:hidden z-50 shadow-[0_-4px_20px_-4px_rgba(0,0,0,0.1)]',
         className
       )}
     >
       <div className="flex items-center justify-between gap-4 max-w-screen-sm mx-auto">
         <div className="flex flex-col">
           <span className="text-xs text-muted-foreground">Total Amount</span>
-          <span className="text-xl font-bold">{formatPrice(total)}</span>
+          <span className="text-xl font-bold">
+            {total === null ? 'Enter pincode' : formatPrice(total)}
+          </span>
         </div>
         <Button
           onClick={onAction}

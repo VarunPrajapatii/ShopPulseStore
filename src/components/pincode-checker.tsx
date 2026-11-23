@@ -15,7 +15,7 @@ import getDeliveryCharges from '@/actions/get-delivery-charges';
 import useShipping, { ShippingData } from '@/hooks/use-shipping';
 import Currency from '@/components/ui/currency';
 import { cn } from '@/lib/utils';
-import { serviceEmail } from '@/config/site';
+import { getDeliverySupportMessage } from '@/lib/checkout-messages';
 
 interface PincodeCheckerProps {
   /** Whether to show in compact mode (for cart) */
@@ -189,6 +189,8 @@ const PincodeChecker: React.FC<PincodeCheckerProps> = ({
   const isTemporaryFailure = hasCurrentFailure && shippingData.retryable;
   const isDirectoryMiss =
     hasCurrentFailure && shippingData.errorCode === 'PINCODE_NOT_IN_DIRECTORY';
+  const isShipToStateNotAllowed =
+    hasCurrentFailure && shippingData.errorCode === 'SHIP_TO_STATE_NOT_ALLOWED';
 
   // Compact display when pincode is already set and verified
   if (!isEditing && shippingData?.pincode && shippingData.serviceable) {
@@ -321,16 +323,30 @@ const PincodeChecker: React.FC<PincodeCheckerProps> = ({
       </div>
 
       {/* Error Message */}
-      {(error && !hasCurrentFailure) || isDirectoryMiss ? (
-        <div className="flex items-center gap-2 text-sm text-destructive">
-          <AlertCircle className="h-4 w-4" />
-          <span>{isDirectoryMiss ? shippingData?.errorMessage : error}</span>
+      {(error && !hasCurrentFailure) ||
+      isDirectoryMiss ||
+      isShipToStateNotAllowed ? (
+        <div className="space-y-1 text-sm text-destructive">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-4 w-4" />
+            <span>
+              {isDirectoryMiss || isShipToStateNotAllowed
+                ? shippingData?.errorMessage
+                : error}
+            </span>
+          </div>
+          {isShipToStateNotAllowed && (
+            <p className="pl-6 text-xs text-muted-foreground">
+              {getDeliverySupportMessage()}
+            </p>
+          )}
         </div>
       ) : null}
 
       {/* Not Serviceable Message */}
       {hasCurrentFailure &&
         !isDirectoryMiss &&
+        !isShipToStateNotAllowed &&
         (isTemporaryFailure ? (
           <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 space-y-3 text-amber-950">
             <div className="flex items-center gap-2 text-sm">
@@ -359,14 +375,7 @@ const PincodeChecker: React.FC<PincodeCheckerProps> = ({
               <span className="font-medium">Delivery not available</span>
             </div>
             <p className="text-xs text-muted-foreground">
-              We don&apos;t deliver to this pincode yet. Please contact us at{' '}
-              <a
-                href={`mailto:${serviceEmail}`}
-                className="text-primary hover:underline"
-              >
-                {serviceEmail}
-              </a>{' '}
-              for special delivery requests.
+              {shippingData.errorMessage}
             </p>
           </div>
         ))}

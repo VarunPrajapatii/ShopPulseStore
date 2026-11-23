@@ -8,6 +8,7 @@ import useShipping from '@/hooks/use-shipping';
 import { Lock, Truck, Shield, CreditCard, Banknote } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { CheckoutQuote, QuoteFailure } from '@/actions/get-checkout-quote';
+import { CONTINUE_WITHOUT_BUSINESS_INVOICE_MESSAGE } from '@/lib/checkout-messages';
 
 export type PaymentMethod = 'PREPAID' | 'COD';
 
@@ -261,7 +262,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                 onClick={onContinueWithoutGstInvoice}
                 className="mt-2 font-medium underline"
               >
-                Continue without GST invoice
+                {CONTINUE_WITHOUT_BUSINESS_INVOICE_MESSAGE}
               </button>
             )}
           </div>

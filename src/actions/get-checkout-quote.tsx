@@ -8,6 +8,8 @@
  * Used by the checkout page (via use-checkout-quote) and the cart summary.
  */
 
+import { getBuyerFriendlyCheckoutMessage } from '@/lib/checkout-messages';
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export interface QuoteLine {
@@ -75,6 +77,7 @@ export interface QuoteFailure {
   status: number;
   code: string | null;
   message: string;
+  details?: Record<string, unknown>;
 }
 
 export type QuoteResult =
@@ -98,15 +101,27 @@ const getCheckoutQuote = async (
     });
     const body = await res.json().catch(() => ({}));
     if (!res.ok) {
+      const code = typeof body.code === 'string' ? body.code : null;
+      const details =
+        body.details &&
+        typeof body.details === 'object' &&
+        !Array.isArray(body.details)
+          ? (body.details as Record<string, unknown>)
+          : undefined;
       return {
         ok: false,
         failure: {
           status: res.status,
-          code: typeof body.code === 'string' ? body.code : null,
-          message:
+          code,
+          message: getBuyerFriendlyCheckoutMessage(
+            code,
             body.message ||
-            body.error ||
-            'We could not calculate your total. Please try again.',
+              body.error ||
+              'We could not calculate your total. Please try again.',
+            details,
+            'We could not calculate your total. Please try again.'
+          ),
+          details,
         },
       };
     }

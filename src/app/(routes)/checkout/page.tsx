@@ -26,6 +26,14 @@ import useCheckoutQuote from '@/hooks/use-checkout-quote';
 import type { CheckoutQuote } from '@/actions/get-checkout-quote';
 import { useStoreBrand } from '@/providers/store-brand-provider';
 import {
+  B2B_NOT_AVAILABLE_MESSAGE,
+  BUSINESS_BILLING_ADDRESS_REQUIRED_MESSAGE,
+  BUSINESS_NAME_REQUIRED_MESSAGE,
+  COMPLETE_BUSINESS_INVOICE_DETAILS_MESSAGE,
+  getBuyerFriendlyCheckoutMessage,
+  INVALID_BUSINESS_INVOICE_FORM_MESSAGE,
+} from '@/lib/checkout-messages';
+import {
   CheckoutOtpError,
   normalizeIndianPhone,
   requestCheckoutOtp,
@@ -376,7 +384,7 @@ const CheckoutPage = () => {
       code?: string;
       orderId?: string;
       message?: string;
-      details?: { quote?: CheckoutQuote };
+      details?: Record<string, unknown> & { quote?: CheckoutQuote };
     };
 
     if (code === 'OTP_REQUIRED') {
@@ -387,40 +395,45 @@ const CheckoutPage = () => {
 
     if (code === 'QUOTE_CHANGED') {
       if (details?.quote) replaceQuote(details.quote);
-      toast.error('Prices were updated. Please review your total.');
+      toast.error(getBuyerFriendlyCheckoutMessage(code, message, details));
       return true;
     }
     if (code === 'QUOTE_TOKEN_REQUIRED') {
-      toast.error('Please review your order total before paying.');
+      toast.error(getBuyerFriendlyCheckoutMessage(code, message, details));
       return true;
     }
     if (code === 'B2B_STATE_MISMATCH' || code === 'B2B_NOT_AVAILABLE') {
       setB2bEnabled(false);
       setBuyer(null);
-      toast.error(message || 'GST invoice is not available for this order.');
+      toast.error(
+        getBuyerFriendlyCheckoutMessage(
+          code,
+          message,
+          details,
+          B2B_NOT_AVAILABLE_MESSAGE
+        )
+      );
       return true;
     }
     if (code === 'INVALID_GSTIN') {
       setB2bServerError('INVALID_GSTIN');
-      toast.error(
-        message ||
-          'Invalid GSTIN. Please check the 15-character number and try again.'
-      );
+      toast.error(getBuyerFriendlyCheckoutMessage(code, message, details));
       return true;
     }
     if (code === 'B2B_DETAILS_MISSING') {
       setB2bServerError('MISSING_B2B_ADDRESS');
-      toast.error(message || 'Complete the GST invoice details.');
+      toast.error(getBuyerFriendlyCheckoutMessage(code, message, details));
       return true;
     }
     if (
       code === 'SHIP_TO_STATE_NOT_ALLOWED' ||
       code === 'PINCODE_STATE_MISMATCH' ||
       code === 'PLACE_OF_SUPPLY_UNRESOLVED' ||
+      code === 'TAX_IDENTITY_MISSING' ||
       code === 'TAX_NOT_READY' ||
       code === 'TAX_NOT_SELLABLE'
     ) {
-      toast.error(message || 'We could not process this order.');
+      toast.error(getBuyerFriendlyCheckoutMessage(code, message, details));
       return true;
     }
 
@@ -597,9 +610,7 @@ const CheckoutPage = () => {
 
   const onSubmit = async (data: CheckoutFormValues) => {
     if (!b2bBuyerReady) {
-      toast.error(
-        'Complete the GST invoice details to continue, or untick the option.'
-      );
+      toast.error(COMPLETE_BUSINESS_INVOICE_DETAILS_MESSAGE);
       return;
     }
     setLoading(true);
@@ -911,9 +922,7 @@ const CheckoutPage = () => {
   // Handle COD order - Step 1: Validate and send OTP
   const handlePlaceCODOrder = async () => {
     if (!b2bBuyerReady) {
-      toast.error(
-        'Complete the GST invoice details to continue, or untick the option.'
-      );
+      toast.error(COMPLETE_BUSINESS_INVOICE_DETAILS_MESSAGE);
       return;
     }
     // Trigger form validation first
@@ -1084,16 +1093,16 @@ const CheckoutPage = () => {
         // Handle B2B errors
         if (errorData.code === 'B2B_NOT_ALLOWED') {
           setB2bEnabled(false);
-          toast.error('GST invoicing is not available for this store.');
+          toast.error(B2B_NOT_AVAILABLE_MESSAGE);
         } else if (errorData.code === 'INVALID_GSTIN') {
           setB2bServerError('INVALID_GSTIN');
-          toast.error('Invalid GSTIN. Please check and try again.');
+          toast.error(INVALID_BUSINESS_INVOICE_FORM_MESSAGE);
         } else if (errorData.code === 'MISSING_LEGAL_NAME') {
           setB2bServerError('MISSING_LEGAL_NAME');
-          toast.error('Legal name is required for GST invoice.');
+          toast.error(BUSINESS_NAME_REQUIRED_MESSAGE);
         } else if (errorData.code === 'MISSING_B2B_ADDRESS') {
           setB2bServerError('MISSING_B2B_ADDRESS');
-          toast.error('Complete the billing address for GST invoice.');
+          toast.error(BUSINESS_BILLING_ADDRESS_REQUIRED_MESSAGE);
         } else if (
           typeof errorData === 'string' &&
           errorData.includes('Insufficient stock')
@@ -1253,8 +1262,7 @@ const CheckoutPage = () => {
                       />
                       {!buyer && (
                         <p className="mt-3 text-xs text-amber-700">
-                          Complete the GST invoice details to continue, or
-                          untick the option.
+                          {COMPLETE_BUSINESS_INVOICE_DETAILS_MESSAGE}
                         </p>
                       )}
                     </div>

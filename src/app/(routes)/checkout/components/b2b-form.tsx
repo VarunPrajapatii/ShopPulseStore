@@ -5,6 +5,11 @@ import { CheckCircle2 } from 'lucide-react';
 import { normalizeGstin, validateGstin } from '@/lib/gstin';
 import { indianStates } from '@/lib/utils';
 import type { BuyerBlock } from '@/lib/returns-api';
+import {
+  BUSINESS_BILLING_ADDRESS_REQUIRED_MESSAGE,
+  BUSINESS_NAME_REQUIRED_MESSAGE,
+  INVALID_BUSINESS_INVOICE_FORM_MESSAGE,
+} from '@/lib/checkout-messages';
 
 interface B2bFormProps {
   disabled?: boolean;
@@ -117,11 +122,13 @@ export default function B2bForm({
         </div>
         {serverError === 'INVALID_GSTIN' && (
           <p className="text-xs text-red-500 mt-1">
-            Invalid GSTIN. Please check and try again.
+            {INVALID_BUSINESS_INVOICE_FORM_MESSAGE}
           </p>
         )}
         {gstin.length === 15 && !gstinValid && (
-          <p className="text-xs text-red-500 mt-1">GSTIN format is invalid.</p>
+          <p className="text-xs text-red-500 mt-1">
+            {INVALID_BUSINESS_INVOICE_FORM_MESSAGE}
+          </p>
         )}
       </div>
 
@@ -141,7 +148,9 @@ export default function B2bForm({
           }}
         />
         {serverError === 'MISSING_LEGAL_NAME' && (
-          <p className="text-xs text-red-500 mt-1">Legal name is required.</p>
+          <p className="text-xs text-red-500 mt-1">
+            {BUSINESS_NAME_REQUIRED_MESSAGE}
+          </p>
         )}
       </div>
 
@@ -240,11 +249,10 @@ export default function B2bForm({
 
         {serverError === 'MISSING_B2B_ADDRESS' && (
           <p className="text-xs text-red-500">
-            Complete the billing address for GST invoice.
+            {BUSINESS_BILLING_ADDRESS_REQUIRED_MESSAGE}
           </p>
         )}
       </fieldset>
-
     </div>
   );
 }
