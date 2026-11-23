@@ -19,12 +19,9 @@ import type {
   CancelByCustomerResponse,
   CancelPreviewResponse,
   Capability,
-  ContactHintsResponse,
   EligibilityResponse,
   ExchangeOptionsResponse,
   InvoiceEmailResendResponse,
-  InvoiceRequestOtpResponse,
-  InvoiceVerifyOtpResponse,
   LogoutResponse,
   PayExchangeDiffResponse,
   PayExchangeDiffVerifyResponse,
@@ -87,7 +84,6 @@ interface RequestOptions {
   body?: unknown;
   headers?: Record<string, string>;
   signal?: AbortSignal;
-  /** Defaults to 'include'; token-gated invoice routes answer with a wildcard CORS origin, so they must omit. */
   credentials?: RequestCredentials;
 }
 
@@ -454,109 +450,38 @@ export function getProductVariants(productId: string, signal?: AbortSignal) {
 }
 
 /* ================================================================== */
-/* Tax invoice OTP-gated PDF download / email resend                  */
+/* Tax documents: PDF download / email resend (session cookie only)  */
 /* ================================================================== */
 
-/**
- * These endpoints do NOT use
- * the `order_session_token` cookie (they're public, token-gated) and reply
- * with a wildcard CORS origin, so they are sent with credentials omitted.
- */
-function invoicePath(orderId: string, suffix: string): string {
-  return `/storefront/orders/${orderId}/invoice${suffix}`;
+/** Fetches one tax document PDF (URL comes from the hub's `invoices[]`). */
+export async function fetchTaxDocumentPdf(url: string): Promise<Blob> {
+  let res: Response;
+  try {
+    res = await fetch(url, { credentials: 'include', cache: 'no-store' });
+  } catch (err) {
+    throw new ReturnsApiError({
+      status: 0,
+      code: 'NETWORK_ERROR',
+      message: 'Network request failed',
+      details: err,
+    });
+  }
+  if (!res.ok) {
+    throw new ReturnsApiError({
+      status: res.status,
+      code: `HTTP_${res.status}`,
+    });
+  }
+  return res.blob();
 }
 
-function documentsPath(orderId: string, suffix: string): string {
-  return invoicePath(orderId, '').replace(/\/invoice$/, `/documents${suffix}`);
-}
-
-/**
- * Request a 6-digit invoice OTP.
- *
- * Always resolves (anti-enumeration: server returns `{ ok: true }` whether or
- * not an email was sent). Show the user a generic "If we have your email on
- * file, we've sent a code" message; never reveal order existence.
- */
-export function requestInvoiceOtp(
+/** Emails every tax document of the order to the contact on file. */
+export function resendTaxDocuments(
   orderId: string
-): Promise<InvoiceRequestOtpResponse> {
-  return request<InvoiceRequestOtpResponse>(
-    invoicePath(orderId, '/request-otp'),
-    {
-      method: 'POST',
-      credentials: 'omit',
-    }
-  );
-}
-
-/**
- * Verify the 6-digit invoice OTP.
- *
- * On success returns a short-lived (5 min) `token` and a fully-formed
- * `downloadUrl`. Navigate to `downloadUrl` to trigger the PDF download.
- * On failure throws `ReturnsApiError` with:
- *   - `code: 'INVALID_CODE_FORMAT'`  → "Enter the 6-digit code."
- *   - `code: 'INVALID_OR_EXPIRED'`   → "Wrong or expired code. {attemptsLeft} attempts left."
- *   - `code: 'TEMPORARY'`            → "Something went wrong. Please try again."
- *
- * Never retry automatically on failure (anti-enumeration).
- */
-export function verifyInvoiceOtp(
-  orderId: string,
-  code: string
-): Promise<InvoiceVerifyOtpResponse> {
-  return request<InvoiceVerifyOtpResponse>(
-    invoicePath(orderId, '/verify-otp'),
-    {
-      method: 'POST',
-      body: { code },
-      credentials: 'omit',
-    }
-  );
-}
-
-/**
- * Re-send the invoice email with the PDF attachment and a 90-day
- * re-download link button to the order's email on file.
- *
- * Requires the short-lived `token` from a fresh `verifyInvoiceOtp` call
- * (within its 5-minute window). Long-lived tokens are rejected.
- *
- * Always resolves with `{ ok: true }` (anti-enumeration); the send is
- * best-effort server-side.
- */
-export function resendInvoiceEmail(
-  orderId: string,
-  token: string
 ): Promise<InvoiceEmailResendResponse> {
   return request<InvoiceEmailResendResponse>(
-    documentsPath(orderId, '/resend'),
-    {
-      method: 'POST',
-      body: { token },
-      credentials: 'omit',
-    }
-  );
-}
-
-/**
- * Fetch a masked email hint (e.g. `al••@gmail.com`) to display in the
- * "Sent to …" success screen after `INVOICE_EMAIL` OTP success.
- *
- * Requires the short-lived `token` from the same `verifyInvoiceOtp` call.
- * Returns `{ ok: true, emailMask: null }` when the token is bad/expired or
- * no email is on file — callers must fall back to generic copy in that case.
- */
-export function getContactHints(
-  orderId: string,
-  token: string
-): Promise<ContactHintsResponse> {
-  return request<ContactHintsResponse>(
-    `/storefront/orders/${orderId}/contact-hints`,
-    {
-      query: { token },
-      credentials: 'omit',
-    }
+    `/storefront/orders/${orderId}/documents/resend`,
+    { method: 'POST', body: {} }
   );
 }
 

@@ -129,12 +129,6 @@ export interface HubOrder {
   cancellationRequestedAt: string | null;
   canCancel: boolean; // render Cancel CTA off THIS, never re-derive
   shippingAddress: HubAddress;
-  /**
-   * Set once the invoice PDF has been issued (PREPAID: on payment.captured;
-   * COD: on delivery). Storefront uses this as the visibility trigger for the
-   * invoice download / email-resend CTAs. Null means not yet issued.
-   */
-  invoiceNumber: string | null;
 }
 
 export interface WindowInfo {
@@ -207,7 +201,7 @@ export interface HubReturn {
 export interface HubInvoice {
   kind: 'ORDER' | 'RETURN';
   returnNumber?: string;
-  url: string | null; // v1: null → hide CTA
+  url: string | null; // set only when the session holds INVOICE capability
   label: string;
 }
 
@@ -245,8 +239,6 @@ export interface AdoptLinkTokenResponse {
 
 export interface RequestOtpResponse {
   ok: true;
-  channel: 'phone' | 'email';
-  masked: string;
   cooldownSec: number;
 }
 
@@ -701,67 +693,15 @@ export interface ProductVariantsResponse {
 }
 
 /* ------------------------------------------------------------------ */
-/* Tax invoice OTP-gated PDF download / email resend                  */
+/* Tax documents email resend                                       */
 /* ------------------------------------------------------------------ */
 
 /**
- * POST /api/{storeId}/storefront/orders/{orderId}/invoice/request-otp
- *
- * Always returns `{ ok: true }` regardless of whether an email was sent
- * (anti-enumeration discipline). Show a generic "If we have your email on
- * file, we've sent a 6-digit code" message — never disclose whether the
- * order / email exists.
- */
-export interface InvoiceRequestOtpResponse {
-  ok: true;
-}
-
-/**
- * POST /api/{storeId}/storefront/orders/{orderId}/invoice/verify-otp
- * Body: `{ code: string }`
- *
- * On success: a short-lived (5 min) HMAC-signed `token`, a `downloadUrl` for the
- * first tax document and a `documentsUrl` that lists every document of the order.
- * On failure the
- * server returns a non-2xx shape with `{ ok: false, error, attemptsLeft? }`.
- */
-export interface InvoiceVerifyOtpResponse {
-  ok: true;
-  token: string; // short-lived (5 min); reuse for documents resend + contact-hints
-  downloadUrl: string; // PDF URL of the first document, or the list when none exists
-  documentsUrl: string; // GET returns { documents: OrderTaxDocument[] }
-}
-
-export interface OrderTaxDocument {
-  id: string;
-  number: string;
-  label: string;
-  issueDate: string;
-  againstNumber: string | null;
-  downloadUrl: string;
-}
-
-/**
  * POST /api/{storeId}/storefront/orders/{orderId}/documents/resend
- * Body: `{ token: string }` — must be a short-lived `kind === 'short'` token
- * from a fresh `verify-otp`.
- *
- * Always returns `{ ok: true }` (anti-enumeration).
+ * Auth: order-session cookie with INVOICE capability. Body: `{}`.
  */
 export interface InvoiceEmailResendResponse {
   ok: true;
-}
-
-/**
- * GET /api/{storeId}/storefront/orders/{orderId}/contact-hints?token=<short>
- *
- * Returns a masked email (e.g. `al••@gmail.com`) so the success toast can
- * show where the invoice was sent without leaking the full address.
- * `emailMask` is `null` when the token is bad/expired or no email is on file.
- */
-export interface ContactHintsResponse {
-  ok: true;
-  emailMask: string | null;
 }
 
 /* ------------------------------------------------------------------ */

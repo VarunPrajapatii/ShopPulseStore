@@ -5,9 +5,10 @@
  *
  * Renders the order identity, status, money breakdown, and shipping address,
  * plus the three primary CTAs. CTA visibility is driven STRICTLY by server
- * truth — Cancel shows only when `order.canCancel`; Invoice only when an ORDER
- * invoice with a non-null URL exists (v1: url is null → hidden). Start-a-return
- * shows only when the caller reports at least one returnable item.
+ * truth — Cancel shows only when `order.canCancel`; invoice buttons come from
+ * `invoices[]` (a URL is present only when the session holds INVOICE
+ * capability). Start-a-return shows only when the caller reports at least one
+ * returnable item.
  */
 
 import {
@@ -29,9 +30,9 @@ interface HubOrderCardProps {
   onViewDetails: () => void;
   onStartReturn: () => void;
   onDownloadInvoice: (invoice: HubInvoice) => void;
-  /** Opened when the user wants to download the tax invoice PDF (OTP-gated). */
-  onInvoiceDownload: () => void;
-  /** Opened when the user wants the invoice re-sent to their email (OTP-gated). */
+  /** Asks the customer to verify so the invoice links get unlocked. */
+  onUnlockInvoices: () => void;
+  /** Emails the order's tax documents to the contact on file. */
   onInvoiceEmail: () => void;
 }
 
@@ -54,15 +55,11 @@ const HubOrderCard: React.FC<HubOrderCardProps> = ({
   onViewDetails,
   onStartReturn,
   onDownloadInvoice,
-  onInvoiceDownload,
+  onUnlockInvoices,
   onInvoiceEmail,
 }) => {
-  // Legacy direct-URL invoice (non-null url) — used for RETURN invoices where
-  // the admin embeds a pre-signed link directly in the hub response.
-  const orderInvoice = invoices.find((inv) => inv.kind === 'ORDER' && inv.url);
-  // Tax invoice: show OTP-gated CTAs when invoiceNumber is set on the order
-  // Visibility trigger is invoiceNumber, not a pre-signed URL.
-  const hasInvoice = !!order.invoiceNumber;
+  const downloadableInvoices = invoices.filter((inv) => inv.url);
+  const hasSaleInvoice = invoices.some((inv) => inv.kind === 'ORDER');
   const placedOn = formatDate(order.placedAt);
   const hasCoupon = Number(order.couponInr) > 0;
   const addr = order.shippingAddress;
@@ -161,35 +158,36 @@ const HubOrderCard: React.FC<HubOrderCardProps> = ({
             Return or exchange
           </button>
         )}
-        {orderInvoice && (
+        {downloadableInvoices.map((inv) => (
           <button
+            key={`${inv.kind}-${inv.label}`}
             type="button"
-            onClick={() => onDownloadInvoice(orderInvoice)}
+            onClick={() => onDownloadInvoice(inv)}
             className="inline-flex items-center gap-2 rounded-full border border-border px-5 py-2.5 text-sm font-semibold text-foreground transition hover:border-primary"
           >
             <FileText className="h-4 w-4" />
-            {orderInvoice.label || 'Invoice'}
+            {inv.label}
+          </button>
+        ))}
+        {hasSaleInvoice && downloadableInvoices.length === 0 && (
+          <button
+            type="button"
+            onClick={onUnlockInvoices}
+            className="inline-flex items-center gap-2 rounded-full border border-border px-5 py-2.5 text-sm font-semibold text-foreground transition hover:border-primary"
+          >
+            <FileText className="h-4 w-4" />
+            Download invoice
           </button>
         )}
-        {hasInvoice && (
-          <>
-            <button
-              type="button"
-              onClick={onInvoiceDownload}
-              className="inline-flex items-center gap-2 rounded-full border border-border px-5 py-2.5 text-sm font-semibold text-foreground transition hover:border-primary"
-            >
-              <FileText className="h-4 w-4" />
-              Download invoice
-            </button>
-            <button
-              type="button"
-              onClick={onInvoiceEmail}
-              className="inline-flex items-center gap-2 rounded-full border border-border px-5 py-2.5 text-sm font-semibold text-foreground transition hover:border-primary"
-            >
-              <Mail className="h-4 w-4" />
-              Email invoice
-            </button>
-          </>
+        {hasSaleInvoice && (
+          <button
+            type="button"
+            onClick={onInvoiceEmail}
+            className="inline-flex items-center gap-2 rounded-full border border-border px-5 py-2.5 text-sm font-semibold text-foreground transition hover:border-primary"
+          >
+            <Mail className="h-4 w-4" />
+            Email invoice
+          </button>
         )}
         <button
           type="button"

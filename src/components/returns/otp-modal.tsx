@@ -38,7 +38,6 @@ const OtpModal: React.FC<OtpModalProps> = ({ orderId, onVerified }) => {
 
   const [step, setStep] = useState<'channel' | 'code'>('channel');
   const [channel, setChannel] = useState<Channel | null>(null);
-  const [masked, setMasked] = useState<string>('');
   const [code, setCode] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [cooldown, setCooldown] = useState(0);
@@ -49,7 +48,6 @@ const OtpModal: React.FC<OtpModalProps> = ({ orderId, onVerified }) => {
     if (!isOpen) {
       setStep('channel');
       setChannel(null);
-      setMasked('');
       setCode('');
       setSubmitting(false);
       setCooldown(0);
@@ -69,11 +67,9 @@ const OtpModal: React.FC<OtpModalProps> = ({ orderId, onVerified }) => {
     try {
       const res = await requestOtp(orderId, selected);
       setChannel(selected);
-      setMasked(res.masked);
       setCooldown(res.cooldownSec ?? 30);
       setStep('code');
       setCode('');
-      toast.success(`OTP sent to ${res.masked}`);
     } catch (err) {
       const code = err instanceof ReturnsApiError ? err.code : 'UNKNOWN';
       toast.error(
@@ -169,7 +165,7 @@ const OtpModal: React.FC<OtpModalProps> = ({ orderId, onVerified }) => {
                 <p className="mt-1 text-sm text-muted-foreground">
                   {step === 'channel'
                     ? 'To protect your order, choose where we should send a one-time code.'
-                    : `Enter the 6-digit code we sent to ${masked}.`}
+                    : 'If this order has a contact on file, a code has been sent. Enter the 6-digit code.'}
                 </p>
 
                 {step === 'channel' ? (

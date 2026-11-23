@@ -30,13 +30,12 @@ import CancelOrderModal from '@/components/returns/cancel-order-modal';
 import CancelReturnModal from '@/components/returns/cancel-return-modal';
 import ReturnDetailSlideOver from '@/components/returns/return-detail-slide-over';
 import OrderDetailSlideOver from '@/components/returns/order-detail-slide-over';
-import InvoiceOtpModal, {
-  type InvoicePurpose,
-} from '@/components/returns/invoice-otp-modal';
 import {
   adoptLinkToken,
+  fetchTaxDocumentPdf,
   getTrackingHub,
   payExchangeDiff,
+  resendTaxDocuments,
   ReturnsApiError,
   verifyExchangeDiffPayment,
 } from '@/lib/returns-api';
@@ -50,6 +49,29 @@ import { useRazorpay } from '@/hooks/use-razorpay';
 
 /** sessionStorage key the review screen uses to hand off fallback notices. */
 const FALLBACK_NOTICE_KEY = 'return-submit-fallback';
+
+/** Drops `token` from the address bar, keeping the other query params. */
+function stripTokenFromUrl() {
+  const url = new URL(window.location.href);
+  url.searchParams.delete('token');
+  window.history.replaceState(
+    window.history.state,
+    '',
+    `${url.pathname}${url.search}${url.hash}`
+  );
+}
+
+/** Saves a PDF blob through a temporary download link. */
+function saveBlob(blob: Blob, label: string) {
+  const href = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = href;
+  a.download = `${label.replace(/[^\w.-]+/g, '_')}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(href);
+}
 
 interface FallbackNotice {
   productName: string;
@@ -89,12 +111,9 @@ function OrderHubInner({ orderId }: OrderHubClientProps) {
     null
   );
   const [fallbackNotices, setFallbackNotices] = useState<FallbackNotice[]>([]);
-  const [invoiceModal, setInvoiceModal] = useState<{
-    open: boolean;
-    purpose: InvoicePurpose;
-  }>({ open: false, purpose: 'INVOICE_DOWNLOAD' });
+  const [linkInvalid, setLinkInvalid] = useState(false);
 
-  const adoptedRef = useRef(false);
+  const adoptionRef = useRef<Promise<void> | null>(null);
   const justHandledRef = useRef(false);
   // Action to resume after a successful OTP step-up.
   const pendingResume = useRef<(() => void) | null>(null);
@@ -124,30 +143,27 @@ function OrderHubInner({ orderId }: OrderHubClientProps) {
     setOrderId(orderId);
   }, [orderId, setOrderId]);
 
-  // Adopt a magic-link token (once), then strip it from the URL and load.
+  // Adopt a magic-link token (once), strip it from the URL, then load the hub.
   useEffect(() => {
     const controller = new AbortController();
-    const token = searchParams.get('token');
+
+    const adopt = async (token: string) => {
+      try {
+        const res = await adoptLinkToken(orderId, token);
+        setCookieCapabilities(res.capabilities, res.expiresAt);
+        setFromMagicLink(true);
+      } catch {
+        setLinkInvalid(true);
+      } finally {
+        stripTokenFromUrl();
+      }
+    };
 
     const run = async () => {
-      if (token && !adoptedRef.current) {
-        adoptedRef.current = true;
-        try {
-          const res = await adoptLinkToken(orderId, token);
-          setCookieCapabilities(res.capabilities, res.expiresAt);
-          setFromMagicLink(true);
-        } catch {
-          // Invalid/expired token: fall through; hub will show whatever the
-          // (possibly anonymous) session can see.
-        } finally {
-          const params = new URLSearchParams(searchParams.toString());
-          params.delete('token');
-          const qs = params.toString();
-          router.replace(`/orders/${orderId}${qs ? `?${qs}` : ''}`, {
-            scroll: false,
-          });
-        }
-      }
+      const token = searchParams.get('token');
+      // Shared across the dev double-mount so the exchange only happens once.
+      if (token && !adoptionRef.current) adoptionRef.current = adopt(token);
+      await adoptionRef.current;
       await loadHub(controller.signal);
     };
 
@@ -289,10 +305,41 @@ function OrderHubInner({ orderId }: OrderHubClientProps) {
     (invoice: HubInvoice) => {
       if (!invoice.url) return;
       const url = invoice.url;
-      guard('INVOICE', () => window.open(url, '_blank', 'noopener,noreferrer'));
+      guard('INVOICE', async () => {
+        try {
+          saveBlob(await fetchTaxDocumentPdf(url), invoice.label);
+        } catch {
+          toast.error('Couldn’t download the invoice. Please try again.');
+        }
+      });
     },
     [guard]
   );
+
+  // Invoice links are absent until the session holds INVOICE capability.
+  const handleUnlockInvoices = useCallback(() => {
+    guard('INVOICE', () => void loadHub());
+  }, [guard, loadHub]);
+
+  const handleEmailInvoice = useCallback(() => {
+    guard('INVOICE', async () => {
+      try {
+        await resendTaxDocuments(orderId);
+        toast.success(
+          'If this order has an email on file, the invoice has been sent.'
+        );
+      } catch {
+        toast.error('Couldn’t send the invoice. Please try again.');
+      }
+    });
+  }, [guard, orderId]);
+
+  const handleVerifyAfterInvalidLink = useCallback(() => {
+    guard('INVOICE', () => {
+      setLinkInvalid(false);
+      void loadHub();
+    });
+  }, [guard, loadHub]);
 
   const handlePayDifference = useCallback(
     (returnNumber: string) => {
@@ -386,6 +433,24 @@ function OrderHubInner({ orderId }: OrderHubClientProps) {
     <>
       <Container>
         <div className="mx-auto max-w-3xl space-y-6 py-6">
+          {linkInvalid && (
+            <div
+              role="alert"
+              className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"
+            >
+              <p className="font-semibold">Link expired or invalid</p>
+              <p className="mt-1">
+                Verify with a one-time code to access your order.
+              </p>
+              <button
+                type="button"
+                onClick={handleVerifyAfterInvalidLink}
+                className="mt-3 rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground"
+              >
+                Verify with a code
+              </button>
+            </div>
+          )}
           {fallbackNotices.length > 0 && (
             <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
               <div className="flex gap-2">
@@ -418,12 +483,8 @@ function OrderHubInner({ orderId }: OrderHubClientProps) {
             onViewDetails={handleViewDetails}
             onStartReturn={handleStartReturn}
             onDownloadInvoice={handleDownloadInvoice}
-            onInvoiceDownload={() =>
-              setInvoiceModal({ open: true, purpose: 'INVOICE_DOWNLOAD' })
-            }
-            onInvoiceEmail={() =>
-              setInvoiceModal({ open: true, purpose: 'INVOICE_EMAIL' })
-            }
+            onUnlockInvoices={handleUnlockInvoices}
+            onInvoiceEmail={handleEmailInvoice}
           />
 
           {/* Items */}
@@ -509,12 +570,6 @@ function OrderHubInner({ orderId }: OrderHubClientProps) {
           setOrderDetailOpen(false);
           handleCancelOrder();
         }}
-      />
-      <InvoiceOtpModal
-        orderId={orderId}
-        purpose={invoiceModal.purpose}
-        open={invoiceModal.open}
-        onClose={() => setInvoiceModal((s) => ({ ...s, open: false }))}
       />
     </>
   );
