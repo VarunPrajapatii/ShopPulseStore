@@ -37,8 +37,7 @@ import {
   type UploadErrorBody,
 } from '@/lib/uploads/shared/upload-error-codes';
 import type { UploadPurposeKey } from '@/lib/uploads/shared/upload-purpose-keys';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? '';
+import { getOrderSessionApiUrl } from '@/lib/api-base';
 
 const AUTH_ERROR_CODES = new Set([
   'AUTH_REQUIRED',
@@ -135,9 +134,9 @@ export function useReturnUploadSession({
   purpose,
   scopeId,
 }: UseReturnUploadSessionOptions) {
-  const [progress, setProgress] = useState<
-    Record<string, UploadProgressEntry>
-  >({});
+  const [progress, setProgress] = useState<Record<string, UploadProgressEntry>>(
+    {}
+  );
 
   // Built per mount: a disposed controller is dead for good, and StrictMode
   // re-runs effects on the same render.
@@ -145,7 +144,7 @@ export function useReturnUploadSession({
   useEffect(() => {
     const controller = new UploadSessionController({
       transport: createUploadSessionTransport({
-        baseUrl: `${API_URL}/order/${orderId}/upload-sessions`,
+        baseUrl: getOrderSessionApiUrl(`/order/${orderId}/upload-sessions`),
         credentials: 'include',
       }),
       purpose,

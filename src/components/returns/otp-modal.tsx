@@ -164,8 +164,8 @@ const OtpModal: React.FC<OtpModalProps> = ({ orderId, onVerified }) => {
                 </Dialog.Title>
                 <p className="mt-1 text-sm text-muted-foreground">
                   {step === 'channel'
-                    ? 'To protect your order, choose where we should send a one-time code.'
-                    : 'If this order has a contact on file, a code has been sent. Enter the 6-digit code.'}
+                    ? 'To protect your order, choose how we should try to send a one-time code.'
+                    : "We've sent a code to the phone or email on this order. Enter the 6-digit code."}
                 </p>
 
                 {step === 'channel' ? (
@@ -182,7 +182,7 @@ const OtpModal: React.FC<OtpModalProps> = ({ orderId, onVerified }) => {
                           Text me an OTP
                         </span>
                         <span className="block text-xs text-muted-foreground">
-                          Sent to the phone on this order
+                          Try the contact methods on this order
                         </span>
                       </span>
                       {submitting && (
@@ -202,7 +202,7 @@ const OtpModal: React.FC<OtpModalProps> = ({ orderId, onVerified }) => {
                           Email me an OTP
                         </span>
                         <span className="block text-xs text-muted-foreground">
-                          Sent to the email on this order
+                          Try the contact methods on this order
                         </span>
                       </span>
                       {submitting && (

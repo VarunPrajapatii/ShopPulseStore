@@ -39,7 +39,7 @@ import type {
   VerifyOtpResponse,
 } from '@/lib/returns-types';
 import { isUploadErrorBody } from '@/lib/uploads/shared/upload-error-codes';
-import { API_URL } from '@/lib/api-base';
+import { API_URL, getOrderSessionApiUrl } from '@/lib/api-base';
 
 /** Thrown for any non-2xx response or transport failure. */
 export class ReturnsApiError extends Error {
@@ -85,9 +85,14 @@ interface RequestOptions {
   headers?: Record<string, string>;
   signal?: AbortSignal;
   credentials?: RequestCredentials;
+  useOrderSessionProxy?: boolean;
 }
 
-function buildUrl(path: string, query?: RequestOptions['query']): string {
+function buildUrl(
+  path: string,
+  query?: RequestOptions['query'],
+  useOrderSessionProxy = true
+): string {
   if (!API_URL) {
     throw new ReturnsApiError({
       status: 0,
@@ -95,7 +100,10 @@ function buildUrl(path: string, query?: RequestOptions['query']): string {
       message: 'NEXT_PUBLIC_API_URL is not configured',
     });
   }
-  const url = new URL(`${API_URL}${path}`);
+  const url = new URL(
+    useOrderSessionProxy ? getOrderSessionApiUrl(path) : `${API_URL}${path}`,
+    'http://storefront.local'
+  );
   if (query) {
     for (const [key, value] of Object.entries(query)) {
       if (value !== null && value !== undefined && value !== '') {
@@ -103,7 +111,7 @@ function buildUrl(path: string, query?: RequestOptions['query']): string {
       }
     }
   }
-  return url.toString();
+  return useOrderSessionProxy ? `${url.pathname}${url.search}` : url.toString();
 }
 
 async function request<T>(
@@ -117,11 +125,12 @@ async function request<T>(
     headers,
     signal,
     credentials = 'include',
+    useOrderSessionProxy = true,
   } = options;
 
   let res: Response;
   try {
-    res = await fetch(buildUrl(path, query), {
+    res = await fetch(buildUrl(path, query, useOrderSessionProxy), {
       method,
       credentials, // 'include' carries the HttpOnly order_session_token cookie
       cache: 'no-store',
@@ -446,6 +455,7 @@ export function verifyExchangeDiffPayment(
 export function getProductVariants(productId: string, signal?: AbortSignal) {
   return request<ProductVariantsResponse>(`/products/${productId}/variants`, {
     signal,
+    useOrderSessionProxy: false,
   });
 }
 
@@ -457,7 +467,10 @@ export function getProductVariants(productId: string, signal?: AbortSignal) {
 export async function fetchTaxDocumentPdf(url: string): Promise<Blob> {
   let res: Response;
   try {
-    res = await fetch(url, { credentials: 'include', cache: 'no-store' });
+    res = await fetch(getOrderSessionApiUrl(url), {
+      credentials: 'include',
+      cache: 'no-store',
+    });
   } catch (err) {
     throw new ReturnsApiError({
       status: 0,
