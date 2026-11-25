@@ -89,6 +89,41 @@ export type RefundTargetType = 'ORIGINAL' | 'UPI' | 'BANK';
 
 export type CodRefundMethod = 'MANUAL_UPI' | 'MANUAL_BANK' | 'CHOICE';
 
+export type PaymentStatus =
+  | 'PENDING'
+  | 'PROCESSING'
+  | 'SUCCESS'
+  | 'FAILED'
+  | 'REFUNDED';
+
+export type OrderPaymentState =
+  | 'PENDING'
+  | 'CONFIRMING'
+  | 'PAID'
+  | 'PAY_ON_DELIVERY'
+  | 'FAILED'
+  | 'REFUNDED';
+
+export type ShipmentStatus =
+  | 'PENDING'
+  | 'BOOKED'
+  | 'MANIFESTED'
+  | 'PICKUP_QUEUED'
+  | 'PICKUP_SCHEDULED'
+  | 'PICKUP_FAILED'
+  | 'PICKED_UP'
+  | 'IN_TRANSIT'
+  | 'OUT_FOR_DELIVERY'
+  | 'DELIVERED'
+  | 'DELIVERY_FAILED'
+  | 'RTO_INITIATED'
+  | 'RTO_IN_TRANSIT'
+  | 'RTO_DELIVERED'
+  | 'CANCELLATION_PENDING'
+  | 'CANCELLED'
+  | 'LOST'
+  | (string & {});
+
 /** Standard error envelope returned on any non-2xx. */
 export interface ApiError {
   ok: false;
@@ -116,19 +151,26 @@ export interface HubOrder {
   id: string;
   orderNumber: string | null; // null means render a short order id
   orderStatus: OrderStatus;
-  paymentMethod: string | null;
+  paymentMethod: 'PREPAID' | 'COD' | null;
   placedAt: string;
-  shippedAt: string | null; // null means derive the current step from status
+  shippedAt: string | null;
   deliveredAt: string | null;
   subtotalInr: string;
   shippingInr: string;
-  couponInr: string; // v1: "0.00" → hide line when zero
+  codChargeInr: string;
+  taxInr: string;
+  discountInr: string;
+  couponInr: string | null;
   paidInr: string;
   isPaid: boolean;
+  paymentStatus: PaymentStatus | null;
+  paymentState: OrderPaymentState;
+  paidAt: string | null;
   cancelledAt: string | null;
   cancellationRequestedAt: string | null;
-  canCancel: boolean; // render Cancel CTA off THIS, never re-derive
+  canCancel: boolean;
   shippingAddress: HubAddress;
+  invoiceNumber: string | null;
 }
 
 export interface WindowInfo {
@@ -158,6 +200,39 @@ export interface HubItem {
   blockedReasons: string[];
 }
 
+export interface HubShipment {
+  courierName: string | null;
+  awb: string | null;
+  trackingUrl: string | null;
+  status: ShipmentStatus;
+  items: Array<{
+    productId: string | null;
+    productName: string;
+    variantLabel: string | null;
+    quantity: number;
+  }>;
+}
+
+export type HubOrderTimelineKey =
+  | 'ORDER_PLACED'
+  | 'PAYMENT_CONFIRMED'
+  | 'PROCESSING'
+  | 'SHIPPED'
+  | 'IN_TRANSIT'
+  | 'OUT_FOR_DELIVERY'
+  | 'DELIVERED'
+  | 'PAYMENT_FAILED'
+  | 'DELIVERY_FAILED'
+  | 'CANCELLED'
+  | 'REFUNDED';
+
+export interface HubOrderTimelineEntry {
+  key: HubOrderTimelineKey;
+  label: string;
+  timestamp: string | null;
+  state: 'done' | 'current' | 'upcoming' | 'failed';
+}
+
 export interface PickupBundle {
   bundleNumber: string;
   courier: string | null;
@@ -174,7 +249,6 @@ export interface TimelineEntry {
 
 export interface PendingPayment {
   amountInr: string;
-  razorpayOrderId: string | null;
   ageMinutes: number;
 }
 
@@ -221,8 +295,10 @@ export interface TrackingHubResponse {
   ok: true;
   order: HubOrder;
   items: HubItem[];
+  shipments: HubShipment[];
+  timeline: HubOrderTimelineEntry[];
   returns: HubReturn[];
-  chain: { ancestors: unknown[]; descendants: unknown[] }; // v1: always empty
+  chain: { ancestors: unknown[]; descendants: unknown[] };
   invoices: HubInvoice[];
   meta: HubMeta;
 }
@@ -527,7 +603,9 @@ export interface Settlement {
   reverseShippingFeeChargedInr: string;
   reverseShippingFeeFromRefundInr: string;
   diffPayableInr: string;
+  /** Gross estimated refund, before reverse-shipping recovery. */
   refundDueInr: string;
+  /** Net estimated refund, after reverse-shipping recovery, floored at zero. */
   estimatedRefundTotalInr: string;
   razorpayOrderId: string | null;
   keyId: string | null; // prefer over env

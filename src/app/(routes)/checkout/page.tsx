@@ -39,6 +39,7 @@ import {
   requestCheckoutOtp,
   verifyCheckoutOtp,
 } from '@/lib/checkout-otp-api';
+import { getOrderSessionApiUrl } from '@/lib/api-base';
 
 // Declare Razorpay type for TypeScript
 declare global {
@@ -109,12 +110,13 @@ const verifyWithRetry = async (razorpayResponse: RazorpayResponse) => {
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
       return await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL}/checkout/verify`,
+        getOrderSessionApiUrl('/checkout/verify'),
         {
           razorpay_order_id: razorpayResponse.razorpay_order_id,
           razorpay_payment_id: razorpayResponse.razorpay_payment_id,
           razorpay_signature: razorpayResponse.razorpay_signature,
-        }
+        },
+        { withCredentials: true }
       );
     } catch (error) {
       const isClientRejection =
@@ -345,11 +347,6 @@ const CheckoutPage = () => {
           ? 'verification'
           : 'address';
 
-  // Success page ka JS pehle se load rakho, navigation instant lagega
-  useEffect(() => {
-    router.prefetch('/order-success');
-  }, [router]);
-
   // Order complete: pehle overlay ON, phir cart clear, phir navigate
   const finalizeOrder = (
     orderId: string,
@@ -370,7 +367,7 @@ const CheckoutPage = () => {
     );
     clearShippingData();
     // replace => Back dabane pe user checkout pe wapas nahi aayega
-    router.replace(`/order-success?orderId=${encodeURIComponent(orderId)}`);
+    router.replace(`/orders/${encodeURIComponent(orderId)}?placed=1`);
   };
 
   // Known checkout error codes from the backend. Returns true when handled.
@@ -442,9 +439,9 @@ const CheckoutPage = () => {
       return true;
     }
     if (code === 'PREVIOUS_PAYMENT_PENDING' && orderId) {
-      // Cart stays as is; the success page polls the earlier order.
+      // Cart stays as is; the unified page polls the earlier order.
       toast('Your earlier payment is being confirmed');
-      router.replace(`/order-success?orderId=${encodeURIComponent(orderId)}`);
+      router.replace(`/orders/${encodeURIComponent(orderId)}?placed=1`);
       return true;
     }
     if (code === 'CHECKOUT_TEMPORARILY_UNAVAILABLE') {
@@ -720,10 +717,10 @@ const CheckoutPage = () => {
       const idempotencyKey = `${checkoutCartId}:${checkoutCartRevision}`;
 
       const response = await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL}/checkout`,
-
+        getOrderSessionApiUrl('/checkout'),
         payload,
         {
+          withCredentials: true,
           headers: {
             'Content-Type': 'application/json',
             'X-Idempotency-Key': idempotencyKey,
@@ -809,7 +806,7 @@ const CheckoutPage = () => {
             }
 
             // Network/5xx: paisa kat chuka ho sakta hai. Error mat dikhao,
-            // order-success page status poll karega (webhook safety net hai).
+            // unified order page status poll karega (webhook safety net hai).
             toast('We are confirming your payment. Please wait…');
             // Success page clears these lines once it sees the payment confirmed
             try {
@@ -830,9 +827,7 @@ const CheckoutPage = () => {
             }
             finalizingRef.current = true;
             setPhase('redirecting');
-            router.replace(
-              `/order-success?orderId=${encodeURIComponent(orderId)}`
-            );
+            router.replace(`/orders/${encodeURIComponent(orderId)}?placed=1`);
           }
         },
         modal: {
@@ -1049,9 +1044,10 @@ const CheckoutPage = () => {
 
       // Call the checkout endpoint with paymentMethod: 'COD'
       const response = await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL}/checkout`,
+        getOrderSessionApiUrl('/checkout'),
         payload,
         {
+          withCredentials: true,
           headers: {
             'Content-Type': 'application/json',
             'X-Idempotency-Key': idempotencyKey,

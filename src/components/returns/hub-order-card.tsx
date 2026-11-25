@@ -18,8 +18,8 @@ import {
   MapPin,
   PanelRightOpen,
 } from 'lucide-react';
-import Currency from '@/components/ui/currency';
 import StatusBadge from '@/components/returns/status-badge';
+import OrderPriceBreakdown from '@/components/returns/order-price-breakdown';
 import type { HubInvoice, HubOrder } from '@/lib/returns-types';
 
 interface HubOrderCardProps {
@@ -61,7 +61,18 @@ const HubOrderCard: React.FC<HubOrderCardProps> = ({
   const downloadableInvoices = invoices.filter((inv) => inv.url);
   const hasSaleInvoice = invoices.some((inv) => inv.kind === 'ORDER');
   const placedOn = formatDate(order.placedAt);
-  const hasCoupon = Number(order.couponInr) > 0;
+  const paymentLabel =
+    order.paymentState === 'PAY_ON_DELIVERY'
+      ? 'Pay on delivery'
+      : order.paymentState === 'CONFIRMING'
+        ? 'Payment confirming'
+        : order.paymentState === 'PAID'
+          ? 'Payment confirmed'
+          : order.paymentState === 'FAILED'
+            ? 'Payment failed'
+            : order.paymentState === 'REFUNDED'
+              ? 'Payment refunded'
+              : 'Payment pending';
   const addr = order.shippingAddress;
 
   return (
@@ -79,51 +90,22 @@ const HubOrderCard: React.FC<HubOrderCardProps> = ({
               Placed on {placedOn}
             </p>
           )}
+          <p className="mt-1 text-xs text-muted-foreground">
+            {order.paymentMethod === 'COD' ? 'Cash on delivery' : 'Prepaid'} ·{' '}
+            {paymentLabel}
+          </p>
+          {order.invoiceNumber && (
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Invoice {order.invoiceNumber}
+            </p>
+          )}
         </div>
         <StatusBadge status={order.orderStatus} />
       </div>
 
-      {/* Money breakdown */}
-      <dl className="mt-5 space-y-1.5 border-t border-border pt-4 text-sm">
-        <div className="flex items-center justify-between">
-          <dt className="text-muted-foreground">Subtotal</dt>
-          <dd>
-            <Currency
-              amount={order.subtotalInr}
-              className="text-sm font-medium"
-            />
-          </dd>
-        </div>
-        <div className="flex items-center justify-between">
-          <dt className="text-muted-foreground">Shipping</dt>
-          <dd>
-            <Currency
-              amount={order.shippingInr}
-              className="text-sm font-medium"
-            />
-          </dd>
-        </div>
-        {hasCoupon && (
-          <div className="flex items-center justify-between text-green-700">
-            <dt>Coupon discount</dt>
-            <dd className="text-sm font-medium">
-              −
-              <Currency
-                amount={order.couponInr}
-                className="text-sm font-medium text-green-700"
-              />
-            </dd>
-          </div>
-        )}
-        <div className="flex items-center justify-between border-t border-border pt-2">
-          <dt className="font-semibold text-foreground">
-            {order.isPaid ? 'Paid' : 'Amount'}
-          </dt>
-          <dd>
-            <Currency amount={order.paidInr} className="text-base" />
-          </dd>
-        </div>
-      </dl>
+      <div className="mt-5 border-t border-border pt-4">
+        <OrderPriceBreakdown order={order} />
+      </div>
 
       {/* Shipping address */}
       {(addr.line1 || addr.city) && (

@@ -21,11 +21,16 @@ const TONE_CLASSES: Record<Tone, string> = {
 const STATUS_TONE: Record<string, Tone> = {
   // order
   PENDING: 'warning',
+  PAYMENT_INITIATED: 'progress',
+  PAID: 'success',
   CONFIRMED: 'info',
   PROCESSING: 'progress',
+  READY_TO_SHIP: 'info',
   SHIPPED: 'progress',
+  IN_TRANSIT: 'progress',
   OUT_FOR_DELIVERY: 'progress',
   DELIVERED: 'success',
+  EXPIRED: 'danger',
   CANCELLED: 'danger',
   CANCELLATION_PENDING: 'warning',
   REFUNDED: 'neutral',

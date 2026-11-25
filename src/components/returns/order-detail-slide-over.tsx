@@ -15,16 +15,12 @@ import { ImageOff, MapPin, X, XCircle } from 'lucide-react';
 import IconButton from '@/components/ui/icon-button';
 import Currency from '@/components/ui/currency';
 import StatusBadge from '@/components/returns/status-badge';
-import TaxBreakdownCard from '@/components/order/tax-breakdown-card';
+import OrderPriceBreakdown from '@/components/returns/order-price-breakdown';
 import type { HubItem, HubOrder } from '@/lib/returns-types';
-import type { OrderItem } from '@/actions/get-order-details';
 
 interface OrderDetailSlideOverProps {
   order: HubOrder | null;
   items: HubItem[];
-  /** Full OrderItem list with GST/tax snapshot fields. Optional — when absent
-   * the TaxBreakdownCard self-guards and renders nothing. */
-  orderItems?: OrderItem[];
   open: boolean;
   onClose: () => void;
   onCancel: () => void;
@@ -44,14 +40,24 @@ function formatDate(iso: string | null): string | null {
 const OrderDetailSlideOver: React.FC<OrderDetailSlideOverProps> = ({
   order,
   items,
-  orderItems = [],
   open,
   onClose,
   onCancel,
 }) => {
-  const hasCoupon = order ? Number(order.couponInr) > 0 : false;
   const addr = order?.shippingAddress;
   const placedOn = order ? formatDate(order.placedAt) : null;
+  const paymentLabel =
+    order?.paymentState === 'PAY_ON_DELIVERY'
+      ? 'Pay on delivery'
+      : order?.paymentState === 'CONFIRMING'
+        ? 'Payment confirming'
+        : order?.paymentState === 'PAID'
+          ? 'Payment confirmed'
+          : order?.paymentState === 'FAILED'
+            ? 'Payment failed'
+            : order?.paymentState === 'REFUNDED'
+              ? 'Payment refunded'
+              : 'Payment pending';
 
   return (
     <Transition show={open} appear as={Fragment}>
@@ -100,6 +106,17 @@ const OrderDetailSlideOver: React.FC<OrderDetailSlideOverProps> = ({
                         {placedOn && (
                           <p className="text-xs text-muted-foreground">
                             Placed on {placedOn}
+                          </p>
+                        )}
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {order.paymentMethod === 'COD'
+                            ? 'Cash on delivery'
+                            : 'Prepaid'}{' '}
+                          · {paymentLabel}
+                        </p>
+                        {order.invoiceNumber && (
+                          <p className="mt-0.5 text-xs text-muted-foreground">
+                            Invoice {order.invoiceNumber}
                           </p>
                         )}
                       </div>
@@ -187,60 +204,9 @@ const OrderDetailSlideOver: React.FC<OrderDetailSlideOverProps> = ({
                       </div>
                     )}
 
-                    {/* Money */}
-                    <dl className="mt-5 space-y-1.5 border-t border-border pt-4 text-sm">
-                      <div className="flex items-center justify-between">
-                        <dt className="text-muted-foreground">Subtotal</dt>
-                        <dd>
-                          <Currency
-                            amount={order.subtotalInr}
-                            className="text-sm font-medium"
-                          />
-                        </dd>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <dt className="text-muted-foreground">Shipping</dt>
-                        <dd>
-                          <Currency
-                            amount={order.shippingInr}
-                            className="text-sm font-medium"
-                          />
-                        </dd>
-                      </div>
-                      {hasCoupon && (
-                        <div className="flex items-center justify-between text-green-700">
-                          <dt>Coupon discount</dt>
-                          <dd className="text-sm font-medium">
-                            −
-                            <Currency
-                              amount={order.couponInr}
-                              className="text-sm font-medium text-green-700"
-                            />
-                          </dd>
-                        </div>
-                      )}
-                      <div className="flex items-center justify-between border-t border-border pt-2">
-                        <dt className="font-semibold text-foreground">
-                          {order.isPaid ? 'Paid' : 'Amount'}
-                        </dt>
-                        <dd>
-                          <Currency
-                            amount={order.paidInr}
-                            className="text-base"
-                          />
-                        </dd>
-                      </div>
-                    </dl>
-
-                    {/* Tax breakdown — only renders when orderItems carry GST snapshot data */}
-                    {orderItems.length > 0 && (
-                      <div className="mt-5">
-                        <TaxBreakdownCard
-                          items={orderItems}
-                          placeOfSupply={null}
-                        />
-                      </div>
-                    )}
+                    <div className="mt-5 border-t border-border pt-4">
+                      <OrderPriceBreakdown order={order} />
+                    </div>
                   </div>
                 ) : (
                   <div className="flex-1" />

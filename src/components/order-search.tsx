@@ -12,7 +12,8 @@ const OrderSearch = () => {
   const containerRef = useRef<HTMLDivElement>(null);
 
   // UUID v4 regex pattern
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  const uuidRegex =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
   const isValidUUID = (id: string): boolean => {
     return uuidRegex.test(id);
@@ -21,7 +22,10 @@ const OrderSearch = () => {
   // Handle click outside to close the popup
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
         setIsOpen(false);
         setOrderId('');
       }
@@ -32,7 +36,7 @@ const OrderSearch = () => {
       const timeoutId = setTimeout(() => {
         document.addEventListener('mousedown', handleClickOutside);
       }, 0);
-      
+
       return () => {
         clearTimeout(timeoutId);
         document.removeEventListener('mousedown', handleClickOutside);
@@ -43,7 +47,7 @@ const OrderSearch = () => {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (orderId.trim() && isValidUUID(orderId.trim())) {
-      router.push(`/order-success?orderId=${orderId.trim()}`);
+      router.push(`/orders/${orderId.trim()}`);
       setOrderId('');
       setIsOpen(false);
     }
@@ -74,7 +78,10 @@ const OrderSearch = () => {
         className="group p-2 rounded-full hover:bg-foreground/5 transition-all duration-300"
         aria-label="Track Order"
       >
-        <Search className="h-[18px] w-[18px] text-foreground/70 group-hover:text-foreground transition-colors duration-300" strokeWidth={1.5} />
+        <Search
+          className="h-[18px] w-[18px] text-foreground/70 group-hover:text-foreground transition-colors duration-300"
+          strokeWidth={1.5}
+        />
       </button>
 
       {/* Search Overlay/Modal */}
@@ -89,17 +96,21 @@ const OrderSearch = () => {
           {/* Search Bar */}
           <div
             className={cn(
-              "fixed md:absolute top-16 md:top-full right-0 md:right-0 left-0 md:left-auto z-50",
-              "bg-background md:rounded-xl shadow-2xl md:shadow-[0_8px_40px_-12px_rgba(0,0,0,0.15)]",
-              "p-5 md:p-4 md:mt-3 md:w-[380px]",
-              "border border-border/50",
-              "transition-all duration-300 ease-out",
-              isOpen ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2 pointer-events-none"
+              'fixed md:absolute top-16 md:top-full right-0 md:right-0 left-0 md:left-auto z-50',
+              'bg-background md:rounded-xl shadow-2xl md:shadow-[0_8px_40px_-12px_rgba(0,0,0,0.15)]',
+              'p-5 md:p-4 md:mt-3 md:w-[380px]',
+              'border border-border/50',
+              'transition-all duration-300 ease-out',
+              isOpen
+                ? 'opacity-100 translate-y-0'
+                : 'opacity-0 -translate-y-2 pointer-events-none'
             )}
           >
             <form onSubmit={handleSearch} className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-medium tracking-wide text-foreground">Track Your Order</h3>
+                <h3 className="text-sm font-medium tracking-wide text-foreground">
+                  Track Your Order
+                </h3>
                 <button
                   type="button"
                   onClick={toggleSearch}
@@ -116,13 +127,13 @@ const OrderSearch = () => {
                   onChange={handleInputChange}
                   placeholder="Enter your Order ID"
                   className={cn(
-                    "w-full px-4 py-3 pr-10 rounded-lg border transition-all duration-200",
-                    "bg-foreground/[0.02] text-foreground placeholder:text-muted-foreground/60",
-                    "focus:outline-none focus:ring-2 focus:ring-offset-0",
-                    "text-sm",
+                    'w-full px-4 py-3 pr-10 rounded-lg border transition-all duration-200',
+                    'bg-foreground/[0.02] text-foreground placeholder:text-muted-foreground/60',
+                    'focus:outline-none focus:ring-2 focus:ring-offset-0',
+                    'text-sm',
                     orderId && !isValidInput
-                      ? "border-destructive/50 focus:border-destructive focus:ring-destructive/20"
-                      : "border-border focus:border-foreground/30 focus:ring-foreground/10"
+                      ? 'border-destructive/50 focus:border-destructive focus:ring-destructive/20'
+                      : 'border-border focus:border-foreground/30 focus:ring-foreground/10'
                   )}
                 />
                 {orderId && (
@@ -139,7 +150,9 @@ const OrderSearch = () => {
               {orderId && !isValidInput && (
                 <p className="text-xs text-destructive flex items-center gap-1.5">
                   <span className="font-medium">Invalid Order ID format</span>
-                  <span className="text-muted-foreground">• Use the ID from your order confirmation</span>
+                  <span className="text-muted-foreground">
+                    • Use the ID from your order confirmation
+                  </span>
                 </p>
               )}
 
@@ -147,11 +160,11 @@ const OrderSearch = () => {
                 type="submit"
                 disabled={!isValidInput}
                 className={cn(
-                  "w-full py-2.5 rounded-lg font-medium text-sm tracking-wide transition-all duration-300",
-                  "flex items-center justify-center gap-2",
+                  'w-full py-2.5 rounded-lg font-medium text-sm tracking-wide transition-all duration-300',
+                  'flex items-center justify-center gap-2',
                   isValidInput
-                    ? "bg-foreground text-background hover:bg-foreground/90 active:scale-[0.98]"
-                    : "bg-muted text-muted-foreground cursor-not-allowed"
+                    ? 'bg-foreground text-background hover:bg-foreground/90 active:scale-[0.98]'
+                    : 'bg-muted text-muted-foreground cursor-not-allowed'
                 )}
               >
                 <Search className="h-4 w-4" />

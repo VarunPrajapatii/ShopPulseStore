@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   title: 'Track your order',
   description: 'Track your order, request a return, exchange, or replacement.',
   robots: { index: false, follow: false },
-  // The email link carries a one-time token in the URL; never leak it via Referer.
+  // Keep reusable access-link tokens out of the Referer header.
   referrer: 'no-referrer',
 };
 

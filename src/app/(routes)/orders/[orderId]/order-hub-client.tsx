@@ -25,6 +25,10 @@ import Container from '@/components/ui/container';
 import HubOrderCard from '@/components/returns/hub-order-card';
 import HubItemCard from '@/components/returns/hub-item-card';
 import HubReturnCard from '@/components/returns/hub-return-card';
+import HubOrderTimeline from '@/components/returns/hub-order-timeline';
+import HubShipmentList from '@/components/returns/hub-shipment-list';
+import OrderAccessCard from '@/components/returns/order-access-card';
+import OrderPlacedBanner from '@/components/returns/order-placed-banner';
 import OtpModal from '@/components/returns/otp-modal';
 import CancelOrderModal from '@/components/returns/cancel-order-modal';
 import CancelReturnModal from '@/components/returns/cancel-return-modal';
@@ -46,9 +50,15 @@ import type {
 } from '@/lib/returns-types';
 import useOrderSession from '@/hooks/use-order-session';
 import { useRazorpay } from '@/hooks/use-razorpay';
+import useCart, {
+  PENDING_CART_CLEAR_PREFIX,
+  type CartOrderedLine,
+} from '@/hooks/use-cart';
 
 /** sessionStorage key the review screen uses to hand off fallback notices. */
 const FALLBACK_NOTICE_KEY = 'return-submit-fallback';
+const PAYMENT_POLL_INTERVAL_MS = 3000;
+const MAX_PAYMENT_POLL_ATTEMPTS = 15;
 
 /** Drops `token` from the address bar, keeping the other query params. */
 function stripTokenFromUrl() {
@@ -112,6 +122,9 @@ function OrderHubInner({ orderId }: OrderHubClientProps) {
   );
   const [fallbackNotices, setFallbackNotices] = useState<FallbackNotice[]>([]);
   const [linkInvalid, setLinkInvalid] = useState(false);
+  const [showPlacedBanner] = useState(
+    () => searchParams.get('placed') === '1'
+  );
 
   const adoptionRef = useRef<Promise<void> | null>(null);
   const justHandledRef = useRef(false);
@@ -119,9 +132,11 @@ function OrderHubInner({ orderId }: OrderHubClientProps) {
   const pendingResume = useRef<(() => void) | null>(null);
 
   const loadHub = useCallback(
-    async (signal?: AbortSignal) => {
-      setStatus('loading');
-      setErrorCode(null);
+    async (signal?: AbortSignal, silent = false) => {
+      if (!silent) {
+        setStatus('loading');
+        setErrorCode(null);
+      }
       try {
         const data = await getTrackingHub(orderId, signal);
         setHub(data);
@@ -130,8 +145,10 @@ function OrderHubInner({ orderId }: OrderHubClientProps) {
         return data;
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') return;
-        setErrorCode(err instanceof ReturnsApiError ? err.code : 'UNKNOWN');
-        setStatus('error');
+        if (!silent) {
+          setErrorCode(err instanceof ReturnsApiError ? err.code : 'UNKNOWN');
+          setStatus('error');
+        }
         return null;
       }
     },
@@ -171,6 +188,66 @@ function OrderHubInner({ orderId }: OrderHubClientProps) {
     return () => controller.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderId]);
+
+  useEffect(() => {
+    if (!showPlacedBanner) return;
+    const url = new URL(window.location.href);
+    if (url.searchParams.get('placed') !== '1') return;
+    url.searchParams.delete('placed');
+    window.history.replaceState(
+      window.history.state,
+      '',
+      `${url.pathname}${url.search}${url.hash}`
+    );
+  }, [showPlacedBanner]);
+
+  useEffect(() => {
+    if (hub?.order.paymentState !== 'CONFIRMING') return;
+
+    let cancelled = false;
+    let attempts = 0;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    const poll = () => {
+      if (cancelled || attempts >= MAX_PAYMENT_POLL_ATTEMPTS) return;
+      attempts += 1;
+      timer = setTimeout(async () => {
+        const refreshed = await loadHub(undefined, true);
+        if (
+          !cancelled &&
+          (!refreshed || refreshed.order.paymentState === 'CONFIRMING')
+        ) {
+          poll();
+        }
+      }, PAYMENT_POLL_INTERVAL_MS);
+    };
+
+    poll();
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [hub?.order.paymentState, loadHub]);
+
+  useEffect(() => {
+    if (hub?.order.paymentState !== 'PAID') return;
+    try {
+      const key = `${PENDING_CART_CLEAR_PREFIX}${orderId}`;
+      const raw = sessionStorage.getItem(key);
+      if (!raw) return;
+      const pending = JSON.parse(raw) as {
+        cartId: string;
+        cartRevision: number;
+        lines: CartOrderedLine[];
+      };
+      useCart
+        .getState()
+        .completeOrder(orderId, pending.cartId, pending.cartRevision, pending.lines);
+      sessionStorage.removeItem(key);
+    } catch {
+      // Keep the cart unchanged when the handoff cannot be read safely.
+    }
+  }, [hub?.order.paymentState, orderId]);
 
   // Post-submit confirmation banner (?just=submitted).
   useEffect(() => {
@@ -334,10 +411,15 @@ function OrderHubInner({ orderId }: OrderHubClientProps) {
     });
   }, [guard, orderId]);
 
+  const handleVerifyAccess = useCallback(() => {
+    pendingResume.current = () => void loadHub(undefined, true);
+    requestStepUp({ type: 'VIEW_DETAILS' }, 'INVOICE');
+  }, [loadHub, requestStepUp]);
+
   const handleVerifyAfterInvalidLink = useCallback(() => {
     guard('INVOICE', () => {
       setLinkInvalid(false);
-      void loadHub();
+      void loadHub(undefined, true);
     });
   }, [guard, loadHub]);
 
@@ -433,6 +515,7 @@ function OrderHubInner({ orderId }: OrderHubClientProps) {
     <>
       <Container>
         <div className="mx-auto max-w-3xl space-y-6 py-6">
+          {showPlacedBanner && <OrderPlacedBanner order={hub.order} />}
           {linkInvalid && (
             <div
               role="alert"
@@ -475,6 +558,10 @@ function OrderHubInner({ orderId }: OrderHubClientProps) {
             </div>
           )}
 
+          {hub.meta.personalDetailsMasked && (
+            <OrderAccessCard onVerify={handleVerifyAccess} />
+          )}
+
           <HubOrderCard
             order={hub.order}
             invoices={hub.invoices}
@@ -486,6 +573,9 @@ function OrderHubInner({ orderId }: OrderHubClientProps) {
             onUnlockInvoices={handleUnlockInvoices}
             onInvoiceEmail={handleEmailInvoice}
           />
+
+          <HubOrderTimeline entries={hub.timeline} />
+          <HubShipmentList shipments={hub.shipments} />
 
           {/* Items */}
           <section className="rounded-2xl border border-border bg-white p-5 sm:p-6">
