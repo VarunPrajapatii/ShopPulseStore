@@ -3,17 +3,14 @@
 import { useState, useEffect } from 'react';
 import {
   MapPin,
-  Truck,
   Check,
   X,
   Loader2,
   AlertCircle,
-  Banknote,
   RefreshCw,
 } from 'lucide-react';
 import getDeliveryCharges from '@/actions/get-delivery-charges';
 import useShipping, { ShippingData } from '@/hooks/use-shipping';
-import Currency from '@/components/ui/currency';
 import { cn } from '@/lib/utils';
 import { getDeliverySupportMessage } from '@/lib/checkout-messages';
 
@@ -70,35 +67,41 @@ const PincodeChecker: React.FC<PincodeCheckerProps> = ({
       const response = await getDeliveryCharges(pincode);
       // Background refresh keeps the saved result when the provider is temporarily down.
       if (silent && !response.serviceable && response.retryable) return;
-      const shippingChargeMetadata =
-        'shippingChargeEnabled' in response
-          ? {
-              shippingChargeEnabled: response.shippingChargeEnabled ?? false,
-              shippingChargeMode: response.shippingChargeMode ?? 'FIXED',
-              variableShippingChargeAllowed:
-                response.variableShippingChargeAllowed ?? false,
-              fixedShippingCharge: response.fixedShippingCharge ?? null,
-              shippingChargeSource: response.shippingChargeSource ?? null,
-            }
-          : {
-              shippingChargeEnabled: false,
-              shippingChargeMode: 'FIXED' as const,
-              variableShippingChargeAllowed: false,
-              fixedShippingCharge: null,
-              shippingChargeSource: null,
-            };
+
+      const availabilityMetadata = {
+        pincode:
+          'deliveryPincode' in response ? response.deliveryPincode : pincode,
+        pickupPincode:
+          'pickupPincode' in response ? response.pickupPincode : null,
+        totalCouriersAvailable:
+          'totalCouriersAvailable' in response
+            ? response.totalCouriersAvailable
+            : 0,
+        estimatedDays:
+          'estimatedDeliveryDays' in response
+            ? response.estimatedDeliveryDays
+            : null,
+        codAvailable: 'codAvailable' in response ? response.codAvailable : false,
+        codEnabledForStore:
+          'codEnabledForStore' in response
+            ? response.codEnabledForStore
+            : false,
+        codCouriersCount:
+          'codCouriersCount' in response ? response.codCouriersCount : 0,
+        codChargeAmount:
+          'codChargeAmount' in response ? response.codChargeAmount : null,
+        allowB2BInvoices:
+          'allowB2BInvoices' in response ? response.allowB2BInvoices : false,
+        shipToAllowed:
+          'shipToAllowed' in response ? response.shipToAllowed : null,
+        stateCodes: 'stateCodes' in response ? response.stateCodes : [],
+        stateNames: 'stateNames' in response ? response.stateNames : [],
+      };
 
       if (!response.serviceable) {
         const shippingInfo: ShippingData = {
-          pincode,
+          ...availabilityMetadata,
           serviceable: false,
-          deliveryCharge: null,
-          estimatedDays: null,
-          codAvailable: false,
-          codEnabledForStore: false,
-          codChargeAmount: null,
-          allowB2BInvoices: false,
-          ...shippingChargeMetadata,
           errorMessage:
             response.error || 'Delivery not available to this pincode',
           errorCode: response.errorCode || 'PINCODE_NOT_SERVICEABLE',
@@ -109,16 +112,8 @@ const PincodeChecker: React.FC<PincodeCheckerProps> = ({
         onCheckComplete?.(shippingInfo);
       } else {
         const shippingInfo: ShippingData = {
-          pincode,
+          ...availabilityMetadata,
           serviceable: true,
-          deliveryCharge: response.deliveryCharge,
-          estimatedDays: response.estimatedDeliveryDays,
-          codAvailable: response.codAvailable,
-          codEnabledForStore: response.codEnabledForStore,
-          codChargeAmount: response.codChargeAmount,
-          allowB2BInvoices: response.allowB2BInvoices,
-          stateNames: response.stateNames ?? [],
-          ...shippingChargeMetadata,
         };
         setShippingData(shippingInfo);
         setIsEditing(false);
@@ -131,17 +126,17 @@ const PincodeChecker: React.FC<PincodeCheckerProps> = ({
       const shippingInfo: ShippingData = {
         pincode,
         serviceable: false,
-        deliveryCharge: null,
+        pickupPincode: null,
+        totalCouriersAvailable: 0,
         estimatedDays: null,
         codAvailable: false,
         codEnabledForStore: false,
+        codCouriersCount: 0,
         codChargeAmount: null,
         allowB2BInvoices: false,
-        shippingChargeEnabled: false,
-        shippingChargeMode: 'FIXED',
-        variableShippingChargeAllowed: false,
-        fixedShippingCharge: null,
-        shippingChargeSource: null,
+        shipToAllowed: null,
+        stateCodes: [],
+        stateNames: [],
         errorMessage: errorMsg,
         errorCode: 'PROVIDER_UNAVAILABLE',
         retryable: true,
@@ -178,10 +173,6 @@ const PincodeChecker: React.FC<PincodeCheckerProps> = ({
   // COD is only available when both codAvailable AND codEnabledForStore are true
   const isCODAvailable =
     shippingData?.codAvailable && shippingData?.codEnabledForStore;
-  const shippingLabel =
-    shippingData?.shippingChargeSource === 'VARIABLE'
-      ? 'Shipping charge for this pincode'
-      : 'Shipping charge';
   const hasCurrentFailure =
     shippingData?.pincode === pincode &&
     !shippingData.serviceable &&
@@ -225,52 +216,24 @@ const PincodeChecker: React.FC<PincodeCheckerProps> = ({
           <span>Delivery available</span>
         </div>
 
-        {/* Shipping Cost */}
-        <div className="flex items-center justify-between text-sm">
-          <div className="flex items-center gap-2">
-            <Truck className="h-4 w-4 text-muted-foreground" />
-            <span>{shippingLabel}</span>
-          </div>
-          <span className="font-medium">
-            {shippingData.deliveryCharge === null ? (
-              <span className="text-muted-foreground">Unavailable</span>
-            ) : shippingData.deliveryCharge > 0 ? (
-              <Currency amount={shippingData.deliveryCharge.toString()} />
-            ) : (
-              <span className="text-green-600">Free shipping available</span>
-            )}
-          </span>
-        </div>
+        {shippingData.codEnabledForStore && (
+          <p className="text-sm text-muted-foreground">
+            {isCODAvailable
+              ? 'Cash on Delivery available'
+              : 'Cash on Delivery not available for this pincode'}
+          </p>
+        )}
 
-        {/* COD Availability - only show when codEnabledForStore is true */}
-        {/* {shippingData.codEnabledForStore &&
-          (isCODAvailable ? (
-            <div className="flex items-center justify-between text-sm">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Banknote className="h-4 w-4 text-green-600" />
-                <span>Cash on Delivery available</span>
-              </div>
-              {shippingData.codChargeAmount &&
-                shippingData.codChargeAmount > 0 && (
-                  <span className="text-xs text-muted-foreground">
-                    +₹{shippingData.codChargeAmount}
-                  </span>
-                )}
-            </div>
-          ) : (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <X className="h-4 w-4 text-amber-500" />
-              <span>Cash on Delivery not available for this pincode</span>
-            </div>
-          ))} */}
-
-        {/* Estimated Delivery */}
         {shippingData.estimatedDays && (
           <p className="text-xs text-muted-foreground">
             Estimated delivery: {shippingData.estimatedDays.min}-
             {shippingData.estimatedDays.max} days
           </p>
         )}
+
+        <p className="text-xs text-muted-foreground">
+          Shipping charge is calculated at checkout based on your cart.
+        </p>
       </div>
     );
   }

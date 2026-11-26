@@ -2,25 +2,20 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import type { DeliveryAvailabilityErrorCode } from '@/actions/get-delivery-charges';
 
-export type ShippingChargeMode = 'FIXED' | 'VARIABLE';
-export type ShippingChargeSource = 'DISABLED' | 'FIXED' | 'VARIABLE';
-
 export interface ShippingData {
   pincode: string;
   serviceable: boolean;
-  deliveryCharge: number | null;
+  pickupPincode: string | null;
+  totalCouriersAvailable: number;
   estimatedDays: { min: number; max: number } | null;
   codAvailable: boolean;
   codEnabledForStore: boolean;
+  codCouriersCount: number;
   codChargeAmount: number | null;
   allowB2BInvoices: boolean;
-  /** State name(s) of the pincode; empty when the directory has none. */
-  stateNames?: string[];
-  shippingChargeEnabled: boolean;
-  shippingChargeMode: ShippingChargeMode;
-  variableShippingChargeAllowed: boolean;
-  fixedShippingCharge: number | null;
-  shippingChargeSource: ShippingChargeSource | null;
+  shipToAllowed: boolean | null;
+  stateCodes: string[];
+  stateNames: string[];
   errorMessage?: string;
   errorCode?: DeliveryAvailabilityErrorCode;
   retryable?: boolean;
@@ -58,7 +53,8 @@ const useShipping = create(
       },
     }),
     {
-      name: 'shipping-storage',
+      name: 'shipping-storage-v2',
+      version: 2,
       storage: createJSONStorage(() => sessionStorage),
     }
   )

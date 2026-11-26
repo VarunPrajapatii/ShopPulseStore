@@ -7,6 +7,7 @@ import { formatPrice } from '@/lib/utils';
 
 interface MobileStickyCheckoutProps {
   total: number | null;
+  totalLabel?: string;
   onAction: () => void;
   actionLabel?: string;
   isLoading?: boolean;
@@ -17,6 +18,7 @@ interface MobileStickyCheckoutProps {
 
 const MobileStickyCheckout: React.FC<MobileStickyCheckoutProps> = ({
   total,
+  totalLabel = 'Total Amount',
   onAction,
   actionLabel = 'Proceed to Checkout',
   isLoading = false,
@@ -33,7 +35,7 @@ const MobileStickyCheckout: React.FC<MobileStickyCheckoutProps> = ({
     >
       <div className="flex items-center justify-between gap-4 max-w-screen-sm mx-auto">
         <div className="flex flex-col">
-          <span className="text-xs text-muted-foreground">Total Amount</span>
+          <span className="text-xs text-muted-foreground">{totalLabel}</span>
           <span className="text-xl font-bold">
             {total === null ? 'Enter pincode' : formatPrice(total)}
           </span>

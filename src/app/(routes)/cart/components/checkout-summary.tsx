@@ -39,7 +39,7 @@ const Summary: React.FC<SummaryProps> = ({
   const isPincodeBlocking = hasPincodeChecked && !isServiceable;
 
   // GST shown here comes from the backend quote for the saved pincode's State.
-  const { quote } = useCheckoutQuote({
+  const { quote, loading: quoteLoading } = useCheckoutQuote({
     enabled: isMounted && hasPincodeChecked && isServiceable,
     items: cartItems.map((item) => ({
       productId: item.id,
@@ -73,12 +73,8 @@ const Summary: React.FC<SummaryProps> = ({
     return total + itemPrice * (item.quantity || 1);
   }, 0);
   const subtotal = quote ? Number(quote.subtotal) : cartSubtotal;
-  const shippingCost = quote
-    ? Number(quote.shipping?.amount ?? 0)
-    : hasPincodeChecked && isServiceable
-      ? (shippingData?.deliveryCharge ?? 0)
-      : 0;
-  const orderTotal = quote ? Number(quote.total) : subtotal + shippingCost;
+  const shippingCost = quote ? Number(quote.shipping?.amount ?? 0) : null;
+  const displayedAmount = quote ? Number(quote.total) : cartSubtotal;
 
   // Checkout button disabled conditions:
   // 1. No items in cart
@@ -114,16 +110,20 @@ const Summary: React.FC<SummaryProps> = ({
               <Truck className="h-4 w-4" />
               <span>Shipping</span>
             </div>
-            {!hasPincodeChecked ? (
+            {quote ? (
+              shippingCost === 0 ? (
+                <span className="text-green-600 font-medium">Free</span>
+              ) : (
+                <Currency amount={shippingCost ?? 0} />
+              )
+            ) : quoteLoading ? (
               <span className="text-muted-foreground text-xs">
-                Enter pincode
+                Calculating...
               </span>
-            ) : !isServiceable || shippingData?.deliveryCharge === null ? (
-              <span className="text-red-600 text-xs">Not available</span>
-            ) : shippingCost === 0 ? (
-              <span className="text-green-600 font-medium">FREE</span>
             ) : (
-              <Currency amount={shippingCost} />
+              <span className="text-muted-foreground text-xs">
+                Calculated at checkout
+              </span>
             )}
           </div>
 
@@ -145,14 +145,14 @@ const Summary: React.FC<SummaryProps> = ({
           {/* Order Total */}
           <div className="flex items-center justify-between border-t border-gray-200 pt-4">
             <div className="text-base font-semibold text-gray-900">
-              Order Total
+              {quote ? 'Order Total' : 'Subtotal'}
             </div>
             <span className="text-xl font-bold text-gray-900">
-              <Currency amount={orderTotal} />
+              <Currency amount={displayedAmount} />
             </span>
           </div>
 
-          {hasPincodeChecked && isServiceable && shippingCost === 0 && (
+          {quote && shippingCost === 0 && (
             <div className="flex items-center justify-center gap-2 text-xs text-green-600">
               <Truck className="h-3.5 w-3.5" />
               <span>You qualify for FREE shipping!</span>
@@ -210,7 +210,8 @@ const Summary: React.FC<SummaryProps> = ({
         </div>
       </div>
       <MobileStickyCheckout
-        total={hasPincodeChecked ? orderTotal : null}
+        total={displayedAmount}
+        totalLabel={quote ? 'Order Total' : 'Subtotal'}
         onAction={handleCheckout}
         actionLabel={hasStockIssues ? 'Fix Stock Issues' : 'Checkout'}
         disabled={!canCheckout}

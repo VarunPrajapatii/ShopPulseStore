@@ -61,8 +61,18 @@ export function getBuyerFriendlyCheckoutMessage(
   switch (code) {
     case 'SHIP_TO_STATE_NOT_ALLOWED':
       return getShipToStateNotAllowedMessage(details);
+    case 'PINCODE_NOT_SERVICEABLE':
+      return SHIP_TO_PINCODE_UNAVAILABLE_MESSAGE;
+    case 'SHIPPING_PARCEL_UNAVAILABLE':
+      return "We couldn't calculate shipping for this cart. Please contact the store.";
+    case 'SHIPPING_RATE_UNAVAILABLE':
+    case 'DELIVERY_CHECK_FAILED':
+      return "We couldn't calculate shipping right now. Please try again in a moment.";
+    case 'COD_NOT_AVAILABLE':
+      return 'Cash on Delivery is not available for this pincode.';
     case 'TAX_IDENTITY_MISSING':
     case 'TAX_NOT_READY':
+    case 'TAX_INCLUSIVE_REQUIRED':
       return STORE_NOT_READY_MESSAGE;
     case 'TAX_NOT_SELLABLE':
       return ITEM_NOT_SELLABLE_MESSAGE;

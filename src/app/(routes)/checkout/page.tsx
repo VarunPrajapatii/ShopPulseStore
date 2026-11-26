@@ -502,13 +502,7 @@ const CheckoutPage = () => {
     }
   }, [allowB2BInvoices]);
 
-  // Calculate shipping cost from pincode check
-  const shippingCost =
-    hasPincodeChecked && isServiceable
-      ? (shippingData?.deliveryCharge ?? 0)
-      : 0;
-
-  // The backend quote is the only source of amounts once a pincode and State are known.
+  // The backend quote is the only source of shipping and order totals.
   const shippingStateText = form.watch('shippingAddress.state');
   const billingStateText = form.watch('isShippingSameAsBilling')
     ? null
@@ -534,6 +528,7 @@ const CheckoutPage = () => {
     failure: quoteFailure,
     loading: quoteLoading,
     replaceQuote,
+    refetch: refetchQuote,
   } = useCheckoutQuote({
     enabled: isMounted && hasPincodeChecked && isServiceable && b2bBuyerReady,
     items: items.map((item) => ({
@@ -554,10 +549,7 @@ const CheckoutPage = () => {
     !quoteLoading &&
     quote.paymentMethod === paymentMethod;
 
-  // Total the buyer pays: the quote when ready, else goods + shipping.
-  const orderTotal = quoteReady
-    ? Number(quote.total)
-    : totalPrice + shippingCost;
+  const displayedAmount = quoteReady ? Number(quote.total) : totalPrice;
 
   // Returns a valid checkout auth token, verifying the typed OTP if needed.
   // The token is cached, so a Razorpay cancel + retry does not need the (already used) OTP again.
@@ -1338,6 +1330,7 @@ const CheckoutPage = () => {
                 quote={quoteReady ? quote : null}
                 quoteLoading={quoteLoading}
                 quoteFailure={quoteFailure}
+                onRetryQuote={refetchQuote}
                 onContinueWithoutGstInvoice={() => {
                   setB2bEnabled(false);
                   setBuyer(null);
@@ -1358,7 +1351,8 @@ const CheckoutPage = () => {
 
       {/* Mobile Sticky Checkout Bar */}
       <MobileStickyCheckout
-        total={orderTotal}
+        total={displayedAmount}
+        totalLabel={quoteReady ? 'Total' : 'Subtotal'}
         onAction={
           showOtpField
             ? paymentMethod === 'COD'
@@ -1374,7 +1368,9 @@ const CheckoutPage = () => {
               ? 'Verify & Place Order'
               : 'Verify & Pay'
             : paymentMethod === 'COD'
-              ? `Place Order (₹${orderTotal} COD)`
+              ? quoteReady
+                ? `Place Order (₹${displayedAmount} COD)`
+                : 'Place Order'
               : 'Continue'
         }
         isLoading={loading || otpLoading || phase !== 'idle'}

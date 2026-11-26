@@ -77,6 +77,7 @@ export interface QuoteFailure {
   status: number;
   code: string | null;
   message: string;
+  retryable: boolean;
   details?: Record<string, unknown>;
 }
 
@@ -121,6 +122,10 @@ const getCheckoutQuote = async (
             details,
             'We could not calculate your total. Please try again.'
           ),
+          retryable:
+            typeof body.retryable === 'boolean'
+              ? body.retryable
+              : res.status >= 500,
           details,
         },
       };
@@ -135,6 +140,7 @@ const getCheckoutQuote = async (
         status: 0,
         code: null,
         message: 'We could not calculate your total. Please try again.',
+        retryable: true,
       },
     };
   }
